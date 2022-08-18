@@ -1,0 +1,2 @@
+recursive-include starship/templates *
+recursive-include starship/static *

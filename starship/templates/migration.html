@@ -1,0 +1,201 @@
+{% extends base_template %}
+{% block head_js %}
+<script
+        src="https://unpkg.com/htmx.org@1.8.0"
+        integrity="sha384-cZuAZ+ZbwkNRnrKi05G/fjBX+azI9DNOkNYysZ0I/X5ZFgsmMiBXgDZof30F5ofc"
+        crossorigin="anonymous">
+</script>
+{% endblock %}
+{% from 'appbuilder/loading_dots.html' import loading_dots %}
+{% from 'airflow/_messages.html' import show_message %}
+{% block page_title %}Astro Migration {{ appbuilder.app_name }}{% endblock %}
+{% block content %}
+<style>
+  table {
+    table-layout: fixed;
+  }
+  td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+</style>
+<div class="container">
+  <div class="container">
+      <form method="post">
+        <div class="form-group">
+          <div class="row">
+            <div class="col-lg-3">
+              <label for="bearerToken" class="form-label">Authentication Token</label>
+            </div>
+            <div class="col-lg-6">
+                    <input type="text" class="form-control" id="bearerToken" name="bearerToken" value="{{ session.bearerToken }}">
+            </div>
+            <div class="col-lg-3">
+              <button type="submit" class="btn btn-primary">Sign in</button>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+  <div class="container">
+    <form method="post">
+      <div class="form-group">
+      <div class="row">
+        <div class="col-lg-3">
+          <label for="bearerToken" class="form-label">Target Deployment</label>
+        </div>
+        <div class="col-lg-6">
+          <select class="form-control" name="selectedAstroDeployment">
+                  <option value=""></option>
+              {% if 'deploys' in data and data.deploys|length > 0 %}
+                  {% for deploy in data.deploys.values() %}
+                    <option value="{{deploy.id}}" {{'selected' if deploy.id == data.selected_deployment}}>{{deploy.workspace.label}} / {{deploy.label}}</option>
+                  {% endfor %}
+              {% endif %}
+          </select>
+        </div>
+        <div class="col-lg-3">
+          <button type="submit" class="btn btn-primary mb3-l">Select</button>
+        </div>
+      </div>
+      </div>
+    </form>
+  </div>
+  {% if 'dags' in data and data.dags|length > 0 %}
+  <div class="container">
+    <h4>DAGs</h4>
+    <form>
+    <table class="table table-striped table-bordered table-hover">
+      <thead>
+      <tr>
+        <th scope="col">DAG</th>
+        <th scope="col">Value</th>
+      </tr>
+      </thead>
+      <tbody>
+      {% for k, v in data.dags.items() %}
+      <tr>
+        <td>{{ k }}</td>
+        <td>{{ v }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+      </form>
+  </div>
+  {% endif %}
+
+  {% if 'vars' in data and data.vars|length > 0 %}
+  <div class="container">
+    <h4>Airflow Variables</h4>
+    <form method="post">
+    <table class="table table-striped table-bordered table-hover">
+      <thead>
+      <tr>
+        <th scope="col">Key</th>
+        <th scope="col">Value</th>
+        <th>
+        </th>
+      </tr>
+      </thead>
+      <tbody>
+      {% for key, var in data.vars.items() %}
+      <tr>
+        <td>{{ var.key }}</td>
+        <td>{{ var.val }}</td>
+        <td class="text-right">
+          {% if var.key in data.remote.vars %}
+          <button type="submit" class="btn btn-outline-success disabled">Migrated ✅</button>
+          {% else %}
+          <button type="submit" class="btn btn-outline-primary" name="move-var-{{ var.key }}">Migrate</button>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+      </form>
+  </div>
+  {% endif %}
+
+  {% if 'conns' in data and data.conns|length > 0 %}
+  <div class="container">
+    <h4>Airflow Connections</h4>
+    <form method="post">
+      <table class="table table-striped table-bordered table-hover">
+        <thead>
+        <tr>
+          <th scope="col">Type</th>
+          <th scope="col">Id</th>
+          <th scope="col">Host</th>
+          <th scope="col">Login</th>
+          <th scope="col">Schema</th>
+          <th scope="col">Port</th>
+          <th scope="col">Extra</th>
+          <th>
+          </th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for key, conn in data.conns.items() %}
+        <tr>
+          <td>{{ conn.conn_type }}</td>
+          <td>{{ conn.conn_id }}</td>
+          <td>{{ conn.host }}</td>
+          <td>{{ conn.login }}</td>
+          <td>{{ conn.schema }}</td>
+          <td>{{ conn.port }}</td>
+          <td style="font-family: monospace; overflow: hidden; text-overflow: ellipsis;">{{ conn.extra }}</td>
+          <td class="text-right">
+            {% if conn.conn_id in data.remote.conns %}
+            <button type="submit" class="btn btn-outline-danger disabled">Migrated ✅</button>
+            {% else %}
+            <button type="submit" class="btn btn-outline-primary" name="move-conn-{{ conn.conn_id }}">Migrate</button>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </form>
+  </div>
+  {% endif %}
+
+  {% if 'environ' in data and data.environ|length > 0 %}
+  <div class="container">
+    <h4>Environment Variables</h4>
+    <form method="post">
+    <table class="table table-striped table-bordered table-hover" style="table-layout: fixed">
+      <thead>
+      <tr>
+        <th scope="col">Key</th>
+        <th scope="col">Value</th>
+        <th class="text-right">
+          <button type="submit" class="btn btn-primary" name="migrate-all-the-envs">Migrate</button>
+        </th>
+      </tr>
+      </thead>
+      <tbody>
+      {% for k, v in data.environ.items() %}
+      <tr>
+        <td>{{ k }}</td>
+        <td style="font-family: monospace;">
+          {{ v }}
+        </td>
+        <td class="text-right">
+          {% if k in data.remote.env %}
+          <p>Migrated ✅</p>
+          {% else %}
+          <input class="form-check-input" type="checkbox" name="move-env-{{k}}" value="{{ k }}"/>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+      </form>
+  </div>
+  {% endif %}
+  <textarea class="form-control">{{data}}</textarea>
+</div>
+{% endblock %}

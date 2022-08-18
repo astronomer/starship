@@ -1,0 +1,4 @@
+/build/
+/starship.egg-info/
+__pycache__
+/.idea/
