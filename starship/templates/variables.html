@@ -1,0 +1,35 @@
+{% extends "components/tabs.html" %}
+
+{% block body %}
+{% if 'vars' in data and data.vars|length > 0 %}
+    <form method="post">
+        <table class="table table-striped table-bordered table-hover">
+            <thead>
+            <tr>
+                <th scope="col">Key</th>
+                <th scope="col">Value</th>
+                <th>
+                </th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for key, var in data.vars.items() %}
+            <tr>
+                <td>{{ var.key }}</td>
+                <td>{{ var.val }}</td>
+                <td class="text-right">
+                    {% if False %}
+                    <button type="submit" class="btn btn-outline-success disabled">Migrated ✅</button>
+                    {% else %}
+                    <button type="submit" class="btn btn-outline-primary" name="move-var-{{ var.key }}">Migrate</button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </form>
+{% else %}
+<h4>No variables found in local metadata database.</h4>
+{% endif %}
+{% endblock %}

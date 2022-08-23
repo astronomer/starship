@@ -1,0 +1,7 @@
+{%  if not deployment %}
+<button class="btn btn-outline-secondary disabled">Migrate</button>
+{% elif is_migrated %}
+<button class="btn btn-outline-danger disabled">Migrated ✅</button>
+{% else %}
+<button hx-post="button/migrate/{{type}}/{{target}}/{{deployment}}" class="btn btn-outline-primary">Migrate</button>
+{% endif %}

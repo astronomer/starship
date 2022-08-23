@@ -11,7 +11,7 @@ class LocalAirflowClient:
         return variables
 
     @provide_session
-    def get_connections_from_metastore(self, session: Session):
+    def get_connections(self, session: Session):
         from airflow.models import Connection
 
         connections = session.query(Connection).all()
