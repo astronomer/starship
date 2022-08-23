@@ -1,30 +1,40 @@
 from urllib.parse import urlparse
 
+from cachetools.func import ttl_cache
 from airflow.plugins_manager import AirflowPlugin
 from airflow.www.app import csrf
+
 
 from flask import Blueprint, session, request
 from flask_appbuilder import expose, BaseView as AppBuilderBaseView
 
+from starship.services.astrohub_client import AstroClient
 from starship.services.local_client import LocalAirflowClient
 
 import requests
 
 from python_graphql_client import GraphqlClient
 
-bp = Blueprint("starship", __name__, template_folder="templates")
+bp = Blueprint(
+    "starship",
+    __name__,
+    template_folder="templates",
+    static_folder="static",
+    static_url_path="/static/starship",
+)
 
 
 class MigrationBaseView(AppBuilderBaseView):
     default_view = "main"
 
     def __init__(self):
-        super(MigrationBaseView, self).__init__()
+        super().__init__()
         self.local_client = LocalAirflowClient()
+        self.astro_client = AstroClient()
 
-    @expose("/astro/deployments", methods=["GET"])
-    def astro_deployments(self):
-        if token := session.get("bearerToken"):
+    @ttl_cache(ttl=10)
+    def astro_deployments(self, token):
+        if token:
             headers = {"Authorization": f"Bearer {token}"}
             client = GraphqlClient(
                 endpoint="https://api.astronomer.io/hub/v1", headers=headers
@@ -55,10 +65,12 @@ class MigrationBaseView(AppBuilderBaseView):
             """
 
             try:
-                return client.execute(query)["data"]["deployments"]
+                api_rv = client.execute(query)["data"]["deployments"]
+
+                return {deploy["id"]: deploy for deploy in (api_rv or [])}
             except Exception as exc:
                 print(exc)
-                return None
+                return {}
 
     def get_astro_config(self, deployment_url: str, token: str):
         resp = requests.get(
@@ -74,6 +86,7 @@ class MigrationBaseView(AppBuilderBaseView):
         )
         return resp.json()["variables"]
 
+    @ttl_cache(ttl=1)
     def get_astro_connections(self, deployment_url: str, token: str):
         resp = requests.get(
             f"{deployment_url}/api/v1/connections",
@@ -173,13 +186,10 @@ class MigrationBaseView(AppBuilderBaseView):
         session.update(request.form)
 
         data = {
-            "deploys": {
-                deploy["id"]: deploy for deploy in (self.astro_deployments() or [])
-            },
+            "deploys": self.astro_deployments(session.get("bearerToken")),
             "vars": {var.key: var for var in self.local_client.get_variables()},
             "conns": {
-                conn.conn_id: conn
-                for conn in self.local_client.get_connections_from_metastore()
+                conn.conn_id: conn for conn in self.local_client.get_connections()
             },
             "dags": self.local_client.get_dags(),
             "environ": os.environ,
@@ -220,6 +230,104 @@ class MigrationBaseView(AppBuilderBaseView):
             }
 
         return self.render_template("migration.html", data=data)
+
+    @expose("/tabs/dags")
+    def tabs_dags(self):
+        data = {"component": "dags", "dags": self.local_client.get_dags()}
+
+        return self.render_template("dags.html", data=data)
+
+    @expose("/tabs/variables")
+    def tabs_vars(self):
+        data = {
+            "component": "variables",
+            "vars": {var.key: var for var in self.local_client.get_variables()},
+        }
+
+        return self.render_template("variables.html", data=data)
+
+    @expose("/tabs/connections")
+    def tabs_conns(self):
+        data = {
+            "component": "connections",
+            "conns": {
+                conn.conn_id: conn for conn in self.local_client.get_connections()
+            },
+        }
+
+        return self.render_template("connections.html", data=data)
+
+    @expose("/tabs/env")
+    def tabs_env(self):
+        import os
+
+        data = {
+            "component": "env",
+            "environ": os.environ,
+        }
+
+        return self.render_template("env.html", data=data)
+
+    @expose(
+        "/button/migrate/conn/<string:key>/<string:deployment>", methods=("GET", "POST")
+    )
+    def button_migrate_conn(self, deployment: str, key: str):
+        deployment_url = self.get_deployment_url(deployment)
+
+        if request.method == "POST":
+            local_connections = {
+                conn.conn_id: conn for conn in self.local_client.get_connections()
+            }
+
+            requests.post(
+                f"{deployment_url}/api/v1/connections",
+                headers={"Authorization": f"Bearer {session.get('bearerToken')}"},
+                json={
+                    "connection_id": local_connections[key].conn_id,
+                    "conn_type": local_connections[key].conn_type,
+                    "host": local_connections[key].host,
+                    "login": local_connections[key].login,
+                    "schema": local_connections[key].schema,
+                    "port": local_connections[key].port,
+                    "password": local_connections[key].password or "",
+                    "extra": local_connections[key].extra,
+                },
+            )
+
+        deployment_conns = self.get_astro_connections(
+            deployment_url, session.get("bearerToken")
+        )
+
+        is_migrated = key in [
+            remote_conn["connection_id"] for remote_conn in deployment_conns
+        ]
+
+        return self.render_template(
+            "components/migrate_button.html",
+            type="conn",
+            target=key,
+            deployment=deployment,
+            is_migrated=is_migrated,
+        )
+
+    @expose("/component/astro-deployment-selector")
+    def deployment_selector(self):
+        deployments = self.astro_deployments(session.get("bearerToken"))
+        print(deployments)
+
+        return self.render_template(
+            "components/target_deployment_select.html",
+            deployments=deployments,
+        )
+
+    def get_deployment_url(self, deployment):
+        astro_deployments = self.astro_deployments(session.get("bearerToken"))
+
+        if astro_deployments and astro_deployments.get(deployment):
+            url = urlparse(
+                astro_deployments[deployment]["deploymentSpec"]["webserver"]["url"]
+            )
+            return f"https:/{url.netloc}/{url.path}"
 
 
 v_appbuilder_view = MigrationBaseView()
