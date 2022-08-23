@@ -1,0 +1,15 @@
+<div class="container">
+  <ul class="nav nav-tabs">
+  <li class="nav-item {{ 'active' if data.component == 'dags' }}"><a class="nav-link" hx-get="tabs/dags">DAGs</a></li>
+  <li class="nav-item {{ 'active' if data.component == 'connections' }}"><a class="nav-link" hx-get="tabs/connections">Connections</a></li>
+  <li class="nav-item {{ 'active' if data.component == 'variables' }}"><a class="nav-link" hx-get="tabs/variables">Variables</a></li>
+  <li class="nav-item {{ 'active' if data.component == 'env' }}"><a class="nav-link" hx-get="tabs/env">Environment Variables</a></li>
+</ul>
+</div>
+<div class="tab-content">
+  <div class="container">
+  {% block body %}
+  <!-- Tab content goes here -->
+  {% endblock %}
+  </div>
+</div>

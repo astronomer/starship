@@ -1,5 +1,8 @@
+from typing import Optional
+
+
 class AstroClient:
-    def __init__(self, token: str, url: str = "https://api.astronomer.io/hub/v1"):
+    def __init__(self, token: Optional[str] = None, url: str = "https://api.astronomer.io/hub/v1"):
         self.token = token
         self.url = url
 
