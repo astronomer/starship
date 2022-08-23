@@ -1,16 +1,14 @@
-from urllib.parse import urlparse
+import requests
 
 from airflow.plugins_manager import AirflowPlugin
 from airflow.www.app import csrf
 
 from flask import Blueprint, session, request
 from flask_appbuilder import expose, BaseView as AppBuilderBaseView
-
-from starship.services.local_client import LocalAirflowClient
-
-import requests
-
 from python_graphql_client import GraphqlClient
+from starship.services.local_client import LocalAirflowClient
+from urllib.parse import urlparse
+
 
 bp = Blueprint("starship", __name__, template_folder="templates")
 
@@ -24,7 +22,8 @@ class MigrationBaseView(AppBuilderBaseView):
 
     @expose("/astro/deployments", methods=["GET"])
     def astro_deployments(self):
-        if token := session.get("bearerToken"):
+        token = session.get("bearerToken")
+        if token:
             headers = {"Authorization": f"Bearer {token}"}
             client = GraphqlClient(
                 endpoint="https://api.astronomer.io/hub/v1", headers=headers
@@ -83,7 +82,8 @@ class MigrationBaseView(AppBuilderBaseView):
 
     def process_move_button(self, api_url: str, token: str, data: dict):
         for key, value in request.form.items():
-            if (var_to_move := key.removeprefix("move-var-")) is not key:
+            var_to_move = (key.replace("move-var-", ""))
+            if var_to_move is not key:
                 print(f"Moving var {var_to_move}")
                 requests.post(
                     f"{api_url}/api/v1/variables",
@@ -92,7 +92,8 @@ class MigrationBaseView(AppBuilderBaseView):
                 )
                 return
 
-            if (conn_to_move := key.removeprefix("move-conn-")) is not key:
+            conn_to_move = (key.replace("move-conn-", ""))
+            if conn_to_move is not key:
                 print(f"Moving connection {conn_to_move}")
 
                 requests.post(
@@ -146,7 +147,8 @@ class MigrationBaseView(AppBuilderBaseView):
         }
 
         for key, value in request.form.items():
-            if (var_to_move := key.removeprefix("move-env-")) is not key:
+            var_to_move = (key.replace("move-env-", ""))
+            if var_to_move is not key:
                 remote_vars.setdefault(
                     var_to_move,
                     {
@@ -166,7 +168,6 @@ class MigrationBaseView(AppBuilderBaseView):
         client.execute(query, variables)
 
     @expose("/", methods=["GET", "POST"])
-    @csrf.exempt
     def main(self):
         import os
 

@@ -1,4 +1,8 @@
-from airflow.utils.session import provide_session
+try:
+    from airflow.utils.session import provide_session
+except:
+    from airflow.utils.db import provide_session
+
 from sqlalchemy.orm import Session
 
 
