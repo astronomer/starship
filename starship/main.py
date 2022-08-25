@@ -94,36 +94,6 @@ class MigrationBaseView(AppBuilderBaseView):
         )
         return resp.json()["connections"]
 
-    def process_move_button(self, api_url: str, token: str, data: dict):
-        for key, value in request.form.items():
-            if (var_to_move := key.removeprefix("move-var-")) is not key:
-                print(f"Moving var {var_to_move}")
-                requests.post(
-                    f"{api_url}/api/v1/variables",
-                    headers={"Authorization": f"Bearer {token}"},
-                    json={"key": var_to_move, "value": data["vars"][var_to_move].val},
-                )
-                return
-
-            if (conn_to_move := key.removeprefix("move-conn-")) is not key:
-                print(f"Moving connection {conn_to_move}")
-
-                requests.post(
-                    f"{api_url}/api/v1/connections",
-                    headers={"Authorization": f"Bearer {token}"},
-                    json={
-                        "connection_id": data["conns"][conn_to_move].conn_id,
-                        "conn_type": data["conns"][conn_to_move].conn_type,
-                        "host": data["conns"][conn_to_move].host,
-                        "login": data["conns"][conn_to_move].login,
-                        "schema": data["conns"][conn_to_move].schema,
-                        "port": data["conns"][conn_to_move].port,
-                        "password": data["conns"][conn_to_move].password or "",
-                        "extra": data["conns"][conn_to_move].extra,
-                    },
-                )
-                return
-
     def process_move_env_vars(self, api_url: str, token: str, data: dict):
         if "migrate-all-the-envs" not in request.form:
             return
@@ -215,7 +185,6 @@ class MigrationBaseView(AppBuilderBaseView):
             )
             api_url = f"https:/{url.netloc}/{url.path}"
 
-            self.process_move_button(api_url, session.get("bearerToken"), data)
             self.process_move_env_vars(api_url, session.get("bearerToken"), data)
 
             # remote_config = self.get_astro_config(api_url, session.get("bearerToken"))  unused for now
@@ -269,9 +238,9 @@ class MigrationBaseView(AppBuilderBaseView):
         return self.render_template("env.html", data=data)
 
     @expose(
-        "/button/migrate/conn/<string:key>/<string:deployment>", methods=("GET", "POST")
+        "/button/migrate/conn/<string:conn_id>/<string:deployment>", methods=("GET", "POST")
     )
-    def button_migrate_conn(self, deployment: str, key: str):
+    def button_migrate_conn(self, conn_id: str, deployment: str):
         deployment_url = self.get_deployment_url(deployment)
 
         if request.method == "POST":
@@ -283,14 +252,14 @@ class MigrationBaseView(AppBuilderBaseView):
                 f"{deployment_url}/api/v1/connections",
                 headers={"Authorization": f"Bearer {session.get('bearerToken')}"},
                 json={
-                    "connection_id": local_connections[key].conn_id,
-                    "conn_type": local_connections[key].conn_type,
-                    "host": local_connections[key].host,
-                    "login": local_connections[key].login,
-                    "schema": local_connections[key].schema,
-                    "port": local_connections[key].port,
-                    "password": local_connections[key].password or "",
-                    "extra": local_connections[key].extra,
+                    "connection_id": local_connections[conn_id].conn_id,
+                    "conn_type": local_connections[conn_id].conn_type,
+                    "host": local_connections[conn_id].host,
+                    "login": local_connections[conn_id].login,
+                    "schema": local_connections[conn_id].schema,
+                    "port": local_connections[conn_id].port,
+                    "password": local_connections[conn_id].password or "",
+                    "extra": local_connections[conn_id].extra,
                 },
             )
 
@@ -298,13 +267,40 @@ class MigrationBaseView(AppBuilderBaseView):
             deployment_url, session.get("bearerToken")
         )
 
-        is_migrated = key in [
+        is_migrated = conn_id in [
             remote_conn["connection_id"] for remote_conn in deployment_conns
         ]
 
         return self.render_template(
             "components/migrate_button.html",
             type="conn",
+            target=conn_id,
+            deployment=deployment,
+            is_migrated=is_migrated,
+        )
+
+    @expose("/button/migrate/var/<string:key>/<string:deployment>", methods=("GET", "POST"))
+    def button_migrate_var(self, key: str, deployment: str):
+        deployment_url = self.get_deployment_url(deployment)
+
+        if request.method == "POST":
+            local_vars = {var.key: var for var in self.local_client.get_variables()}
+
+            requests.post(
+                f"{deployment_url}/api/v1/variables",
+                headers={"Authorization": f"Bearer {session.get('bearerToken')}"},
+                json={"key": key, "value": local_vars[key].val},
+            )
+
+        remote_vars = self.get_astro_variables(
+            deployment_url, session.get("bearerToken")
+        )
+
+        is_migrated = key in [remote_var["key"] for remote_var in remote_vars]
+
+        return self.render_template(
+            "components/migrate_button.html",
+            type="var",
             target=key,
             deployment=deployment,
             is_migrated=is_migrated,

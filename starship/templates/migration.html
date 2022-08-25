@@ -1,15 +1,16 @@
 {% extends base_template %}
+
 {% block head_js %}
+{{ super() }}
 <script
         src="https://unpkg.com/htmx.org@1.8.0"
         integrity="sha384-cZuAZ+ZbwkNRnrKi05G/fjBX+azI9DNOkNYysZ0I/X5ZFgsmMiBXgDZof30F5ofc"
         crossorigin="anonymous">
 </script>
 {% endblock %}
-{% from 'appbuilder/loading_dots.html' import loading_dots %}
-{% from 'airflow/_messages.html' import show_message %}
-{% block page_title %}Astro Migration {{ appbuilder.app_name }}{% endblock %}
-{% block content %}
+
+{% block head_css %}
+{{ super() }}
 <style>
     table {
         table-layout: fixed;
@@ -20,6 +21,13 @@
         text-overflow: ellipsis;
     }
 </style>
+{% endblock %}
+
+{% block page_title %}
+Starship Migration Plugin
+{% endblock %}
+
+{% block content %}
 <div class="container">
     <form method="post">
         <div class="form-group">
