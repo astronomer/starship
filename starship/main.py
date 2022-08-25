@@ -238,7 +238,8 @@ class MigrationBaseView(AppBuilderBaseView):
         return self.render_template("env.html", data=data)
 
     @expose(
-        "/button/migrate/conn/<string:conn_id>/<string:deployment>", methods=("GET", "POST")
+        "/button/migrate/conn/<string:conn_id>/<string:deployment>",
+        methods=("GET", "POST"),
     )
     def button_migrate_conn(self, conn_id: str, deployment: str):
         deployment_url = self.get_deployment_url(deployment)
@@ -279,7 +280,9 @@ class MigrationBaseView(AppBuilderBaseView):
             is_migrated=is_migrated,
         )
 
-    @expose("/button/migrate/var/<string:key>/<string:deployment>", methods=("GET", "POST"))
+    @expose(
+        "/button/migrate/var/<string:key>/<string:deployment>", methods=("GET", "POST")
+    )
     def button_migrate_var(self, key: str, deployment: str):
         deployment_url = self.get_deployment_url(deployment)
 
@@ -306,10 +309,94 @@ class MigrationBaseView(AppBuilderBaseView):
             is_migrated=is_migrated,
         )
 
+    @expose("/checkbox/migrate/env/<string:key>/<string:deployment>", methods=("GET",))
+    def checkbox_migrate_env(self, key: str, deployment: str):
+        deployments = self.astro_deployments(session.get("bearerToken"))
+
+        remote_vars = {
+            remote_var["key"]: {
+                "key": remote_var["key"],
+                "value": remote_var["value"],
+                "isSecret": remote_var["isSecret"],
+            }
+            for remote_var in deployments[deployment]["deploymentSpec"][
+                "environmentVariables"
+            ]
+        }
+
+        is_migrated = key in remote_vars.keys()
+
+        return self.render_template(
+            "components/env_checkbox.html",
+            target=key,
+            deployment=deployment,
+            is_migrated=is_migrated,
+        )
+
+    @expose("/button/migrate/env/<string:deployment>", methods=("POST",))
+    def button_migrate_env(self, deployment: str):
+        import os
+
+        deployments = self.astro_deployments(session.get("bearerToken"))
+
+        headers = {"Authorization": f"Bearer {session.get('bearerToken')}"}
+        client = GraphqlClient(
+            endpoint="https://api.astronomer.io/hub/v1", headers=headers
+        )
+
+        query = """
+        fragment EnvironmentVariable on EnvironmentVariable {
+            key
+            value
+            isSecret
+            updatedAt
+        }
+        mutation deploymentVariablesUpdate($input: EnvironmentVariablesInput!) {
+            deploymentVariablesUpdate(input: $input) {
+                ...EnvironmentVariable
+            }
+        }
+        """
+
+        print(request.form)
+
+        remote_vars = {
+            remote_var["key"]: {
+                "key": remote_var["key"],
+                "value": remote_var["value"],
+                "isSecret": remote_var["isSecret"],
+            }
+            for remote_var in deployments[deployment]["deploymentSpec"][
+                "environmentVariables"
+            ]
+        }
+
+        for _, key in (
+            (key, value)
+            for (key, value) in request.form.items()
+            if key != "csrf_token" and key not in remote_vars.keys()
+        ):
+            remote_vars.setdefault(
+                key,
+                {
+                    "key": key,
+                    "value": os.environ[key],
+                    "isSecret": False,
+                },
+            )
+
+        client.execute(query, {
+            "input": {
+                "deploymentId": deployment,
+                "environmentVariables": list(remote_vars.values()),
+            }
+        })
+
+        return self.tabs_env()
+
     @expose("/component/astro-deployment-selector")
     def deployment_selector(self):
         deployments = self.astro_deployments(session.get("bearerToken"))
-        print(deployments)
 
         return self.render_template(
             "components/target_deployment_select.html",
