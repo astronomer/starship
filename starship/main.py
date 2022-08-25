@@ -358,8 +358,6 @@ class MigrationBaseView(AppBuilderBaseView):
         }
         """
 
-        print(request.form)
-
         remote_vars = {
             remote_var["key"]: {
                 "key": remote_var["key"],
