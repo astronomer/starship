@@ -309,30 +309,6 @@ class MigrationBaseView(AppBuilderBaseView):
             is_migrated=is_migrated,
         )
 
-    @expose("/checkbox/migrate/env/<string:key>/<string:deployment>", methods=("GET",))
-    def checkbox_migrate_env(self, key: str, deployment: str):
-        deployments = self.astro_deployments(session.get("bearerToken"))
-
-        remote_vars = {
-            remote_var["key"]: {
-                "key": remote_var["key"],
-                "value": remote_var["value"],
-                "isSecret": remote_var["isSecret"],
-            }
-            for remote_var in deployments[deployment]["deploymentSpec"][
-                "environmentVariables"
-            ]
-        }
-
-        is_migrated = key in remote_vars.keys()
-
-        return self.render_template(
-            "components/env_checkbox.html",
-            target=key,
-            deployment=deployment,
-            is_migrated=is_migrated,
-        )
-
     @expose("/button/migrate/env/<string:deployment>", methods=("POST",))
     def button_migrate_env(self, deployment: str):
         import os
@@ -383,14 +359,41 @@ class MigrationBaseView(AppBuilderBaseView):
                 },
             )
 
-        client.execute(query, {
-            "input": {
-                "deploymentId": deployment,
-                "environmentVariables": list(remote_vars.values()),
-            }
-        })
+        client.execute(
+            query,
+            {
+                "input": {
+                    "deploymentId": deployment,
+                    "environmentVariables": list(remote_vars.values()),
+                }
+            },
+        )
 
         return self.tabs_env()
+
+    @expose("/checkbox/migrate/env/<string:key>/<string:deployment>", methods=("GET",))
+    def checkbox_migrate_env(self, key: str, deployment: str):
+        deployments = self.astro_deployments(session.get("bearerToken"))
+
+        remote_vars = {
+            remote_var["key"]: {
+                "key": remote_var["key"],
+                "value": remote_var["value"],
+                "isSecret": remote_var["isSecret"],
+            }
+            for remote_var in deployments[deployment]["deploymentSpec"][
+                "environmentVariables"
+            ]
+        }
+
+        is_migrated = key in remote_vars.keys()
+
+        return self.render_template(
+            "components/env_checkbox.html",
+            target=key,
+            deployment=deployment,
+            is_migrated=is_migrated,
+        )
 
     @expose("/component/astro-deployment-selector")
     def deployment_selector(self):
