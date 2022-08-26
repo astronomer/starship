@@ -94,111 +94,11 @@ class MigrationBaseView(AppBuilderBaseView):
         )
         return resp.json()["connections"]
 
-    def process_move_env_vars(self, api_url: str, token: str, data: dict):
-        if "migrate-all-the-envs" not in request.form:
-            return
-
-        headers = {"Authorization": f"Bearer {token}"}
-        client = GraphqlClient(
-            endpoint="https://api.astronomer.io/hub/v1", headers=headers
-        )
-
-        query = """
-        fragment EnvironmentVariable on EnvironmentVariable {
-            key
-            value
-            isSecret
-            updatedAt
-        }
-        mutation deploymentVariablesUpdate($input: EnvironmentVariablesInput!) {
-            deploymentVariablesUpdate(input: $input) {
-                ...EnvironmentVariable
-            }
-        }
-        """
-
-        remote_vars = {
-            remote_var["key"]: {
-                "key": remote_var["key"],
-                "value": remote_var["value"],
-                "isSecret": remote_var["isSecret"],
-            }
-            for remote_var in data["deploys"][data["selected_deployment"]][
-                "deploymentSpec"
-            ]["environmentVariables"]
-        }
-
-        for key, value in request.form.items():
-            if (var_to_move := key.removeprefix("move-env-")) is not key:
-                remote_vars.setdefault(
-                    var_to_move,
-                    {
-                        "key": var_to_move,
-                        "value": data["environ"][var_to_move],
-                        "isSecret": False,
-                    },
-                )
-
-        variables = {
-            "input": {
-                "deploymentId": data["selected_deployment"],
-                "environmentVariables": list(remote_vars.values()),
-            }
-        }
-
-        client.execute(query, variables)
-
     @expose("/", methods=["GET", "POST"])
     @csrf.exempt
     def main(self):
-        import os
-
         session.update(request.form)
-
-        data = {
-            "deploys": self.astro_deployments(session.get("bearerToken")),
-            "vars": {var.key: var for var in self.local_client.get_variables()},
-            "conns": {
-                conn.conn_id: conn for conn in self.local_client.get_connections()
-            },
-            "dags": self.local_client.get_dags(),
-            "environ": os.environ,
-            "selected_deployment": session.get("selectedAstroDeployment"),
-            "remote": {
-                "vars": set(),
-                "conns": set(),
-            },
-        }
-
-        if data.get("deploys") and data.get("selected_deployment"):
-            data["remote"]["env"] = [
-                env["key"]
-                for env in data["deploys"][data["selected_deployment"]][
-                    "deploymentSpec"
-                ]["environmentVariables"]
-            ]
-
-            url = urlparse(
-                data["deploys"][data.get("selected_deployment")]["deploymentSpec"][
-                    "webserver"
-                ]["url"]
-            )
-            api_url = f"https:/{url.netloc}/{url.path}"
-
-            self.process_move_env_vars(api_url, session.get("bearerToken"), data)
-
-            # remote_config = self.get_astro_config(api_url, session.get("bearerToken"))  unused for now
-            remote_vars = self.get_astro_variables(api_url, session.get("bearerToken"))
-            remote_conns = self.get_astro_connections(
-                api_url, session.get("bearerToken")
-            )
-
-            data["remote"]["vars"] = {remote_var["key"] for remote_var in remote_vars}
-            data["remote"]["conns"] = {
-                remote_conn["connection_id"] for remote_conn in remote_conns
-            }
-
-        return self.render_template("migration.html", data=data)
+        return self.render_template("migration.html")
 
     @expose("/tabs/dags")
     def tabs_dags(self):
