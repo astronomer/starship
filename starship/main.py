@@ -318,7 +318,7 @@ v_appbuilder_view = MigrationBaseView()
 
 v_appbuilder_package = {
     "name": "Astro Migration",
-    "category": "Starship",
+    "category": "Starship 🚀",
     "view": v_appbuilder_view,
 }
 
