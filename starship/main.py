@@ -138,7 +138,7 @@ class MigrationBaseView(AppBuilderBaseView):
         return self.render_template("env.html", data=data)
 
     @expose(
-        "/button/migrate/conn/<string:conn_id>/<string:deployment>",
+        "/button/migrate/conn/<string:deployment>/<string:conn_id>",
         methods=("GET", "POST"),
     )
     def button_migrate_conn(self, conn_id: str, deployment: str):
@@ -181,7 +181,7 @@ class MigrationBaseView(AppBuilderBaseView):
         )
 
     @expose(
-        "/button/migrate/var/<string:key>/<string:deployment>", methods=("GET", "POST")
+        "/button/migrate/var/<string:deployment>/<string:key>", methods=("GET", "POST")
     )
     def button_migrate_var(self, key: str, deployment: str):
         deployment_url = self.get_deployment_url(deployment)
@@ -271,7 +271,7 @@ class MigrationBaseView(AppBuilderBaseView):
 
         return self.tabs_env()
 
-    @expose("/checkbox/migrate/env/<string:key>/<string:deployment>", methods=("GET",))
+    @expose("/checkbox/migrate/env/<string:deployment>/<string:key>/", methods=("GET",))
     def checkbox_migrate_env(self, key: str, deployment: str):
         deployments = self.astro_deployments(session.get("bearerToken"))
 
