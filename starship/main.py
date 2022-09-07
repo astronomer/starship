@@ -2,8 +2,8 @@ from urllib.parse import urlparse
 
 from cachetools.func import ttl_cache
 from airflow.plugins_manager import AirflowPlugin
+from airflow import models
 from airflow.www.app import csrf
-
 
 from flask import Blueprint, session, request
 from flask_appbuilder import expose, BaseView as AppBuilderBaseView
@@ -24,7 +24,7 @@ bp = Blueprint(
 )
 
 
-class MigrationBaseView(AppBuilderBaseView):
+class AstroMigration(AppBuilderBaseView):
     default_view = "main"
 
     def __init__(self):
@@ -32,7 +32,26 @@ class MigrationBaseView(AppBuilderBaseView):
         self.local_client = LocalAirflowClient()
         self.astro_client = AstroClient()
 
-    @ttl_cache(ttl=10)
+    def get_astro_username(self, token):
+        if not token:
+            pass
+
+        headers = {"Authorization": f"Bearer {token}"}
+        client = GraphqlClient(
+            endpoint="https://api.astronomer.io/hub/v1", headers=headers
+        )
+
+        query = "{self {user {username}}}"
+
+        try:
+            api_rv = client.execute(query)["data"]["self"]["user"]["username"]
+
+            return {deploy["id"]: deploy for deploy in (api_rv or [])}
+        except Exception as exc:
+            print(exc)
+            return None
+
+    @ttl_cache(ttl=1)
     def astro_deployments(self, token):
         if token:
             headers = {"Authorization": f"Bearer {token}"}
@@ -103,6 +122,8 @@ class MigrationBaseView(AppBuilderBaseView):
     @expose("/tabs/dags")
     def tabs_dags(self):
         data = {"component": "dags", "dags": self.local_client.get_dags()}
+
+        self.local_client.get_dags()
 
         return self.render_template("dags.html", data=data)
 
@@ -246,9 +267,9 @@ class MigrationBaseView(AppBuilderBaseView):
         }
 
         for _, key in (
-            (key, value)
-            for (key, value) in request.form.items()
-            if key != "csrf_token" and key not in remote_vars.keys()
+                (key, value)
+                for (key, value) in request.form.items()
+                if key != "csrf_token" and key not in remote_vars.keys()
         ):
             remote_vars.setdefault(
                 key,
@@ -304,6 +325,53 @@ class MigrationBaseView(AppBuilderBaseView):
             deployments=deployments,
         )
 
+    @expose("/component/row/dags/<string:deployment>/<string:dag_id>")
+    def dag_cutover_row_get(self, deployment: str, dag_id: str):
+        return self.dag_cutover_row(deployment, dag_id)
+
+    @expose("/component/row/dags/<string:deployment>/<string:dest>/<string:dag_id>/<string:action>", methods=("GET", "POST",))
+    def dag_cutover_row(self, deployment: str, dag_id: str, dest: str = "local", action: str = None):
+        if dest not in ["local", "astro"]:
+            raise Exception("dest must be 'local' or 'astro'")
+
+        dag = self.local_client.get_dags()[dag_id]
+        deployment_url = self.get_deployment_url(deployment)
+        token = session.get('bearerToken')
+
+        if request.method == "POST":
+            if action == "pause":
+                is_paused = True
+            elif action == "unpause":
+                is_paused = False
+            else:
+                raise Exception("action must be 'pause' or 'unpause'")
+
+            if dest == "local":
+                models.DagModel.get_dagmodel(dag_id).set_is_paused(is_paused=is_paused)
+            else:
+                resp = requests.post(
+                    f"{deployment_url}/api/v1/dags",
+                    headers={"Authorization": f"Bearer {token}"},
+                    data={"is_paused": is_paused}
+                )
+
+        resp = requests.get(
+            f"{deployment_url}/api/v1/dags/{dag_id}",
+            headers={"Authorization": f"Bearer {token}"},
+        ).json()
+
+        is_on_astro = False if resp["status"] == 404 else True
+
+        return self.render_template(
+            "components/dag_row.html",
+            dag_={
+                "id": dag.dag_id,
+                "is_on_astro": is_on_astro,
+                "is_paused_here": dag.is_paused,
+                "is_paused_on_astro": resp["is_paused"] if is_on_astro else False,
+            },
+        )
+
     def get_deployment_url(self, deployment):
         astro_deployments = self.astro_deployments(session.get("bearerToken"))
 
@@ -314,7 +382,7 @@ class MigrationBaseView(AppBuilderBaseView):
             return f"https:/{url.netloc}/{url.path}"
 
 
-v_appbuilder_view = MigrationBaseView()
+v_appbuilder_view = AstroMigration()
 
 v_appbuilder_package = {
     "name": "Astro Migration",

@@ -3,5 +3,5 @@
 {% elif is_migrated %}
 <p>Migrated ✅</p>
 {% else %}
-<input class="form-check-input" type="checkbox" name="env-{{target}}" value="{{target}}"/>
+<input class="form-check-input custom-control-input form-switch"  type="checkbox" name="env-{{target}}" value="{{target}}"/>
 {% endif %}

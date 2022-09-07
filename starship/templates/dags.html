@@ -3,18 +3,23 @@
 {% block body %}
 {% if 'dags' in data and data.dags|length > 0 %}
 <form>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
     <table class="table table-striped table-bordered table-hover">
         <thead>
         <tr>
             <th scope="col">DAG</th>
-            <th scope="col">Value</th>
+            <th scope="col">Present on Astro?</th>
+            <th scope="col" class="text-right">Local</th>
+            <th scope="col" class="text-right">Remote</th>
         </tr>
         </thead>
         <tbody>
         {% for k, v in data.dags.items() %}
-        <tr>
-            <td>{{ k }}</td>
-            <td>{{ v }}</td>
+        <tr id="dag-{{k}}"
+            hx-get="component/row/dags/{{session.selectedAstroDeployment or 'undefined'}}/{{k}}"
+            hx-trigger="load delay:100ms"
+            hx-target="#dag-{{k}}"
+            hx-swap="outerHTML">
         </tr>
         {% endfor %}
         </tbody>
