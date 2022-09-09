@@ -385,8 +385,8 @@ class AstroMigration(AppBuilderBaseView):
 v_appbuilder_view = AstroMigration()
 
 v_appbuilder_package = {
-    "name": "Astro Migration",
-    "category": "Starship 🚀",
+    "name": "Starship 🚀",
+    "category": "Astronomer",
     "view": v_appbuilder_view,
 }
 
