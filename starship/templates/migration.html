@@ -3,7 +3,7 @@
 {% block head_js %}
 {{ super() }}
 <script
-        src="/static/starship/js/htmx.min.js"
+        src="{{ url_for('starship.static', filename='js/htmx.min.js') }}"
         integrity="sha384-cZuAZ+ZbwkNRnrKi05G/fjBX+azI9DNOkNYysZ0I/X5ZFgsmMiBXgDZof30F5ofc"
         crossorigin="anonymous">
 </script>
