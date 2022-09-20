@@ -1,17 +1,14 @@
-#Astronomer Migration Provider
-___
+# Astronomer Migration Provider
 
 Apache Airflow Provider containing Operators from Astronomer. The purpose of these operators is to better assist customers migrating to Astronomer hosted Airflow environments from MWAA, GCC, OSS
 
-##Installation
-___
+## Installation
 Install and update using [pip](https://pip.pypa.io/en/stable/getting-started/):
 ```text
 pip install https://astro-migration-provider.s3.us-west-2.amazonaws.com/astronomer-migration-provider-0.1.0.tar.gz
 ```
 
-##Usage
-___
+## Usage
 1. Add the following line to your `requirements.txt` in your source environment:
    ```text
     pip install https://astro-migration-provider.s3.us-west-2.amazonaws.com/astronomer-migration-provider-0.1.0.tar.gz
