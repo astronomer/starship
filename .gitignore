@@ -3,3 +3,7 @@
 __pycache__
 /.idea/
 *.whl
+.env
+/astro-migration-provider/astronomer_migration_provider.egg-info/
+/astro-migration-provider/dist/
+/astro-migration-provider/Makefile
