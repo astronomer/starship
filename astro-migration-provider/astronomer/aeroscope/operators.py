@@ -84,5 +84,5 @@ class AeroscopeOperator(BaseOperator):
         if s3.ok:
             return "success"
         else:
-            raise ValueError(f"upload failed  with code {s3.status_code}::{s3.json()}")
+            raise ValueError(f"upload failed  with code {s3.status_code}")
         # return json.dumps(content)
