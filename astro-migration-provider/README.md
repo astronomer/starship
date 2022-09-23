@@ -5,13 +5,13 @@ Apache Airflow Provider containing Operators from Astronomer. The purpose of the
 ## Installation
 Install and update using [pip](https://pip.pypa.io/en/stable/getting-started/):
 ```text
-pip install https://astro-migration-provider.s3.us-west-2.amazonaws.com/astronomer-migration-provider-0.1.1.tar.gz
+pip install https://astro-migration-provider.s3.us-west-2.amazonaws.com/astronomer-migration-provider-0.1.2.tar.gz
 ```
 
 ## Usage
 1. Add the following line to your `requirements.txt` in your source environment:
    ```text
-    https://astro-migration-provider.s3.us-west-2.amazonaws.com/astronomer-migration-provider-0.1.1.tar.gz
+    https://astro-migration-provider.s3.us-west-2.amazonaws.com/astronomer-migration-provider-0.1.2.tar.gz
     ```
 2. Add the following DAG to your source environment:
     ```python
@@ -45,3 +45,38 @@ pip install https://astro-migration-provider.s3.us-west-2.amazonaws.com/astronom
 
 ## Limitations
 If there are existing env variables on the targeted Astronomer environment (that don't exist in your source environment) they will be deleted when this runs.
+
+___
+# Aeroscope
+
+Aeroscope is an Astronomer develop tool to get the status of your current airflow environment
+
+## Usage
+   1. Add the following DAG to your source environment:
+       ```python
+      from datetime import datetime
+      from astronomer.aeroscope.operators import AeroscopeOperator
+      
+      from airflow import DAG
+      
+      with DAG(
+         dag_id="astronomer_aeroscope_dag",
+         start_date=datetime(2020, 8, 15),
+         schedule_interval=None,
+      ) as dag:
+      
+          execute = AeroscopeOperator(
+              task_id="execute",
+              presigned_url='{{ dag_run.conf["presigned_url"] }}',
+              email='{{ dag_run.conf["email"] }}',
+          )
+      ```
+   2. Ask your Astronomer Representive for a presigned url
+   3. Trigger the `aeroscope` DAG w/ the following config:
+      ```json
+      {"presigned_url":"<astronomer-provided-url>",
+      "email": "<your_company_email>"}
+      ``` 
+   
+
+     

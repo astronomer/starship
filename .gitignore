@@ -6,5 +6,4 @@ __pycache__
 .env
 /astro-migration-provider/astronomer_migration_provider.egg-info/
 /astro-migration-provider/dist/
-/astro-migration-provider/Makefile
 .DS_Store
