@@ -267,9 +267,9 @@ class AstroMigration(AppBuilderBaseView):
         }
 
         for _, key in (
-                (key, value)
-                for (key, value) in request.form.items()
-                if key != "csrf_token" and key not in remote_vars.keys()
+            (key, value)
+            for (key, value) in request.form.items()
+            if key != "csrf_token" and key not in remote_vars.keys()
         ):
             remote_vars.setdefault(
                 key,
@@ -329,14 +329,22 @@ class AstroMigration(AppBuilderBaseView):
     def dag_cutover_row_get(self, deployment: str, dag_id: str):
         return self.dag_cutover_row(deployment, dag_id)
 
-    @expose("/component/row/dags/<string:deployment>/<string:dest>/<string:dag_id>/<string:action>", methods=("GET", "POST",))
-    def dag_cutover_row(self, deployment: str, dag_id: str, dest: str = "local", action: str = None):
+    @expose(
+        "/component/row/dags/<string:deployment>/<string:dest>/<string:dag_id>/<string:action>",
+        methods=(
+            "GET",
+            "POST",
+        ),
+    )
+    def dag_cutover_row(
+        self, deployment: str, dag_id: str, dest: str = "local", action: str = None
+    ):
         if dest not in ["local", "astro"]:
             raise Exception("dest must be 'local' or 'astro'")
 
         dag = self.local_client.get_dags()[dag_id]
         deployment_url = self.get_deployment_url(deployment)
-        token = session.get('bearerToken')
+        token = session.get("bearerToken")
 
         if request.method == "POST":
             if action == "pause":
@@ -349,18 +357,20 @@ class AstroMigration(AppBuilderBaseView):
             if dest == "local":
                 models.DagModel.get_dagmodel(dag_id).set_is_paused(is_paused=is_paused)
             else:
-                resp = requests.post(
-                    f"{deployment_url}/api/v1/dags",
+                resp = requests.patch(
+                    f"{deployment_url}/api/v1/dags?dag_id_pattern={dag_id}",
                     headers={"Authorization": f"Bearer {token}"},
-                    data={"is_paused": is_paused}
+                    json={"is_paused": is_paused},
                 )
 
         resp = requests.get(
             f"{deployment_url}/api/v1/dags/{dag_id}",
             headers={"Authorization": f"Bearer {token}"},
-        ).json()
+        )
 
-        is_on_astro = False if resp["status"] == 404 else True
+        is_on_astro = False if resp.status_code == 404 else True
+
+        resp_contents = resp.json()
 
         return self.render_template(
             "components/dag_row.html",
@@ -368,7 +378,9 @@ class AstroMigration(AppBuilderBaseView):
                 "id": dag.dag_id,
                 "is_on_astro": is_on_astro,
                 "is_paused_here": dag.is_paused,
-                "is_paused_on_astro": resp["is_paused"] if is_on_astro else False,
+                "is_paused_on_astro": resp_contents["is_paused"]
+                if is_on_astro
+                else False,
             },
         )
 
