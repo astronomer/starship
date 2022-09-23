@@ -42,3 +42,6 @@ pip install https://astro-migration-provider.s3.us-west-2.amazonaws.com/astronom
    - `astro_token`:  To get user token for astronomer navigate to [cloud.astronomer.io/token](https://cloud.astronomer.io/token) and login using your Astronomer credentials
    - `deployment_url`: To retrieve a deployment URL - navigate to the deployment that you'd like to migrate to in the Astronomer UI, click `Open Airflow` and copy the page URL (excluding `/home` on the end of the URL)
 7. Unpause the `astronomer_migration_dag` and let it run. Once the DAG successfully runs, your connections, variables, and environment variables should all be migrated to Astronomer
+
+## Limitations
+If there are existing env variables on the targeted Astronomer environment (that don't exist in your source environment) they will be deleted when this runs.
