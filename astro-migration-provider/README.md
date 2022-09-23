@@ -5,13 +5,13 @@ Apache Airflow Provider containing Operators from Astronomer. The purpose of the
 ## Installation
 Install and update using [pip](https://pip.pypa.io/en/stable/getting-started/):
 ```text
-pip install https://astro-migration-provider.s3.us-west-2.amazonaws.com/astronomer-migration-provider-0.1.2.tar.gz
+https://astro-migration-provider.s3.us-west-2.amazonaws.com/astronomer-migration-provider-0.1.3.tar.gz
 ```
 
 ## Usage
 1. Add the following line to your `requirements.txt` in your source environment:
    ```text
-    https://astro-migration-provider.s3.us-west-2.amazonaws.com/astronomer-migration-provider-0.1.2.tar.gz
+    https://astro-migration-provider.s3.us-west-2.amazonaws.com/astronomer-migration-provider-0.1.3.tar.gz
     ```
 2. Add the following DAG to your source environment:
     ```python
