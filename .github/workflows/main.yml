@@ -8,7 +8,7 @@ on:
       - 'astro-migration-provider/**'
       
 jobs:
-  ship-images-to-gcr:
+  ship-package-to-pypi:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
