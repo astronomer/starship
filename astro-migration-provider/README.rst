@@ -46,9 +46,6 @@ Usage
           task_id='export_meta',
           deployment_url='{{ var.value.deployment_url }}',
           token='{{ var.value.astro_token }}',
-          variables_exclude_list=["deployment_url", "astro_token"],
-          connection_exclude_list=["some_conn_1"],
-          env_include_list=["FOO", "BAR"]
       )
 
 3. Update the list of environment variable names under the ``env_include_list`` parameter that need to be migrated to Astronomer. Please note that if you have existing environment variables on Astronomer that are not included here - they will need to be recreated in Astronomer.
