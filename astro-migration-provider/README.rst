@@ -48,15 +48,28 @@ Usage
           token='{{  dag_run.conf["astro_token"] }}',
       )
 
-3. Update the list of environment variable names under the ``env_include_list`` parameter that need to be migrated to Astronomer. Please note that if you have existing environment variables on Astronomer that are not included here - they will need to be recreated in Astronomer.
-4. (Optional) - if there are any Airflow Variables or Airflow Connections that should NOT be migrated, add them to the ``variable_exclude_list` & `connection_exclude_list`` parameters.
-5. Deploy these changes to your source Airflow environment
-6. In the source Airflow environment, create the following Airflow variables:
-
+3. Deploy this DAG to your source Airflow environment, configured as described in the section below
+4. Hit the Trigger DAG button in the Airflow UI when the DAG appears, and input the following in the configuration dictionary:
    - ``astro_token``:  To get user token for astronomer navigate to `cloud.astronomer.io/token <https://cloud.astronomer.io/token>`_ and login using your Astronomer credentials
    - ``deployment_url``: To retrieve a deployment URL - navigate to the deployment that you'd like to migrate to in the Astronomer UI, click ``Open Airflow`` and copy the page URL (excluding ``/home`` on the end of the URL)
 
-7. Unpause the ``astronomer_migration_dag`` and let it run. Once the DAG successfully runs, your connections, variables, and environment variables should all be migrated to Astronomer
+5. Once the DAG successfully runs, your connections, variables, and environment variables should all be migrated to Astronomer
+
+Configuration
+--------------
+The `AstroMigrationOperator` can be configured as follows:
+-  You can update the list of environment variable names under the ``env_include_list`` parameter that need to be migrated to Astronomer. None are migrated by default.
+- if there are any Airflow Variables or Airflow Connections that should NOT be migrated, add them to the ``variable_exclude_list` & `connection_exclude_list`` parameters.
+
+.. code-block:: python
+      AstroMigrationOperator(
+          task_id='export_meta',
+          deployment_url='{{ var.value.deployment_url }}',
+          token='{{ var.value.astro_token }}',
+          variables_exclude_list=["deployment_url", "astro_token"],
+          connection_exclude_list=["some_conn_1"],
+          env_include_list=["FOO", "BAR"]
+      )
 
 Limitations
 -----------
