@@ -368,7 +368,7 @@ class AstroMigration(AppBuilderBaseView):
             headers={"Authorization": f"Bearer {token}"},
         )
 
-        is_on_astro = False if resp.status_code == 404 else True
+        is_on_astro = not resp.status_code == 404
 
         resp_contents = resp.json()
 
