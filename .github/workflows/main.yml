@@ -1,0 +1,42 @@
+
+name: CI
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'astro-migration-provider/**'
+      
+jobs:
+  ship-images-to-gcr:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
+    
+    - uses: dorny/paths-filter@v2
+      id: filter
+      with:
+        filters: |
+          astro-migration-provider:
+            - 'astro-migration-provider/**'
+            
+#     # run only if 'starship' was changed
+#     - name: starship
+#       if: steps.filter.outputs.starship == 'true'
+#       run: bash ${GITHUB_WORKSPACE}/starship/ship.sh
+
+    # run only if 'astro-migration-provider' was changed
+    - name: astro-migration-provider
+      if: steps.filter.outputs.astro-migration-provider == 'true'
+      run: |
+        python -m pip install --upgrade pip
+        pip install twine
+        cd ${GITHUB_WORKSPACE}/astro-migration-provider
+        echo -e "TWINE_USER=__token__" > .env
+        echo -e "TWINE_PASS=${{ secrets.TWINE_PASS }}" > .env
+        make ship       
