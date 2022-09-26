@@ -36,6 +36,61 @@ class AstroEnvMigrationOperator(BaseOperator):
                 return id
                 #TODO: Add logic if deployment id is not found
 
+    def _existing_env_vars(self):
+        deployment_id = self._find_deployment_id()
+
+        client = GraphqlClient(
+            endpoint="https://api.astronomer.io/hub/v1",
+            headers={
+                "Authorization": f"Bearer {self.token}"
+            }
+        )
+
+        query = """
+        {
+            deployments
+            {
+                id,
+                label,
+                releaseName,
+                workspace
+                {
+                    id,
+                    label
+                },
+                deploymentShortId,
+                deploymentSpec
+                {
+                    environmentVariables
+                    webserver {
+                        ingressHostname,
+                        url
+                    }
+                }
+            }
+        }
+        """
+
+        try:
+            env_vars = {}
+            deployments = client.execute(query,)["data"]["deployments"]
+            for deployment in deployments:
+                if deployment['id'] == deployment_id:
+                    env_vars = deployment['deploymentSpec']['environmentVariables']
+
+            existing_vars = {}
+            for var in env_vars:
+                existing_vars[var['key']] = {
+                    "key": var['key'],
+                    "value": var['value'],
+                    "isSecret": var['isSecret']
+                }
+
+            return existing_vars
+        except Exception as exc:
+            print(exc)
+            return {}
+
     def _astro_deployments(self):
         headers = {"Authorization": f"Bearer {self.token}"}
         client = GraphqlClient(
@@ -87,7 +142,7 @@ class AstroEnvMigrationOperator(BaseOperator):
         """
         deployment = self._find_deployment_id()
 
-        complete_env_list = {}
+        complete_env_list = self._existing_env_vars()
         for key, value in os.environ.items():
             if key in self.env_include_list:
                 complete_env_list[key] = {
