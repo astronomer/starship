@@ -59,9 +59,10 @@ Configuration
 --------------
 The `AstroMigrationOperator` can be configured as follows:
 -  You can update the list of environment variable names under the ``env_include_list`` parameter that need to be migrated to Astronomer. None are migrated by default.
-- if there are any Airflow Variables or Airflow Connections that should NOT be migrated, add them to the ``variable_exclude_list` & `connection_exclude_list`` parameters.
+- if there are any Airflow Variables or Airflow Connections that should NOT be migrated, add them to the ``variable_exclude_list`` & ``connection_exclude_list`` parameters.
 
 .. code-block:: python
+
       AstroMigrationOperator(
           task_id='export_meta',
           deployment_url='{{ dag_run.conf["deployment_url"] }}',
