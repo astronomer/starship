@@ -71,51 +71,6 @@ The `AstroMigrationOperator` can be configured as follows:
           env_include_list=["FOO", "BAR"]
       )
 
-Limitations
------------
-If there are existing env variables on the targeted Astronomer environment (that don't exist in your source environment) they will be deleted when this runs.
-
-Aeroscope
-=========
-
-Aeroscope is an Astronomer develop tool to get the status of your current airflow environment
-
-Usage
------
-1. Add the following line to your ``requirements.txt`` in your source environment:
-
-.. code-block:: bash
-
-    astronomer-migration-provider
-
-2. Add the following DAG to your source environment:
-
-.. code-block:: python
-
-    from datetime import datetime
-    from astronomer.aeroscope.operators import AeroscopeOperator
-
-    from airflow import DAG
-
-    with DAG(
-        dag_id="astronomer_aeroscope_dag",
-        start_date=datetime(2020, 8, 15),
-        schedule_interval=None,
-    ) as dag:
-
-        execute = AeroscopeOperator(
-          task_id="execute",
-          presigned_url='{{ dag_run.conf["presigned_url"] }}',
-          email='{{ dag_run.conf["email"] }}',
-        )
-
-3. Ask your Astronomer Representive for a presigned url
-4. Trigger the ``astronomer_aeroscope_dag`` DAG w/ the following config:
-
-.. code-block:: json
-
-  {"presigned_url":"<astronomer-provided-url>",
-  "email": "<your_company_email>"}
 
    
 
