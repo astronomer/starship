@@ -143,13 +143,15 @@ class AstroEnvMigrationOperator(BaseOperator):
         deployment = self._find_deployment_id()
 
         complete_env_list = self._existing_env_vars()
+
         for key, value in os.environ.items():
-            if key in self.env_include_list:
-                complete_env_list[key] = {
-                    "key": key,
-                    "value": value,
-                    "isSecret": False
-                }
+            if self.env_include_list:
+                if key in self.env_include_list and self.env_include_list:
+                    complete_env_list[key] = {
+                        "key": key,
+                        "value": value,
+                        "isSecret": False
+                    }
 
         client.execute(
             query,
