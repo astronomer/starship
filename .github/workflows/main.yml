@@ -37,7 +37,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install twine
         cd ${GITHUB_WORKSPACE}/astro-migration-provider
-        echo -e "TWINE_USER=__token__" > .env
-        echo -e "TWINE_PASS=${{ secrets.TWINE_PASS }}" > .env
-        echo -e "VERSION=0.1.5" > .env
-        make ship       
+        python3 setup.py sdist
+        twine upload dist/astronomer-migration-provider-0.1.5.tar.gz -u "__token__" -p "${{ secrets.TWINE_PASS }}"
+        
