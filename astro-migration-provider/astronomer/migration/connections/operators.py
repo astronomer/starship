@@ -48,3 +48,5 @@ class AstroConnectionsMigrationOperator(BaseOperator):
                         "extra": value.extra,
                     }
                 )
+                
+# Add a test comment to trigger CICD
