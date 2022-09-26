@@ -30,10 +30,7 @@ class AstroConnectionsMigrationOperator(BaseOperator):
         get_connections = session.query(Connection).all()
         local_connections = {conn.conn_id: conn for conn in get_connections}
 
-        if self.connection_exclude_list:
-            exclude_list = self.connection_exclude_list
-        else:
-            exclude_list = []
+        exclude_list = self.connection_exclude_list or []
 
         for key, value in local_connections.items():
             if key not in exclude_list:
