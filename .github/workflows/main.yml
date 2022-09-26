@@ -38,5 +38,6 @@ jobs:
         pip install twine
         cd ${GITHUB_WORKSPACE}/astro-migration-provider
         python3 setup.py sdist
-        twine upload dist/astronomer-migration-provider-0.1.5.tar.gz -u "__token__" -p "${{ secrets.TWINE_PASS }}"
+        python3 gha_retrieve_version.py  
+        twine upload dist/astronomer-migration-provider-{{ env.VERSION }}.tar.gz -u "__token__" -p "${{ secrets.TWINE_PASS }}"
         
