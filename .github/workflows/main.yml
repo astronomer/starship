@@ -39,4 +39,5 @@ jobs:
         cd ${GITHUB_WORKSPACE}/astro-migration-provider
         echo -e "TWINE_USER=__token__" > .env
         echo -e "TWINE_PASS=${{ secrets.TWINE_PASS }}" > .env
+        echo -e "VERSION=0.1.5" > .env
         make ship       
