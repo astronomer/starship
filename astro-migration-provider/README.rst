@@ -45,7 +45,7 @@ Usage
       AstroMigrationOperator(
           task_id='export_meta',
           deployment_url='{{ dag_run.conf["deployment_url"] }}',
-          token='{{  dag_run.conf["astro_token"] }}',
+          token='{{ dag_run.conf["astro_token"] }}',
       )
 
 3. Deploy this DAG to your source Airflow environment, configured as described in the section below
@@ -64,8 +64,8 @@ The `AstroMigrationOperator` can be configured as follows:
 .. code-block:: python
       AstroMigrationOperator(
           task_id='export_meta',
-          deployment_url='{{ var.value.deployment_url }}',
-          token='{{ var.value.astro_token }}',
+          deployment_url='{{ dag_run.conf["deployment_url"] }}',
+          token='{{ dag_run.conf["astro_token"] }}',
           variables_exclude_list=["deployment_url", "astro_token"],
           connection_exclude_list=["some_conn_1"],
           env_include_list=["FOO", "BAR"]
