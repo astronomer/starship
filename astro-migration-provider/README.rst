@@ -44,8 +44,8 @@ Usage
 
       AstroMigrationOperator(
           task_id='export_meta',
-          deployment_url='{{ var.value.deployment_url }}',
-          token='{{ var.value.astro_token }}',
+          deployment_url='{{ dag_run.conf["deployment_url"] }}',
+          token='{{  dag_run.conf["astro_token"] }}',
       )
 
 3. Update the list of environment variable names under the ``env_include_list`` parameter that need to be migrated to Astronomer. Please note that if you have existing environment variables on Astronomer that are not included here - they will need to be recreated in Astronomer.
