@@ -115,3 +115,8 @@ The DAGs Cutover Tab can be utilized to pause DAGs in the source environment and
 
 .. image:: images/cutover-complete.png
    :width: 800
+
+License
+-------
+
+`License <LICENSE.txt>`_
