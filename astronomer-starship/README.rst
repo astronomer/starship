@@ -1,23 +1,7 @@
 Astronomer Starship Plugin
 ==========================
 
-Apache Airflow Plugin meant to assist customers migrating to Airflow managed by Astronomer from other Airflow environments.
-
-Installation
-------------
-
-Install and update using `pip <https://pip.pypa.io/en/stable/getting-started/>`_:
-
-.. code-block:: bash
-
-    pip install astronomer-starship
-
-
-
-Starship
-========
-
-Starship is an Astronomer utility that assist end users with migrating Variables, Connections, and Environment Variables from their source Airflow environments to an Astronomer environment.
+Apache Airflow Plugin meant to assist customers migrating Variables, Connections, and Environment Variables from a source Airflow environment to an Astronomer environment.
 
 Initial Setup
 -------------
