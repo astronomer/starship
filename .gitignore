@@ -3,8 +3,8 @@ __pycache__
 /.idea/
 *.whl
 .env
-/astronomer-migration-provider/astronomer_migration_provider.egg-info/
-/astronomer-migration-provider/dist/
+/astronomer-starship-provider/astronomer_starship_provider.egg-info/
+/astronomer-starship-provider/dist/
 .DS_Store
 /astronomer-starship/astronomer_starship.egg-info/
 /astronomer-starship/dist/

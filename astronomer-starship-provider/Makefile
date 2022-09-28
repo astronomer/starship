@@ -13,8 +13,8 @@ package: ## create a new pypi dist
 	$(PYTHON3) setup.py sdist
 
 test-ship: ## ship to test pypi dist
-	$(TWINE) upload --repository testpypi dist/astronomer-migration-provider-${VERSION}.tar.gz -u ${TWINE_USER} -p ${TWINE_TEST_PASS}
+	$(TWINE) upload --repository testpypi dist/astronomer-starship-provider-${VERSION}.tar.gz -u ${TWINE_USER} -p ${TWINE_TEST_PASS}
 
 ship: ## ship pypi dist
 ship: package
-	$(TWINE) upload dist/astronomer-migration-provider-${VERSION}.tar.gz -u ${TWINE_USER} -p ${TWINE_PASS}
+	$(TWINE) upload dist/astronomer-starship-provider-${VERSION}.tar.gz -u ${TWINE_USER} -p ${TWINE_PASS}

@@ -5,7 +5,7 @@ on:
     branches:
       - master
     paths:
-      - 'astronomer-migration-provider/**'
+      - 'astronomer-starship-provider/**'
       - 'astronomer-starship/**'
 
 jobs:
@@ -23,8 +23,8 @@ jobs:
       id: filter
       with:
         filters: |
-          astronomer-migration-provider:
-            - 'astronomer-migration-provider/**'
+          astronomer-starship-provider:
+            - 'astronomer-starship-provider/**'
           astronomer-starship:
             - 'astronomer-starship/**'
 
@@ -37,12 +37,12 @@ jobs:
         python -m pip install requests
         pytest tests/validation_tests.py --package astronomer-starship
 
-    # run only if 'astronomer-migration-provider' was changed
-    - name: astronomer-migration-provider
-      if: steps.filter.outputs.astronomer-migration-provider == 'true'
+    # run only if 'astronomer-starship-provider' was changed
+    - name: astronomer-starship-provider
+      if: steps.filter.outputs.astronomer-starship-provider == 'true'
       run: |
         python -m pip install --upgrade pip
         python -m pip install pytest
         python -m pip install requests
-        pytest tests/validation_tests.py --package astronomer-migration-provider
+        pytest tests/validation_tests.py --package astronomer-starship-provider
 

@@ -1,9 +1,9 @@
 from airflow.models import BaseOperator
 from airflow.utils.session import provide_session
 
-from astronomer.migration.connections.operators import AstroConnectionsMigrationOperator
-from astronomer.migration.variables.operators import AstroVariableMigrationOperator
-from astronomer.migration.env.operators import AstroEnvMigrationOperator
+from astronomer.starship.connections.operators import AstroConnectionsMigrationOperator
+from astronomer.starship.variables.operators import AstroVariableMigrationOperator
+from astronomer.starship.env.operators import AstroEnvMigrationOperator
 
 from sqlalchemy.orm import Session
 from typing import Any, Sequence

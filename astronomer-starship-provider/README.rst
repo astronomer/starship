@@ -1,4 +1,4 @@
-Astronomer Migration Provider
+Astronomer Starship Provider
 =============================
 
 Apache Airflow Provider containing Operators from Astronomer. The purpose of these operators is to better assist customers migrating to Astronomer hosted Airflow environments from MWAA, GCC, OSS. This provider is meant for MWAA 2.0.2 and Composer 1 since the plugin methods are unavailable.
@@ -10,7 +10,7 @@ Install and update using `pip <https://pip.pypa.io/en/stable/getting-started/>`_
 
 .. code-block:: bash
 
-    pip install astronomer-migration-provider
+    pip install astronomer-starship-provider
 
 
 
@@ -25,7 +25,7 @@ Usage
 
 .. code-block:: bash
 
-    astronomer-migration-provider
+    astronomer-starship-provider
 
 2. Add the following DAG to your source environment:
 
@@ -33,7 +33,7 @@ Usage
 
    from airflow import DAG
 
-   from astronomer.migration.operators import AstroMigrationOperator
+   from astronomer.starship.operators import AstroMigrationOperator
    from datetime import datetime
 
    with DAG(
