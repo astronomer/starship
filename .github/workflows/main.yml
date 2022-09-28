@@ -6,6 +6,7 @@ on:
       - master
     paths:
       - 'astro-migration-provider/**'
+      - 'astronomer-starship/**'
       
 jobs:
   ship-package-to-pypi:
@@ -24,11 +25,19 @@ jobs:
         filters: |
           astro-migration-provider:
             - 'astro-migration-provider/**'
+          astronomer-starship:
+            - 'astronomer-starship/**'
             
-#     # run only if 'starship' was changed
-#     - name: starship
-#       if: steps.filter.outputs.starship == 'true'
-#       run: bash ${GITHUB_WORKSPACE}/starship/ship.sh
+    # run only if 'astronomer-starship' was changed
+    - name: astronomer-starship
+      if: steps.filter.outputs.astronomer-starship == 'true'
+      run: |
+        python -m pip install --upgrade pip
+        pip install twine
+        cd ${GITHUB_WORKSPACE}/astronomer-starship
+        python3 setup.py dist
+        VERSION=$(python3 gha_retrieve_version.py)
+        twine upload dist/astronomer-starship-"${VERSION}".tar.gz -u "__token__" -p "${{ secrets.TWINE_PASS }}"
 
     # run only if 'astro-migration-provider' was changed
     - name: astro-migration-provider
