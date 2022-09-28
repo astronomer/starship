@@ -1,5 +1,4 @@
 /build/
-/starship.egg-info/
 __pycache__
 /.idea/
 *.whl
@@ -7,3 +6,5 @@ __pycache__
 /astro-migration-provider/astronomer_migration_provider.egg-info/
 /astro-migration-provider/dist/
 .DS_Store
+/astronomer-starship/astronomer_starship.egg-info/
+/astronomer-starship/dist/
