@@ -44,5 +44,5 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install pytest
         python -m pip install requests
-        pytest tests/validation_tests.py --pacakage astronomer-migration-provider
+        pytest tests/validation_tests.py --package astronomer-migration-provider
 
