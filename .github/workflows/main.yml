@@ -37,7 +37,7 @@ jobs:
         cd ${GITHUB_WORKSPACE}/astronomer-starship
         python3 setup.py sdist
         VERSION=$(python3 gha_retrieve_version.py)
-        twine upload dist/astronomer-starship-"${VERSION}".tar.gz -u "__token__" -p "${{ secrets.TWINE_PASS }}"
+        twine upload dist/astronomer-starship-"${VERSION}".tar.gz -u "__token__" -p "${{ secrets.TWINE_PASS_ASTRONOMER_MIGRATION_PROVIDER }}"
 
     # run only if 'astro-migration-provider' was changed
     - name: astro-migration-provider
@@ -48,5 +48,5 @@ jobs:
         cd ${GITHUB_WORKSPACE}/astro-migration-provider
         python3 setup.py sdist
         VERSION=$(python3 gha_retrieve_version.py)
-        twine upload dist/astronomer-migration-provider-"${VERSION}".tar.gz -u "__token__" -p "${{ secrets.TWINE_PASS }}"
+        twine upload dist/astronomer-migration-provider-"${VERSION}".tar.gz -u "__token__" -p "${{ secrets.TWINE_PASS_ASTRONOMER_STARSHIP }}"
         
