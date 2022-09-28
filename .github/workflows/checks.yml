@@ -9,7 +9,7 @@ on:
       - 'astronomer-starship/**'
 
 jobs:
-  ship-package-to-pypi:
+  build:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
