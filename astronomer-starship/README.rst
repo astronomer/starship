@@ -30,7 +30,7 @@ Initial Setup
 2. Once your source environment installs ``astronomer-starship`` via the ``requirements.txt``, you will see a new Astronomer menu. Hover over that menu and select the ``Migration Tool 🚀`` option
 
 .. image:: images/menu-item.png
-   :width: 600
+   :width: 800
 
 3. After opening the plugin page, you will need to authenticate to Astronomer. To do this, please:
 
@@ -50,17 +50,17 @@ To migrate connections from your source Airflow meta-database:
 1. Click on the ``Connections`` tab:
 
 .. image:: images/connections-tab.png
-   :width: 600
+   :width: 800
 
 2. In the table displaying the connections that can be migrated, click the ``Migrate`` button for each connection that needs to be sent to the Target Deployment:
 
 .. image:: images/connections-migrate.png
-   :width: 600
+   :width: 800
 
 3. Once the ``Migrate`` button is clicked, the connection will be sent to the Target Deployment and will show as ``Migrated ✅`` in the plugin UI:
 
 .. image:: images/connections-migrate-complete.png
-   :width: 600
+   :width: 800
 
 Migrating Airflow Variables
 ---------------------------
@@ -70,17 +70,17 @@ To migrate variables from your source Airflow meta-database:
 1. Click on the ``Variables`` tab:
 
 .. image:: images/variables-tab.png
-   :width: 600
+   :width: 800
 
 2. In the table displaying the variables that can be migrated, click the ``Migrate`` button for each connection that needs to be sent to the Target Deployment
 
 .. image:: images/variables-migrate.png
-   :width: 600
+   :width: 800
 
 3. Once the ``Migrate`` button is clicked, the variable will be sent to the Target Deployment and will show as ``Migrated ✅`` in the plugin UI:
 
 .. image:: images/variables-migrate-complete.png
-   :width: 600
+   :width: 800
 
 Migrating Environment Variables
 -------------------------------
@@ -90,19 +90,19 @@ To migrate environment variables from your source Airflow:
 1. Click on the ``Environment Variables`` tab:
 
 .. image:: images/env-tab.png
-   :width: 600
+   :width: 800
 
 2. In the table displaying the environment variables that can be migrated, ensure the checkbox is ticked for each environment variable that needs to be sent to the Target Deployment
 
 .. image:: images/env-migrate.png
-   :width: 600
+   :width: 800
 
 3. Once all of the desired environment variable checkboxes have been selected, click the ``Migrate`` button in the table header
 
 .. image:: images/env-migrate-button.png
-   :width: 600
+   :width: 800
 
 4. After clicking the ``Migrate`` button in the table header, each selected environment variable will be sent to the Target Deployment and the ticked checkbox will display ``Migrated ✅``
 
 .. image:: images/env-migrate-complete.png
-   :width: 600
+   :width: 800
