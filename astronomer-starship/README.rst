@@ -106,3 +106,28 @@ To migrate environment variables from your source Airflow:
 
 .. image:: images/env-migrate-complete.png
    :width: 800
+
+Utilizing DAGs Cutover Tab
+--------------------------
+
+The DAGs Cutover Tab can be utilized to pause DAGs in the source environment and unpause DAGs in the target environment (as long as the DAG id in both the source and target environment match). To do so, please:
+
+1. Click on the ``DAGs Cutover`` tab:
+
+.. image:: images/cutover-tab.png
+   :width: 800
+
+2. In the table displaying the DAGs present in both the source and target environments, click the Pause icon under ``Local``
+
+.. image:: images/cutover-pause-local.png
+   :width: 800
+
+3. In the table displaying the DAGs present in both the source and target environments, click the Start icon under ``Remote``
+
+.. image:: images/cutover-start-remote.png
+   :width: 800
+
+4. After completing this process, you will see the DAG is paused in the ``Local`` environment (so you will see a Start Icon) and is unpaused in the ``Remote`` environment (so you will see a Pause icon)
+
+.. image:: images/cutover-complete.png
+   :width: 800
