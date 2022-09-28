@@ -5,7 +5,7 @@ on:
     branches:
       - master
     paths:
-      - 'astronomer-migration-provider/**'
+      - 'astronomer-starship-provider/**'
       - 'astronomer-starship/**'
       
 jobs:
@@ -23,8 +23,8 @@ jobs:
       id: filter
       with:
         filters: |
-          astronomer-migration-provider:
-            - 'astronomer-migration-provider/**'
+          astronomer-starship-provider:
+            - 'astronomer-starship-provider/**'
           astronomer-starship:
             - 'astronomer-starship/**'
             
@@ -39,14 +39,14 @@ jobs:
         VERSION=$(python3 gha_retrieve_version.py) 
         twine upload dist/astronomer-starship-"${VERSION}".tar.gz -u "__token__" -p "${{ secrets.TWINE_PASS_ASTRONOMER_STARSHIP }}"
 
-    # run only if 'astronomer-migration-provider' was changed
-    - name: astronomer-migration-provider
-      if: steps.filter.outputs.astronomer-migration-provider == 'true'
+    # run only if 'astronomer-starship-provider' was changed
+    - name: astronomer-starship-provider
+      if: steps.filter.outputs.astronomer-starship-provider == 'true'
       run: |
         python -m pip install --upgrade pip
         pip install twine
-        cd ${GITHUB_WORKSPACE}/astronomer-migration-provider
+        cd ${GITHUB_WORKSPACE}/astronomer-starship-provider
         python3 setup.py sdist
         VERSION=$(python3 gha_retrieve_version.py)
-        twine upload dist/astronomer-migration-provider-"${VERSION}".tar.gz -u "__token__" -p "${{ secrets.TWINE_PASS_ASTRONOMER_MIGRATION_PROVIDER }}"
+        twine upload dist/astronomer-starship-provider-"${VERSION}".tar.gz -u "__token__" -p "${{ secrets.TWINE_PASS_ASTRONOMER_STARSHIP_PROVIDER }}"
         
