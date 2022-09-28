@@ -35,7 +35,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install twine
         cd ${GITHUB_WORKSPACE}/astronomer-starship
-        python3 setup.py dist
+        python3 setup.py sdist
         VERSION=$(python3 gha_retrieve_version.py)
         twine upload dist/astronomer-starship-"${VERSION}".tar.gz -u "__token__" -p "${{ secrets.TWINE_PASS }}"
 
