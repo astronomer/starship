@@ -37,7 +37,6 @@ jobs:
         python -m pip install requests
     - name: Test with pytest
       run: |
-        cd tests
         pytest tests/validation_tests.py --verbose --package astronomer-starship
 
     # run only if 'astronomer-migration-provider' was changed
@@ -49,5 +48,4 @@ jobs:
         python -m pip install requests
     - name: Test with pytest
       run: |
-        cd tests
         pytest tests/validation_tests.py --verbose --pacakage astronomer-migration-provider
