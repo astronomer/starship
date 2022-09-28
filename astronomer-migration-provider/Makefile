@@ -1,6 +1,7 @@
 include .env
 TWINE=$(shell which twine)
 PYTHON3=$(shell which python3)
+VERSION:=$(shell python3 gha_retrieve_version.py)
 
 help:
 	@grep -h '\s##\s' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'

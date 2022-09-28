@@ -1,24 +1,24 @@
+name: Python Unit Tests
 
-name: CI
 on:
-  push:
+  pull_request:
     branches:
       - master
     paths:
       - 'astronomer-migration-provider/**'
       - 'astronomer-starship/**'
-      
+
 jobs:
   ship-package-to-pypi:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    
+
     - name: Set up Python 3.8
       uses: actions/setup-python@v2
       with:
         python-version: 3.8
-    
+
     - uses: dorny/paths-filter@v2
       id: filter
       with:
@@ -27,26 +27,27 @@ jobs:
             - 'astronomer-migration-provider/**'
           astronomer-starship:
             - 'astronomer-starship/**'
-            
+
     # run only if 'astronomer-starship' was changed
     - name: astronomer-starship
       if: steps.filter.outputs.astronomer-starship == 'true'
       run: |
         python -m pip install --upgrade pip
-        pip install twine
-        cd ${GITHUB_WORKSPACE}/astronomer-starship
-        python3 setup.py sdist
-        VERSION=$(python3 gha_retrieve_version.py)
-        twine upload dist/astronomer-starship-"${VERSION}".tar.gz -u "__token__" -p "${{ secrets.TWINE_PASS }}"
+        python -m pip install pytest
+        python -m pip install requests
+    - name: Test with pytest
+      run: |
+        cd tests
+        pytest tests/validation_tests.py --verbose --package astronomer-starship
 
-    # run only if 'astro-migration-provider' was changed
-    - name: astro-migration-provider
-      if: steps.filter.outputs.astro-migration-provider == 'true'
+    # run only if 'astronomer-migration-provider' was changed
+    - name: astronomer-migration-provider
+      if: steps.filter.outputs.astronomer-migration-provider == 'true'
       run: |
         python -m pip install --upgrade pip
-        pip install twine
-        cd ${GITHUB_WORKSPACE}/astro-migration-provider
-        python3 setup.py sdist
-        VERSION=$(python3 gha_retrieve_version.py)
-        twine upload dist/astronomer-migration-provider-"${VERSION}".tar.gz -u "__token__" -p "${{ secrets.TWINE_PASS }}"
-        
+        python -m pip install pytest
+        python -m pip install requests
+    - name: Test with pytest
+      run: |
+        cd tests
+        pytest tests/validation_tests.py --verbose --pacakage astronomer-migration-provider
