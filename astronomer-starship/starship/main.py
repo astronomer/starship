@@ -407,5 +407,3 @@ class StarshipPlugin(AirflowPlugin):
     name = "starship"
     flask_blueprints = [bp]
     appbuilder_views = [v_appbuilder_package]
-
-# Adding a test comment to try out the cicd pipeline
