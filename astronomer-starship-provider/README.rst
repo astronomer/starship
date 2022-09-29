@@ -67,7 +67,7 @@ The `AstroMigrationOperator` can be configured as follows:
           task_id='export_meta',
           deployment_url='{{ dag_run.conf["deployment_url"] }}',
           token='{{ dag_run.conf["astro_token"] }}',
-          variables_exclude_list=["deployment_url", "astro_token"],
+          variables_exclude_list=["some_var_1"],
           connection_exclude_list=["some_conn_1"],
           env_include_list=["FOO", "BAR"]
       )
