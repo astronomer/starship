@@ -40,9 +40,6 @@ Usage
           task_id='export_meta',
           deployment_url='{{ dag_run.conf["deployment_url"] }}',
           token='{{ dag_run.conf["astro_token"] }}',
-          variables_exclude_list=[""],
-          connection_exclude_list=[""],
-          env_include_list=[""]
       )
 
 3. Deploy this DAG to your source Airflow environment, configured as described in the **Configuration** section below
