@@ -1,10 +1,9 @@
+venv
 /build/
 __pycache__
 /.idea/
 *.whl
 .env
-/astronomer-starship-provider/astronomer_starship_provider.egg-info/
-/astronomer-starship-provider/dist/
+*.egg-info/
+dist/
 .DS_Store
-/astronomer-starship/astronomer_starship.egg-info/
-/astronomer-starship/dist/
