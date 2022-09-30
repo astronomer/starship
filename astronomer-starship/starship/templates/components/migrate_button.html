@@ -3,5 +3,9 @@
 {% elif is_migrated %}
 <button class="btn btn-outline-danger disabled">Migrated ✅</button>
 {% else %}
-<button hx-post="button/migrate/{{type}}/{{deployment}}/{{target}}" class="btn btn-outline-primary">Migrate</button>
+<button
+        hx-post="{{ url_for('AstroMigration.button_migrate', type=type, deployment=deployment, target=target) }}"
+        class="btn btn-outline-primary">
+    Migrate
+</button>
 {% endif %}

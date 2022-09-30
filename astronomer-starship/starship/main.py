@@ -159,9 +159,15 @@ class AstroMigration(AppBuilderBaseView):
         return self.render_template("env.html", data=data)
 
     @expose(
-        "/button/migrate/conn/<string:deployment>/<string:conn_id>",
+        "/button/migrate/<string:type>/<string:deployment>/<string:target>",
         methods=("GET", "POST"),
     )
+    def button_migrate(self, type: str, deployment: str, target: str):
+        if type == "conn":
+            return self.button_migrate_conn(target, deployment)
+        elif type == "var":
+            return self.button_migrate_var(target, deployment)
+
     def button_migrate_conn(self, conn_id: str, deployment: str):
         deployment_url = self.get_deployment_url(deployment)
 

@@ -20,7 +20,7 @@
                 <td>{{ var.val }}</td>
                 <td class="text-right">
                   <div id="migrate-button-{{var.key}}"
-                       hx-get="button/migrate/var/{{session.selectedAstroDeployment or 'undefined'}}/{{var.key}}"
+                       hx-get="{{ url_for('AstroMigration.button_migrate', type='var', deployment=session.selectedAstroDeployment or 'undefined', target=var.key) }}"
                        hx-trigger="load delay:100ms"
                        hx-target="#migrate-button-{{var.key}}"
                        hx-swap="innerHTML">
