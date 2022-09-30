@@ -1,4 +1,4 @@
-Astronomer Starship Providers
+Astronomer Starship
 =============================
 A suite of Apache Airflow Provider packages containing Plugins and Operators from Astronomer. The purpose of these utilities is to better assist customers migrating Variables, Connections, and Environment Variables to Astronomer hosted Airflow environments from MWAA, GCC, and OSS environments, as well as Astronomer Software and Nebula instances. 
 
