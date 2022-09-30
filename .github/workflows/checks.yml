@@ -1,5 +1,4 @@
 name: Python Unit Tests
-
 on:
   pull_request:
     branches:
@@ -32,17 +31,13 @@ jobs:
     - name: astronomer-starship
       if: steps.filter.outputs.astronomer-starship == 'true'
       run: |
-        python -m pip install --upgrade pip
-        python -m pip install pytest
-        python -m pip install requests
+        make install_dev
         pytest tests/validation_tests.py --package astronomer-starship
 
     # run only if 'astronomer-starship-provider' was changed
     - name: astronomer-starship-provider
       if: steps.filter.outputs.astronomer-starship-provider == 'true'
       run: |
-        python -m pip install --upgrade pip
-        python -m pip install pytest
-        python -m pip install requests
+        make install_dev
         pytest tests/validation_tests.py --package astronomer-starship-provider
 
