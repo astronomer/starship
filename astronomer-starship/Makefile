@@ -1,4 +1,7 @@
-include .env
+ifneq (,$(wildcard ./.env))
+    include .env
+    export
+endif
 TWINE=$(shell which twine)
 PYTHON3=$(shell which python3)
 VERSION:=$(shell python3 gha_retrieve_version.py)
