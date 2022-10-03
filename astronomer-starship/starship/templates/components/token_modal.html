@@ -1,0 +1,47 @@
+{% if not show %}
+<div id="astro-token-entry"
+     hx-get="{{ url_for('AstroMigration.modal_token_entry') }}"
+     hx-trigger="load delay:5s"
+     hx-target="#astro-token-entry">
+</div>
+{% else %}
+<div id="astro-token-entry" class="modal fade in" tabindex="-1" role="dialog" style="display: block; padding-right: 15px;">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="modal-header">
+                    <button type="button" class="close" aria-label="Close"><span aria-hidden="true">&times;</span>
+                    </button>
+                    <h4 class="modal-title">Login to Astro</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <a href="https://cloud.astronomer.io/token"
+                           target="_blank"
+                           class="btn btn-outline-primary btn-block">
+                            Get token <span class="glyphicon glyphicon glyphicon-new-window"></span>
+                        </a>
+                    </div>
+                    <div class="form-group">
+              <textarea class="form-control"
+                        style="resize: none;"
+                        name="astroUserToken"
+                        rows="5"
+                        placeholder="eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IjRmeDJYNVFNa2o3Q25ycVNyX1ZuTyJ9.eyJpc3MiOiJodHRwczovL2F1dGgu..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default">Close</button>
+                    <button type="button"
+                            class="btn btn-primary"
+                            hx-post="{{ url_for('AstroMigration.button_save_token') }}"
+                            hx-target="#content" hx-swap="outerHTML">
+                        Save Token
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}

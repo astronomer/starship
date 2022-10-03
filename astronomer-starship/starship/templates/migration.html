@@ -1,53 +1,15 @@
-{% extends base_template %}
-
-{% block head_js %}
-{{ super() }}
-<script
-        src="{{ url_for('starship.static', filename='js/htmx.min.js') }}"
-        integrity="sha384-cZuAZ+ZbwkNRnrKi05G/fjBX+azI9DNOkNYysZ0I/X5ZFgsmMiBXgDZof30F5ofc"
-        crossorigin="anonymous">
-</script>
-{% endblock %}
-
-{% block head_css %}
-{{ super() }}
-<style>
-    table {
-        table-layout: fixed;
-    }
-
-    td {
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-</style>
-{% endblock %}
-
-{% block page_title %}
-Starship Migration Plugin
-{% endblock %}
-
-{% block content %}
-<div class="container">
-    <form method="post">
-        <div class="form-group">
-            <div class="row">
-                <div class="col-lg-3">
-                    <label for="bearerToken" class="form-label">Authentication Token</label>
-                </div>
-                <div class="col-lg-6">
-                    <input type="text" class="form-control" id="bearerToken" name="bearerToken"
-                           value="{{ session.bearerToken }}">
-                </div>
-                <div class="col-lg-3">
-                    <button type="submit" class="btn btn-primary">Sign in</button>
-                    <a href="https://cloud.astronomer.io/token" target="_blank" class="btn btn-outline-primary">Get token <span class="glyphicon glyphicon glyphicon-new-window"></span></a>
-                </div>
-            </div>
-        </div>
-    </form>
+<div id="astro-token-entry"
+     hx-get="{{ url_for('AstroMigration.modal_token_entry') }}"
+     hx-trigger="load delay:100ms"
+     hx-target="#astro-token-entry" hx-swap="outerHTML">
 </div>
-<div id="astro-deployment-selector" hx-get="{{ url_for('AstroMigration.deployment_selector') }}" hx-trigger="load delay:100ms"
-     hx-target="#astro-deployment-selector" hx-swap="innerHTML"></div>
-<div id="tabs" hx-get="{{ url_for('AstroMigration.tabs_conns') }}" hx-trigger="load delay:100ms" hx-target="#tabs" hx-swap="innerHTML"></div>
-{% endblock %}
+<div id="astro-deployment-selector"
+     hx-get="{{ url_for('AstroMigration.deployment_selector') }}"
+     hx-trigger="load delay:100ms"
+     hx-target="#astro-deployment-selector" hx-swap="innerHTML">
+</div>
+<div id="tabs"
+     hx-get="{{ url_for('AstroMigration.tabs_conns') }}"
+     hx-trigger="load delay:100ms"
+     hx-target="#tabs" hx-swap="innerHTML">
+</div>

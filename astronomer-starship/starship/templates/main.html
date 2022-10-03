@@ -1,0 +1,34 @@
+{% extends base_template %}
+
+{% block head_js %}
+{{ super() }}
+<script
+        src="{{ url_for('starship.static', filename='js/htmx.min.js') }}"
+        integrity="sha384-cZuAZ+ZbwkNRnrKi05G/fjBX+azI9DNOkNYysZ0I/X5ZFgsmMiBXgDZof30F5ofc"
+        crossorigin="anonymous">
+</script>
+{% endblock %}
+
+{% block head_css %}
+{{ super() }}
+<style>
+    table {
+        table-layout: fixed;
+    }
+
+    td {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+</style>
+{% endblock %}
+
+{% block page_title %}
+Starship Migration Plugin
+{% endblock %}
+
+{% block content %}
+<div id="content">
+{% include 'migration.html' %}
+</div>
+{% endblock %}

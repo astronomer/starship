@@ -3,7 +3,8 @@ from urllib.parse import urlparse
 from cachetools.func import ttl_cache
 from airflow.plugins_manager import AirflowPlugin
 from airflow import models
-from airflow.www.app import csrf
+
+import jwt
 
 from flask import Blueprint, session, request
 from flask_appbuilder import expose, BaseView as AppBuilderBaseView
@@ -22,7 +23,6 @@ bp = Blueprint(
     static_folder="static",
     static_url_path="/static/starship",
 )
-
 
 class AstroMigration(AppBuilderBaseView):
     default_view = "main"
@@ -114,9 +114,30 @@ class AstroMigration(AppBuilderBaseView):
         return resp.json()["connections"]
 
     @expose("/", methods=["GET", "POST"])
-    @csrf.exempt
     def main(self):
         session.update(request.form)
+        return self.render_template("main.html")
+
+    @staticmethod
+    def get_jwk(token: str):
+        jwks_url = "https://auth.astronomer.io/.well-known/jwks.json"
+        jwks_client = jwt.PyJWKClient(jwks_url)
+        return jwks_client.get_signing_key_from_jwt(token)
+
+    @expose("/modal/token")
+    def modal_token_entry(self):
+        token = session.get("token")
+
+        try:
+            jwt.decode(token, audience=["astronomer-ee"], key=self.get_jwk(token).key, algorithms=["RS256"])
+        except jwt.exceptions.InvalidTokenError:
+            return self.render_template("components/token_modal.html", show=True)
+
+        return self.render_template("components/token_modal.html", show=False)
+
+    @expose("/button/save_token", methods=("POST",))
+    def button_save_token(self):
+        session["token"] = request.form.get("astroUserToken")
         return self.render_template("migration.html")
 
     @expose("/tabs/dags")
@@ -178,7 +199,7 @@ class AstroMigration(AppBuilderBaseView):
 
             requests.post(
                 f"{deployment_url}/api/v1/connections",
-                headers={"Authorization": f"Bearer {session.get('bearerToken')}"},
+                headers={"Authorization": f"Bearer {session.get('token')}"},
                 json={
                     "connection_id": local_connections[conn_id].conn_id,
                     "conn_type": local_connections[conn_id].conn_type,
@@ -192,7 +213,7 @@ class AstroMigration(AppBuilderBaseView):
             )
 
         deployment_conns = self.get_astro_connections(
-            deployment_url, session.get("bearerToken")
+            deployment_url, session.get('token')
         )
 
         is_migrated = conn_id in [
@@ -218,12 +239,12 @@ class AstroMigration(AppBuilderBaseView):
 
             requests.post(
                 f"{deployment_url}/api/v1/variables",
-                headers={"Authorization": f"Bearer {session.get('bearerToken')}"},
+                headers={"Authorization": f"Bearer {session.get('token')}"},
                 json={"key": key, "value": local_vars[key].val},
             )
 
         remote_vars = self.get_astro_variables(
-            deployment_url, session.get("bearerToken")
+            deployment_url, session.get('token')
         )
 
         is_migrated = key in [remote_var["key"] for remote_var in remote_vars]
@@ -240,9 +261,9 @@ class AstroMigration(AppBuilderBaseView):
     def button_migrate_env(self, deployment: str):
         import os
 
-        deployments = self.astro_deployments(session.get("bearerToken"))
+        deployments = self.astro_deployments(session.get('token'))
 
-        headers = {"Authorization": f"Bearer {session.get('bearerToken')}"}
+        headers = {"Authorization": f"Bearer {session.get('token')}"}
         client = GraphqlClient(
             endpoint="https://api.astronomer.io/hub/v1", headers=headers
         )
@@ -300,7 +321,7 @@ class AstroMigration(AppBuilderBaseView):
 
     @expose("/checkbox/migrate/env/<string:deployment>/<string:key>/", methods=("GET",))
     def checkbox_migrate_env(self, key: str, deployment: str):
-        deployments = self.astro_deployments(session.get("bearerToken"))
+        deployments = self.astro_deployments(session.get('token'))
 
         remote_vars = {
             remote_var["key"]: {
@@ -324,7 +345,7 @@ class AstroMigration(AppBuilderBaseView):
 
     @expose("/component/astro-deployment-selector")
     def deployment_selector(self):
-        deployments = self.astro_deployments(session.get("bearerToken"))
+        deployments = self.astro_deployments(session.get("token"))
 
         return self.render_template(
             "components/target_deployment_select.html",
@@ -350,7 +371,7 @@ class AstroMigration(AppBuilderBaseView):
 
         dag = self.local_client.get_dags()[dag_id]
         deployment_url = self.get_deployment_url(deployment)
-        token = session.get("bearerToken")
+        token = session.get('token')
 
         if request.method == "POST":
             if action == "pause":
@@ -391,7 +412,7 @@ class AstroMigration(AppBuilderBaseView):
         )
 
     def get_deployment_url(self, deployment):
-        astro_deployments = self.astro_deployments(session.get("bearerToken"))
+        astro_deployments = self.astro_deployments(session.get('token'))
 
         if astro_deployments and astro_deployments.get(deployment):
             url = urlparse(

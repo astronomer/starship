@@ -1,7 +1,16 @@
-<div class="container">
+<div class="container" style="padding-top: 15px;">
     <form method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         <div class="form-group">
             <div class="row">
+                <div class="col-lg-3">
+                    <label for="currentUser" class="form-label">Current user</label>
+                </div>
+                <div class="col-lg-6">
+                    <label id="currentUser" class="form-label">My username</label>
+                </div>
+            </div>
+            <div class="row" style="padding-top: 15px;">
                 <div class="col-lg-3">
                     <label for="selectedAstroDeployment" class="form-label">Target Deployment</label>
                 </div>
@@ -10,8 +19,9 @@
                         <option value="">Select deployment</option>
                         {% if deployments %}
                         {% for deploy in deployments.values() %}
-                        <option value="{{deploy.id}}" {{'selected' if deploy.id == session.selectedAstroDeployment}}>
-                          {{deploy.workspace.label}} / {{deploy.label}}</option>
+                        <option value="{{deploy.id}}" {{
+                        'selected' if deploy.id == session.selectedAstroDeployment}}>
+                        {{deploy.workspace.label}} / {{deploy.label}}</option>
                         {% endfor %}
                         {% endif %}
                     </select>
