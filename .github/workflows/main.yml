@@ -1,12 +1,5 @@
 name: CI
-on:
-  push:
-    branches:
-      - master
-    paths:
-      - 'astronomer-starship-provider/**'
-      - 'astronomer-starship/**'
-      
+on: [push]
 jobs:
   ship-package-to-pypi:
     runs-on: ubuntu-latest
