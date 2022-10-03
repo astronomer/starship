@@ -22,13 +22,13 @@ ship: package
 
 .PHONY: delete-tag
 delete-tag:
-	- git tag -d $(VERSION)
-	- git push origin --delete $(VERSION)
+	- git tag -d $(TAG)
+	- git push origin --delete $(TAG)
 
 .PHONY: tag
 tag: delete-tag
-	git tag $(VERSION)
-	git push origin $(VERSION)
+	git tag $(TAG)
+	git push origin $(TAG)
 
 .PHONY: build
 build:
