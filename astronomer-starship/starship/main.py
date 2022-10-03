@@ -1,7 +1,11 @@
 from urllib.parse import urlparse
 
 from cachetools.func import ttl_cache
+
 from airflow.plugins_manager import AirflowPlugin
+from airflow.utils.airflow_flask_app import get_airflow_app
+import airflow.settings as settings
+
 from airflow import models
 from airflow.www.app import csrf
 
@@ -31,6 +35,7 @@ class AstroMigration(AppBuilderBaseView):
         super().__init__()
         self.local_client = LocalAirflowClient()
         self.astro_client = AstroClient()
+        self.dag_bag = get_airflow_app().dag_bag
 
     def get_astro_username(self, token):
         if not token:
@@ -121,10 +126,9 @@ class AstroMigration(AppBuilderBaseView):
 
     @expose("/tabs/dags")
     def tabs_dags(self):
-        data = {"component": "dags", "dags": self.local_client.get_dags()}
+        self.dag_bag.collect_dags_from_db()
 
-        self.local_client.get_dags()
-
+        data = {"component": "dags", "dags": self.dag_bag.dags}
         return self.render_template("dags.html", data=data)
 
     @expose("/tabs/variables")
@@ -348,7 +352,7 @@ class AstroMigration(AppBuilderBaseView):
         if dest not in ["local", "astro"]:
             raise Exception("dest must be 'local' or 'astro'")
 
-        dag = self.local_client.get_dags()[dag_id]
+        dag = self.dag_bag.get_dag(dag_id, session=settings.Session())
         deployment_url = self.get_deployment_url(deployment)
         token = session.get("bearerToken")
 
