@@ -23,3 +23,9 @@ class LocalAirflowClient:
 
         vars = session.query(Variable).all()
         return vars
+
+    def get_dags(self):
+        from airflow.models import DagBag
+
+        dags = DagBag(read_dags_from_db=True).dags
+        return dags
