@@ -45,7 +45,7 @@ Usage
 3. Deploy this DAG to your source Airflow environment, configured as described in the **Configuration** section below
 4. Once the DAG is available in the Airflow UI, click the "Trigger DAG" button, then click "Trigger DAG w/ config", and input the following in the configuration dictionary:
 
-   - ``astro_token``:  To retrieve an Astronomer token, navigate to `cloud.astronomer.io/token <https://cloud.astronomer.io/token>`_ and login using your Astronomer credentials
+   - ``astro_token``:  To retrieve an Astronomer token, navigate to `cloud.astronomer.io/token <https://cloud.astronomer.io/token>`_ and log in using your Astronomer credentials
    
    - ``deployment_url``: To retrieve a deployment URL - navigate to the Astronomer Airlow deployment that you'd like to migrate to in the Astronomer UI, click ``Open Airflow`` and copy the page URL (excluding ``/home`` on the end of the URL)
    
@@ -65,7 +65,7 @@ Usage
 
 Configuration
 --------------
-The `AstroMigrationOperator` can be configured as follows:
+The ``AstroMigrationOperator`` can be configured as follows:
 
 - ``variables_exclude_list``: List the individual Airflow Variables which you **do not** want to be migrated. Any Variables not listed will be migrated to the desination Airflow deployment. 
 - ``connection_exclude_list``:  List the individual Airflow Connections which you **do not** want to be migrated. Any Variables not listed will be migrated to the desination Airflow deployment. 
