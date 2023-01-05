@@ -1,11 +1,18 @@
-{%  if not deployment %}
-<button class="btn btn-outline-secondary disabled">Migrate</button>
-{% elif is_migrated %}
-<button class="btn btn-outline-danger disabled">Migrated ✅</button>
+{% if hook%}
+<button
+        hx-post="{{ url_for('AstroMigration.button_migrate', type=type, deployment=deployment, target=target,hook=hook) }}"
+        class="btn btn-outline-primary">
+    Migrate to Secrets Store
+</button>
+{#{%  elif not deployment %}#}
+{#<button class="btn btn-outline-secondary disabled">Migrate</button>#}
+{##}
+{#{% elif is_migrated %}#}
+{#<button class="btn btn-outline-danger disabled">Migrated ✅</button>#}
 {% else %}
 <button
-        hx-post="{{ url_for('AstroMigration.button_migrate', type=type, deployment=deployment, target=target) }}"
+        hx-post="{{ url_for('AstroMigration.button_migrate', type=type, deployment=deployment, target=target,hook=hook) }}"
         class="btn btn-outline-primary">
-    Migrate
+    {{ hook }}
 </button>
 {% endif %}

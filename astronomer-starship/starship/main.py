@@ -1,4 +1,6 @@
+import json
 from urllib.parse import urlparse
+import os
 
 from cachetools.func import ttl_cache
 from airflow.plugins_manager import AirflowPlugin
@@ -14,6 +16,18 @@ from starship.services.local_client import LocalAirflowClient
 import requests
 
 from python_graphql_client import GraphqlClient
+
+from starship.helpers.aws.secrets_manager import (
+    SecretsManagerHook as AwsSecretsManagerHook,
+)
+from starship.helpers.aws.systems_manager import (
+    SystemsManagerHook as AwsSystemsManagerHook,
+)
+from starship.helpers.azure.key_vault import AzureKeyVaultHook
+from starship.helpers.google.secrets_manager import (
+    SecretsManagerHook as GoogleSecretsManagerHook,
+)
+
 
 bp = Blueprint(
     "starship",
@@ -138,11 +152,17 @@ class AstroMigration(AppBuilderBaseView):
 
     @expose("/tabs/connections")
     def tabs_conns(self):
+        hook=self._get_hook()
+        if hook is not None:
+            hook_name=type(hook).__name__
+        else:
+            hook_name=False
         data = {
             "component": "connections",
             "conns": {
                 conn.conn_id: conn for conn in self.local_client.get_connections()
             },
+            "hook": hook_name
         }
 
         return self.render_template("connections.html", data=data)
@@ -159,45 +179,54 @@ class AstroMigration(AppBuilderBaseView):
         return self.render_template("env.html", data=data)
 
     @expose(
-        "/button/migrate/<string:type>/<string:deployment>/<string:target>",
+        "/button/migrate/<string:type>/<string:deployment>/<string:target>/<string:hook>",
         methods=("GET", "POST"),
     )
-    def button_migrate(self, type: str, deployment: str, target: str):
+    def button_migrate(self, type: str, deployment: str, target: str, hook:str=None):
         if type == "conn":
-            return self.button_migrate_conn(target, deployment)
+            return self.button_migrate_conn(target, deployment,hook=hook)
         elif type == "var":
             return self.button_migrate_var(target, deployment)
 
-    def button_migrate_conn(self, conn_id: str, deployment: str):
-        deployment_url = self.get_deployment_url(deployment)
+    def button_migrate_conn(self, conn_id: str, deployment: str,hook:str=None):
+        if deployment is not None:
+            deployment_url = self.get_deployment_url(deployment)
 
-        if request.method == "POST":
-            local_connections = {
-                conn.conn_id: conn for conn in self.local_client.get_connections()
-            }
+            if request.method == "POST":
 
-            requests.post(
-                f"{deployment_url}/api/v1/connections",
-                headers={"Authorization": f"Bearer {session.get('bearerToken')}"},
-                json={
-                    "connection_id": local_connections[conn_id].conn_id,
-                    "conn_type": local_connections[conn_id].conn_type,
-                    "host": local_connections[conn_id].host,
-                    "login": local_connections[conn_id].login,
-                    "schema": local_connections[conn_id].schema,
-                    "port": local_connections[conn_id].port,
-                    "password": local_connections[conn_id].password or "",
-                    "extra": local_connections[conn_id].extra,
-                },
+
+                    local_connections = {
+                        conn.conn_id: conn for conn in self.local_client.get_connections()
+                    }
+
+                    requests.post(
+                        f"{deployment_url}/api/v1/connections",
+                        headers={"Authorization": f"Bearer {session.get('bearerToken')}"},
+                        json={
+                            "connection_id": local_connections[conn_id].conn_id,
+                            "conn_type": local_connections[conn_id].conn_type,
+                            "host": local_connections[conn_id].host,
+                            "login": local_connections[conn_id].login,
+                            "schema": local_connections[conn_id].schema,
+                            "port": local_connections[conn_id].port,
+                            "password": local_connections[conn_id].password or "",
+                            "extra": local_connections[conn_id].extra,
+                        },
+                    )
+
+
+            deployment_conns = self.get_astro_connections(
+                deployment_url, session.get("bearerToken")
             )
 
-        deployment_conns = self.get_astro_connections(
-            deployment_url, session.get("bearerToken")
-        )
+            is_migrated = conn_id in [
+                remote_conn["connection_id"] for remote_conn in deployment_conns
+            ]
+        elif hook is not None:
+            hook_instance=self._get_hook()
+            hook_instance.store_secret()
 
-        is_migrated = conn_id in [
-            remote_conn["connection_id"] for remote_conn in deployment_conns
-        ]
+
 
         return self.render_template(
             "components/migrate_button.html",
@@ -205,12 +234,13 @@ class AstroMigration(AppBuilderBaseView):
             target=conn_id,
             deployment=deployment,
             is_migrated=is_migrated,
+            hook=hook
         )
 
     @expose(
         "/button/migrate/var/<string:deployment>/<string:key>", methods=("GET", "POST")
     )
-    def button_migrate_var(self, key: str, deployment: str):
+    def button_migrate_var(self, key: str, deployment: str, hook:str=None):
         deployment_url = self.get_deployment_url(deployment)
 
         if request.method == "POST":
@@ -234,6 +264,7 @@ class AstroMigration(AppBuilderBaseView):
             target=key,
             deployment=deployment,
             is_migrated=is_migrated,
+            hook=hook,
         )
 
     @expose("/button/migrate/env/<string:deployment>", methods=("POST",))
@@ -398,6 +429,20 @@ class AstroMigration(AppBuilderBaseView):
                 astro_deployments[deployment]["deploymentSpec"]["webserver"]["url"]
             )
             return f"https:/{url.netloc}/{url.path}"
+
+    def _get_hook(self):
+        try:
+            secrets_backend_type = os.environ.get("SECRETS_BACKEND_TYPE")
+            if secrets_backend_type == "AwsSecretsManager":
+                return AwsSecretsManagerHook(aws_conn_id="destination_aws")
+            elif secrets_backend_type == "AwsSystemsManager":
+                return AwsSystemsManagerHook(aws_conn_id="destination_aws")
+            elif secrets_backend_type == "GoogleSecretsManager":
+                return GoogleSecretsManagerHook(gcp_conn_id="destination_gcp")
+            elif secrets_backend_type == "AzureKeyVault":
+                return AzureKeyVaultHook(azure_conn_id="destination_azure")
+        except Exception as e:
+            return e
 
 
 v_appbuilder_view = AstroMigration()
