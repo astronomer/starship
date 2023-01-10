@@ -18,7 +18,7 @@
 #
 
 from typing import Any, Dict, Union
-
+import os
 from airflow.providers.amazon.aws.hooks.secrets_manager import (
     SecretsManagerHook as BaseSecretsManagerHook,
 )
@@ -35,8 +35,15 @@ class SecretsManagerHook(BaseSecretsManagerHook):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        DEFAULT_CONNECTIONS_PREFIX = "/airflow/connections"
+        DEFAULT_VARIABLES_PREFIX = "/airflow/variables"
+        DEFAULT_SECRETS_SEPARATOR = "/"
+        DEFAULT_OVERWRITE = "True"
+        self.variables_prefix = os.environ.get("VARIABLES_PREFIX", DEFAULT_VARIABLES_PREFIX)
+        self.connections_prefix = os.environ.get("CONNECTIONS_PREFIX", DEFAULT_CONNECTIONS_PREFIX)
+        self.separator = os.environ.get("SECRETS_SEPARATOR", DEFAULT_SECRETS_SEPARATOR)
+        self.overwrite_existing = os.environ.get("OVERWRITE_EXISTING", DEFAULT_OVERWRITE)
         self.client = self.get_conn()
-        self.type="aws_sm"
 
     def store_secret(
         self, secret_name: str, secret_value: Union[str, bytes], overwrite: bool = False

@@ -16,7 +16,7 @@
 # under the License.
 import os
 from typing import Any, Optional
-
+import os
 from airflow.compat.functools import cached_property
 from airflow.hooks.base import BaseHook
 
@@ -47,12 +47,20 @@ class AzureKeyVaultHook(BaseHook):
     def __init__(
         self,
         azure_conn_id: str = default_conn_name,
-        separator: str = "-",
+        # separator: str = "-",
         **kwargs,
     ) -> None:
         super().__init__()
         self.conn_id = azure_conn_id
         self.separator = separator
+        DEFAULT_CONNECTIONS_PREFIX = "airflow-connections"
+        DEFAULT_VARIABLES_PREFIX = "airflow-variables"
+        DEFAULT_SECRETS_SEPARATOR = "-"
+        DEFAULT_OVERWRITE = "True"
+        self.variables_prefix = os.environ.get("VARIABLES_PREFIX", DEFAULT_VARIABLES_PREFIX)
+        self.connections_prefix = os.environ.get("CONNECTIONS_PREFIX", DEFAULT_CONNECTIONS_PREFIX)
+        self.separator = os.environ.get("SECRETS_SEPARATOR", DEFAULT_SECRETS_SEPARATOR)
+        self.overwrite_existing = os.environ.get("OVERWRITE_EXISTING", DEFAULT_OVERWRITE)
         self.kwargs = kwargs
 
 
