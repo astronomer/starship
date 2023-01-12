@@ -109,14 +109,12 @@ class SecretsManagerHook(BaseSecretsManagerHook):
         delegate_to: Optional[str] = None,
         impersonation_chain: Optional[Union[str, Sequence[str]]] = None,
     ) -> None:
-        print(f"DEBUG: {datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')}:: class init")
 
         super().__init__(
             gcp_conn_id=gcp_conn_id,
             delegate_to=delegate_to,
             impersonation_chain=impersonation_chain,
         )
-        print(f"DEBUG: {datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')}:: super called")
         DEFAULT_CONNECTIONS_PREFIX = "airflow-connections"
         DEFAULT_VARIABLES_PREFIX = "airflow-variables"
         DEFAULT_SECRETS_SEPARATOR = "-"
@@ -125,15 +123,7 @@ class SecretsManagerHook(BaseSecretsManagerHook):
         self.connections_prefix = os.environ.get("CONNECTIONS_PREFIX", DEFAULT_CONNECTIONS_PREFIX)
         self.separator = os.environ.get("SECRETS_SEPARATOR", DEFAULT_SECRETS_SEPARATOR)
         self.overwrite_existing = os.environ.get("OVERWRITE_EXISTING", DEFAULT_OVERWRITE)
-        print(f"DEBUG: {datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')}:: envs set")
-        try:
-            self.project_id=get_credentials_and_project_id()[1]
-            print(f"DEBUG: {datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')}:: project id is{self.project_id}")
-
-        except Exception as e:
-            print(f"ERROR: {datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')}:: {e}")
         self.client = _SecretManagerClient(credentials=self.get_credentials())
-        print(f"DEBUG: {datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')}:: client called")
 
 
     def get_conn(self) -> _SecretManagerClient:
@@ -170,10 +160,7 @@ class SecretsManagerHook(BaseSecretsManagerHook):
         # secret_name = secret_name.replace("_", self.separator)
         try:
             secret = self.client.get_secret(secret_id=secret_name,project_id=self.project_id)
-            print(f"the secret is {secret}")
-            print(f"the secret type is {type(secret)}")
             return secret
         except Exception as ex:
-            print("Secret %s not found: %s", secret_name, ex)
             self.log.debug("Secret %s not found: %s", secret_name, ex)
             return None

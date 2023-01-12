@@ -226,20 +226,13 @@ class AstroMigration(AppBuilderBaseView):
             elif hook is not None:
                 is_migrated=False
                 hook_instance = self._get_hook()
-                print(f"DEBUG: {datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')} hook gotten \n")
                 if request.method == "POST":
-                    f = open("/usr/local/airflow/include/logging.txt", "a")
-                    print('this is a print statement1')
-                    # f.write(f"DEBUG: {datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')} Checkpoint 1 \n")
 
-                    print('this is a print statement2')
-                    print(f"DEBUG: {datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')}:: hook instance type {type(hook_instance)}")
-                    # f.write(f"DEBUG: {datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')} Checkpoint 2 \n")
                     local_connections = {
                         conn.conn_id: conn for conn in self.local_client.get_connections()
                     }
                     hook_instance.store_secret(
-                        secret_name=hook_instance.separator.join((hook_instance.variables_prefix,conn_id)),
+                        secret_name=hook_instance.separator.join((hook_instance.connections_prefix,conn_id)),
                         secret_value=json.dumps({
                             "connection_id": local_connections[conn_id].conn_id,
                             "conn_type": local_connections[conn_id].conn_type,
@@ -250,25 +243,15 @@ class AstroMigration(AppBuilderBaseView):
                             "password": local_connections[conn_id].password or "",
                             "extra": local_connections[conn_id].extra,
                                     }))
-                    print(f"DEBUG: {datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')} Checkpoint 3 \n")
-                    print(f"DEBUG: {datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')} secrets name:"
-                            f"{hook_instance.separator.join((hook_instance.variables_prefix,conn_id))} \n")
-                    #TODO:
-                print(f"{hook_instance.get_secret(hook_instance.separator.join((hook_instance.variables_prefix, conn_id)))}:: get secret results")
-                print(
-                    f"{type(hook_instance.get_secret(hook_instance.separator.join((hook_instance.variables_prefix, conn_id))))}:: get secret results type")
-                if hook_instance.get_secret(hook_instance.separator.join((hook_instance.variables_prefix,conn_id))) is not None:
-                    print(f"{hook_instance.separator.join((hook_instance.variables_prefix,conn_id))} was found")
+
+                if hook_instance.get_secret(hook_instance.separator.join((hook_instance.connections_prefix,conn_id))) is not None:
                     is_migrated=True
                 else:
-                    print(f"{hook_instance.separator.join((hook_instance.variables_prefix, conn_id))} was not found")
                     is_migrated=False
 
         except Exception as e:
-            print(f"ERROR: {datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')}:{e} \n")
-        finally:
-            # is_migrated = True
-            print(f"DEBUG : {datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')}: finally button migrate \n")
+            print(f"WARN: {datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')}:{e} \n")
+
 
         return self.render_template(
             "components/migrate_button.html",
@@ -475,11 +458,9 @@ class AstroMigration(AppBuilderBaseView):
     def _get_hook(self):
         try:
             secrets_backend_type = os.environ.get("SECRETS_BACKEND_TYPE")
-            print(f"DEBUG: {datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')}:: get hook init")
             if secrets_backend_type == "AwsSecretsManager":
                 return AwsSecretsManagerHook()
             elif secrets_backend_type == "AwsSystemsManager":
-                print(f"DEBUG: {datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')}:: systems manager called")
                 return AwsSystemsManagerHook()
             elif secrets_backend_type == "GoogleSecretsManager":
                 return GoogleSecretsManagerHook(gcp_conn_id="destination_gcp")
@@ -487,8 +468,6 @@ class AstroMigration(AppBuilderBaseView):
                 return AzureKeyVaultHook()
 
         except Exception as e:
-            print(
-                f"WARN : {datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')}:: error in get hook method {e}")
             return e
 
 

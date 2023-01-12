@@ -34,9 +34,7 @@ class SystemsManagerHook(AwsBaseHook):
     """
 
     def __init__(self, *args, **kwargs):
-        print(f"DEBUG: {datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')}:: class init")
         super().__init__(client_type="ssm", *args, **kwargs)
-        print(f"DEBUG: {datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')}:: super called")
         DEFAULT_CONNECTIONS_PREFIX = "/airflow/connections"
         DEFAULT_VARIABLES_PREFIX = "/airflow/variables"
         DEFAULT_SECRETS_SEPARATOR = "/"
@@ -45,9 +43,7 @@ class SystemsManagerHook(AwsBaseHook):
         self.connections_prefix = os.environ.get("CONNECTIONS_PREFIX", DEFAULT_CONNECTIONS_PREFIX)
         self.separator = os.environ.get("SECRETS_SEPARATOR", DEFAULT_SECRETS_SEPARATOR)
         self.overwrite_existing = os.environ.get("OVERWRITE_EXISTING", DEFAULT_OVERWRITE)
-        print(f"DEBUG: {datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')}:: vars set")
         self.client = self.get_conn()
-        print(f"DEBUG: {datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')}:: conn gotten")
 
     def get_secret(self, secret_name: str) -> Optional[str]:
         """

@@ -47,12 +47,10 @@ class AzureKeyVaultHook(BaseHook):
     def __init__(
         self,
         azure_conn_id: str = default_conn_name,
-        # separator: str = "-",
         **kwargs,
     ) -> None:
         super().__init__()
         self.conn_id = azure_conn_id
-        # self.separator = separator
         DEFAULT_CONNECTIONS_PREFIX = "airflow-connections"
         DEFAULT_VARIABLES_PREFIX = "airflow-variables"
         DEFAULT_SECRETS_SEPARATOR = "-"
