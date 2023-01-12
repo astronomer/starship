@@ -144,9 +144,15 @@ class AstroMigration(AppBuilderBaseView):
 
     @expose("/tabs/variables")
     def tabs_vars(self):
+        hook = self._get_hook()
+        if hook is not None:
+            hook_name = type(hook).__name__
+        else:
+            hook_name = False
         data = {
             "component": "variables",
             "vars": {var.key: var for var in self.local_client.get_variables()},
+            "hook": hook_name,
         }
 
         return self.render_template("variables.html", data=data)
@@ -187,7 +193,7 @@ class AstroMigration(AppBuilderBaseView):
         if type == "conn":
             return self.button_migrate_conn(target, deployment, hook=hook)
         elif type == "var":
-            return self.button_migrate_var(target, deployment)
+            return self.button_migrate_var(target, deployment, hook=hook)
 
     def button_migrate_conn(self, conn_id: str, deployment: str, hook: str = None):
         try:
@@ -279,9 +285,10 @@ class AstroMigration(AppBuilderBaseView):
         )
 
     @expose(
-        "/button/migrate/var/<string:deployment>/<string:key>", methods=("GET", "POST")
+        "/button/migrate/var/<string:deployment>/<string:key>/<string:hook>", methods=("GET", "POST")
     )
     def button_migrate_var(self, key: str, deployment: str, hook: str = None):
+
         deployment_url = self.get_deployment_url(deployment)
 
         if request.method == "POST":
@@ -292,7 +299,6 @@ class AstroMigration(AppBuilderBaseView):
                 headers={"Authorization": f"Bearer {session.get('bearerToken')}"},
                 json={"key": key, "value": local_vars[key].val},
             )
-
         remote_vars = self.get_astro_variables(
             deployment_url, session.get("bearerToken")
         )

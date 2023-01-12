@@ -29,6 +29,7 @@
                 <td>{{ conn.port }}</td>
                 <td style="font-family: monospace; overflow: hidden; text-overflow: ellipsis;">{{ conn.extra }}</td>
                 <td class="text-right">
+
                   <div id="migrate-button-{{conn.conn_id}}"
                        hx-get="{{ url_for('AstroMigration.button_migrate', type='conn', deployment=session.selectedAstroDeployment or 'undefined', target=conn.conn_id, hook=data.hook) }}"
                        hx-trigger="load delay:100ms"
@@ -50,7 +51,7 @@
 <h4>No connections found in local metadata database.</h4>
 {% endif %}
     {% if  data.hook!=False%}
-    <h4>Migrating to Secrets Store{{ data.hook }}</h4>
+    <h4>Migrating to Secrets Store</h4>
 
     {% endif %}
 {% endblock %}

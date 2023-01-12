@@ -20,7 +20,7 @@
                 <td>{{ var.val }}</td>
                 <td class="text-right">
                   <div id="migrate-button-{{var.key}}"
-                       hx-get="{{ url_for('AstroMigration.button_migrate', type='var', deployment=session.selectedAstroDeployment or 'undefined', target=var.key) }}"
+                       hx-get="{{ url_for('AstroMigration.button_migrate', type='var', deployment=session.selectedAstroDeployment or 'undefined', target=var.key,hook=data.hook) }}"
                        hx-trigger="load delay:100ms"
                        hx-target="#migrate-button-{{var.key}}"
                        hx-swap="innerHTML">
@@ -35,4 +35,8 @@
 {% else %}
 <h4>No variables found in local metadata database.</h4>
 {% endif %}
+        {% if  data.hook!=False%}
+    <h4>Migrating to Secrets Store</h4>
+
+    {% endif %}
 {% endblock %}
