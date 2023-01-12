@@ -153,17 +153,17 @@ class AstroMigration(AppBuilderBaseView):
 
     @expose("/tabs/connections")
     def tabs_conns(self):
-        hook=self._get_hook()
+        hook = self._get_hook()
         if hook is not None:
-            hook_name=type(hook).__name__
+            hook_name = type(hook).__name__
         else:
-            hook_name=False
+            hook_name = False
         data = {
             "component": "connections",
             "conns": {
                 conn.conn_id: conn for conn in self.local_client.get_connections()
             },
-            "hook": hook_name
+            "hook": hook_name,
         }
 
         return self.render_template("connections.html", data=data)
@@ -183,37 +183,39 @@ class AstroMigration(AppBuilderBaseView):
         "/button/migrate/<string:type>/<string:deployment>/<string:target>/<string:hook>",
         methods=("GET", "POST"),
     )
-    def button_migrate(self, type: str, deployment: str, target: str, hook:str=None):
+    def button_migrate(self, type: str, deployment: str, target: str, hook: str = None):
         if type == "conn":
-            return self.button_migrate_conn(target, deployment,hook=hook)
+            return self.button_migrate_conn(target, deployment, hook=hook)
         elif type == "var":
             return self.button_migrate_var(target, deployment)
 
-    def button_migrate_conn(self, conn_id: str, deployment: str,hook:str=None):
+    def button_migrate_conn(self, conn_id: str, deployment: str, hook: str = None):
         try:
             if deployment != "undefined":
                 deployment_url = self.get_deployment_url(deployment)
                 if request.method == "POST":
 
-                        local_connections = {
-                            conn.conn_id: conn for conn in self.local_client.get_connections()
-                        }
+                    local_connections = {
+                        conn.conn_id: conn
+                        for conn in self.local_client.get_connections()
+                    }
 
-                        requests.post(
-                            f"{deployment_url}/api/v1/connections",
-                            headers={"Authorization": f"Bearer {session.get('bearerToken')}"},
-                            json={
-                                "connection_id": local_connections[conn_id].conn_id,
-                                "conn_type": local_connections[conn_id].conn_type,
-                                "host": local_connections[conn_id].host,
-                                "login": local_connections[conn_id].login,
-                                "schema": local_connections[conn_id].schema,
-                                "port": local_connections[conn_id].port,
-                                "password": local_connections[conn_id].password or "",
-                                "extra": local_connections[conn_id].extra,
-                            },
-                        )
-
+                    requests.post(
+                        f"{deployment_url}/api/v1/connections",
+                        headers={
+                            "Authorization": f"Bearer {session.get('bearerToken')}"
+                        },
+                        json={
+                            "connection_id": local_connections[conn_id].conn_id,
+                            "conn_type": local_connections[conn_id].conn_type,
+                            "host": local_connections[conn_id].host,
+                            "login": local_connections[conn_id].login,
+                            "schema": local_connections[conn_id].schema,
+                            "port": local_connections[conn_id].port,
+                            "password": local_connections[conn_id].password or "",
+                            "extra": local_connections[conn_id].extra,
+                        },
+                    )
 
                 deployment_conns = self.get_astro_connections(
                     deployment_url, session.get("bearerToken")
@@ -224,34 +226,48 @@ class AstroMigration(AppBuilderBaseView):
                 ]
 
             elif hook is not None:
-                is_migrated=False
+                is_migrated = False
                 hook_instance = self._get_hook()
                 if request.method == "POST":
 
                     local_connections = {
-                        conn.conn_id: conn for conn in self.local_client.get_connections()
+                        conn.conn_id: conn
+                        for conn in self.local_client.get_connections()
                     }
                     hook_instance.store_secret(
-                        secret_name=hook_instance.separator.join((hook_instance.connections_prefix,conn_id)),
-                        secret_value=json.dumps({
-                            "connection_id": local_connections[conn_id].conn_id,
-                            "conn_type": local_connections[conn_id].conn_type,
-                            "host": local_connections[conn_id].host,
-                            "login": local_connections[conn_id].login,
-                            "schema": local_connections[conn_id].schema,
-                            "port": local_connections[conn_id].port,
-                            "password": local_connections[conn_id].password or "",
-                            "extra": local_connections[conn_id].extra,
-                                    }))
+                        secret_name=hook_instance.separator.join(
+                            (hook_instance.connections_prefix, conn_id)
+                        ),
+                        secret_value=json.dumps(
+                            {
+                                "connection_id": local_connections[conn_id].conn_id,
+                                "conn_type": local_connections[conn_id].conn_type,
+                                "host": local_connections[conn_id].host,
+                                "login": local_connections[conn_id].login,
+                                "schema": local_connections[conn_id].schema,
+                                "port": local_connections[conn_id].port,
+                                "password": local_connections[conn_id].password or "",
+                                "extra": local_connections[conn_id].extra,
+                            }
+                        ),
+                    )
 
-                if hook_instance.get_secret(hook_instance.separator.join((hook_instance.connections_prefix,conn_id))) is not None:
-                    is_migrated=True
+                if (
+                    hook_instance.get_secret(
+                        hook_instance.separator.join(
+                            (hook_instance.connections_prefix, conn_id)
+                        )
+                    )
+                    is not None
+                ):
+                    is_migrated = True
                 else:
-                    is_migrated=False
+                    is_migrated = False
 
         except Exception as e:
-            print(f"WARN: {datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')}:{e} \n")
-
+            print(
+                f"WARN: {datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')}:{e} \n"
+            )
 
         return self.render_template(
             "components/migrate_button.html",
@@ -259,13 +275,13 @@ class AstroMigration(AppBuilderBaseView):
             target=conn_id,
             deployment=deployment,
             is_migrated=is_migrated,
-            hook=hook
+            hook=hook,
         )
 
     @expose(
         "/button/migrate/var/<string:deployment>/<string:key>", methods=("GET", "POST")
     )
-    def button_migrate_var(self, key: str, deployment: str, hook:str=None):
+    def button_migrate_var(self, key: str, deployment: str, hook: str = None):
         deployment_url = self.get_deployment_url(deployment)
 
         if request.method == "POST":

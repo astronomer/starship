@@ -24,7 +24,9 @@ from airflow.providers.google.cloud._internal_client.secret_manager_client impor
 from airflow.providers.google.cloud.hooks.secret_manager import (
     SecretsManagerHook as BaseSecretsManagerHook,
 )
-from airflow.providers.google.cloud.utils.credentials_provider import get_credentials_and_project_id
+from airflow.providers.google.cloud.utils.credentials_provider import (
+    get_credentials_and_project_id,
+)
 from airflow.providers.google.common.hooks.base_google import GoogleBaseHook
 
 from google.api_core.exceptions import AlreadyExists
@@ -33,6 +35,7 @@ import os
 from datetime import datetime
 import time
 
+
 class _SecretManagerClient(_BaseSecretManagerClient):
     """
     Retrieves Secrets object from Google Cloud Secrets Manager. This is a common class reused between
@@ -40,7 +43,11 @@ class _SecretManagerClient(_BaseSecretManagerClient):
     This class should not be used directly, use SecretsManager or SecretsHook instead
     :param credentials: Credentials used to authenticate to GCP
     """
-    def __init__(self, credentials: google.auth.credentials.Credentials,):
+
+    def __init__(
+        self,
+        credentials: google.auth.credentials.Credentials,
+    ):
         super().__init__(credentials=credentials)
 
     def create_secret(self, project_id: str, secret_id: str) -> str:
@@ -119,12 +126,17 @@ class SecretsManagerHook(BaseSecretsManagerHook):
         DEFAULT_VARIABLES_PREFIX = "airflow-variables"
         DEFAULT_SECRETS_SEPARATOR = "-"
         DEFAULT_OVERWRITE = "True"
-        self.variables_prefix = os.environ.get("VARIABLES_PREFIX", DEFAULT_VARIABLES_PREFIX)
-        self.connections_prefix = os.environ.get("CONNECTIONS_PREFIX", DEFAULT_CONNECTIONS_PREFIX)
+        self.variables_prefix = os.environ.get(
+            "VARIABLES_PREFIX", DEFAULT_VARIABLES_PREFIX
+        )
+        self.connections_prefix = os.environ.get(
+            "CONNECTIONS_PREFIX", DEFAULT_CONNECTIONS_PREFIX
+        )
         self.separator = os.environ.get("SECRETS_SEPARATOR", DEFAULT_SECRETS_SEPARATOR)
-        self.overwrite_existing = os.environ.get("OVERWRITE_EXISTING", DEFAULT_OVERWRITE)
+        self.overwrite_existing = os.environ.get(
+            "OVERWRITE_EXISTING", DEFAULT_OVERWRITE
+        )
         self.client = _SecretManagerClient(credentials=self.get_credentials())
-
 
     def get_conn(self) -> _SecretManagerClient:
         """
@@ -159,7 +171,9 @@ class SecretsManagerHook(BaseSecretsManagerHook):
 
         # secret_name = secret_name.replace("_", self.separator)
         try:
-            secret = self.client.get_secret(secret_id=secret_name,project_id=self.project_id)
+            secret = self.client.get_secret(
+                secret_id=secret_name, project_id=self.project_id
+            )
             return secret
         except Exception as ex:
             self.log.debug("Secret %s not found: %s", secret_name, ex)

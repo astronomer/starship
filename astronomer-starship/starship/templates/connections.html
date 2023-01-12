@@ -34,11 +34,11 @@
                        hx-trigger="load delay:100ms"
                        hx-target="#migrate-button-{{conn.conn_id}}"
                        hx-swap="innerHTML">
-                      {% if data.hook%}
-                          <button class="btn btn-primary mb3-l">Migrate to Secrets Store</button>
-                      {% else %}
+{#                      {% if data.hook =="True" %}#}
+{#                          <button class="btn btn-primary mb3-l">Migrate to Secrets Store</button>#}
+{#                      {% else %}#}
                       <button class="btn btn-outline-default disabled">Migrate</button>
-                        {% endif %}
+{#                        {% endif %}#}
                   </div>
                 </td>
             </tr>
@@ -49,5 +49,8 @@
 {% else %}
 <h4>No connections found in local metadata database.</h4>
 {% endif %}
+    {% if  data.hook!=False%}
+    <h4>Migrating to Secrets Store{{ data.hook }}</h4>
 
+    {% endif %}
 {% endblock %}

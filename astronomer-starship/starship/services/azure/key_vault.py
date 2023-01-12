@@ -55,12 +55,17 @@ class AzureKeyVaultHook(BaseHook):
         DEFAULT_VARIABLES_PREFIX = "airflow-variables"
         DEFAULT_SECRETS_SEPARATOR = "-"
         DEFAULT_OVERWRITE = "True"
-        self.variables_prefix = os.environ.get("VARIABLES_PREFIX", DEFAULT_VARIABLES_PREFIX)
-        self.connections_prefix = os.environ.get("CONNECTIONS_PREFIX", DEFAULT_CONNECTIONS_PREFIX)
+        self.variables_prefix = os.environ.get(
+            "VARIABLES_PREFIX", DEFAULT_VARIABLES_PREFIX
+        )
+        self.connections_prefix = os.environ.get(
+            "CONNECTIONS_PREFIX", DEFAULT_CONNECTIONS_PREFIX
+        )
         self.separator = os.environ.get("SECRETS_SEPARATOR", DEFAULT_SECRETS_SEPARATOR)
-        self.overwrite_existing = os.environ.get("OVERWRITE_EXISTING", DEFAULT_OVERWRITE)
+        self.overwrite_existing = os.environ.get(
+            "OVERWRITE_EXISTING", DEFAULT_OVERWRITE
+        )
         self.kwargs = kwargs
-
 
     @cached_property
     def client(self) -> SecretClient:
@@ -88,7 +93,7 @@ class AzureKeyVaultHook(BaseHook):
             }
             os.environ.update(azure_creds)
         else:
-            vault_url=os.environ.get("AZURE_VAULT_URL", "www.needtoset.com")
+            vault_url = os.environ.get("AZURE_VAULT_URL", "www.needtoset.com")
         credential = DefaultAzureCredential()
         return SecretClient(
             vault_url=str(vault_url), credential=credential, **self.kwargs
