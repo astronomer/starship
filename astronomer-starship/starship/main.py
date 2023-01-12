@@ -18,14 +18,14 @@ import requests
 
 from python_graphql_client import GraphqlClient
 
-from starship.helpers.aws.secrets_manager import (
+from starship.services.aws.secrets_manager import (
     SecretsManagerHook as AwsSecretsManagerHook,
 )
-from starship.helpers.aws.systems_manager import (
+from starship.services.aws.systems_manager import (
     SystemsManagerHook as AwsSystemsManagerHook,
 )
-from starship.helpers.azure.key_vault import AzureKeyVaultHook
-from starship.helpers.google.secrets_manager import (
+from starship.services.azure.key_vault import AzureKeyVaultHook
+from starship.services.google.secrets_manager import (
     SecretsManagerHook as GoogleSecretsManagerHook,
 )
 
@@ -226,6 +226,7 @@ class AstroMigration(AppBuilderBaseView):
             elif hook is not None:
                 is_migrated=False
                 hook_instance = self._get_hook()
+                print(f"DEBUG: {datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')} hook gotten \n")
                 if request.method == "POST":
                     f = open("/usr/local/airflow/include/logging.txt", "a")
                     print('this is a print statement1')
@@ -476,14 +477,15 @@ class AstroMigration(AppBuilderBaseView):
             secrets_backend_type = os.environ.get("SECRETS_BACKEND_TYPE")
             print(f"DEBUG: {datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')}:: get hook init")
             if secrets_backend_type == "AwsSecretsManager":
-                return AwsSecretsManagerHook(aws_conn_id="destination_aws")
+                return AwsSecretsManagerHook()
             elif secrets_backend_type == "AwsSystemsManager":
                 print(f"DEBUG: {datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')}:: systems manager called")
-                return AwsSystemsManagerHook(aws_conn_id="destination_aws")
+                return AwsSystemsManagerHook()
             elif secrets_backend_type == "GoogleSecretsManager":
                 return GoogleSecretsManagerHook(gcp_conn_id="destination_gcp")
             elif secrets_backend_type == "AzureKeyVault":
-                return AzureKeyVaultHook(azure_conn_id="destination_azure")
+                return AzureKeyVaultHook()
+
         except Exception as e:
             print(
                 f"WARN : {datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')}:: error in get hook method {e}")

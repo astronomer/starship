@@ -40,7 +40,7 @@ class AzureKeyVaultHook(BaseHook):
     """
 
     conn_name_attr = "azure_conn_id"
-    default_conn_name = "azure_default"
+    default_conn_name = None
     conn_type = "azure"
     hook_name = "Azure Key Vault"
 
@@ -52,7 +52,7 @@ class AzureKeyVaultHook(BaseHook):
     ) -> None:
         super().__init__()
         self.conn_id = azure_conn_id
-        self.separator = separator
+        # self.separator = separator
         DEFAULT_CONNECTIONS_PREFIX = "airflow-connections"
         DEFAULT_VARIABLES_PREFIX = "airflow-variables"
         DEFAULT_SECRETS_SEPARATOR = "-"
@@ -74,20 +74,23 @@ class AzureKeyVaultHook(BaseHook):
         Authenticates the resource using the connection id passed during init.
         :return: the authenticated client.
         """
-        conn = self.get_connection(self.conn_id)
-        tenant = conn.extra_dejson.get(
-            "extra__azure__tenantId"
-        ) or conn.extra_dejson.get("tenantId")
-        client_id = conn.login
-        client_secret = conn.password
-        vault_url = conn.host
+        if self.conn_id is not None:
+            conn = self.get_connection(self.conn_id)
+            tenant = conn.extra_dejson.get(
+                "extra__azure__tenantId"
+            ) or conn.extra_dejson.get("tenantId")
+            client_id = conn.login
+            client_secret = conn.password
+            vault_url = conn.host
 
-        azure_creds = {
-            EnvironmentVariables.AZURE_TENANT_ID: tenant,
-            EnvironmentVariables.AZURE_CLIENT_ID: client_id,
-            EnvironmentVariables.AZURE_CLIENT_SECRET: client_secret,
-        }
-        os.environ.update(azure_creds)
+            azure_creds = {
+                EnvironmentVariables.AZURE_TENANT_ID: tenant,
+                EnvironmentVariables.AZURE_CLIENT_ID: client_id,
+                EnvironmentVariables.AZURE_CLIENT_SECRET: client_secret,
+            }
+            os.environ.update(azure_creds)
+        else:
+            vault_url=os.environ.get("AZURE_VAULT_URL", "www.needtoset.com")
         credential = DefaultAzureCredential()
         return SecretClient(
             vault_url=str(vault_url), credential=credential, **self.kwargs
