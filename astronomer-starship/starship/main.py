@@ -1,6 +1,6 @@
 from urllib.parse import urlparse
 
-from cachetools.func import ttl_cache
+from cachetools.func import ttl_cache, lru_cache
 from airflow.plugins_manager import AirflowPlugin
 from airflow import models
 
@@ -124,6 +124,7 @@ class AstroMigration(AppBuilderBaseView):
         return self.render_template("main.html")
 
     @staticmethod
+    @ttl_cache(ttl=3600)
     def get_jwk(token: str):
         jwks_url = "https://auth.astronomer.io/.well-known/jwks.json"
         jwks_client = jwt.PyJWKClient(jwks_url)
