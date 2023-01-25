@@ -6,19 +6,17 @@ from airflow.utils.session import provide_session
 from sqlalchemy.orm import Session
 from typing import Any, Sequence
 
+
 class AstroVariableMigrationOperator(BaseOperator):
     """
     Sends variables from Airflow metadatabase to Astronomer Deployment
     """
-    template_fields: Sequence[str] = ('token', 'deployment_url')
+
+    template_fields: Sequence[str] = ("token", "deployment_url")
     ui_color = "#974bde"
 
     def __init__(
-            self,
-            deployment_url,
-            token,
-            variable_exclude_list=None,
-            **kwargs
+        self, deployment_url, token, variable_exclude_list=None, **kwargs
     ) -> None:
         super().__init__(**kwargs)
         self.deployment_url = deployment_url
@@ -39,8 +37,6 @@ class AstroVariableMigrationOperator(BaseOperator):
             if key not in exclude_list:
                 requests.post(
                     url=f"{self.deployment_url}/api/v1/variables",
-                    headers={
-                        "Authorization": f"Bearer {self.token}"
-                    },
-                    json={"key": key, "value": value}
+                    headers={"Authorization": f"Bearer {self.token}"},
+                    json={"key": key, "value": value},
                 )

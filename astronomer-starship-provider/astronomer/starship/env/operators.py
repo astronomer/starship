@@ -7,20 +7,16 @@ from python_graphql_client import GraphqlClient
 from sqlalchemy.orm import Session
 from typing import Any, Sequence
 
+
 class AstroEnvMigrationOperator(BaseOperator):
     """
     Sends env vars from Airflow to Astronomer Deployment
     """
-    template_fields: Sequence[str] = ('token', 'deployment_url')
+
+    template_fields: Sequence[str] = ("token", "deployment_url")
     ui_color = "#974bde"
 
-    def __init__(
-            self,
-            deployment_url,
-            token,
-            env_include_list,
-            **kwargs
-    ) -> None:
+    def __init__(self, deployment_url, token, env_include_list, **kwargs) -> None:
         super().__init__(**kwargs)
         self.deployment_url = deployment_url
         self.token = token
@@ -29,21 +25,19 @@ class AstroEnvMigrationOperator(BaseOperator):
     def _find_deployment_id(self):
         deployments = self._astro_deployments()
         for id, deployment in deployments.items():
-            url = deployment['deploymentSpec']['webserver']['url']
+            url = deployment["deploymentSpec"]["webserver"]["url"]
             split_url = url.split("?", 1)
             base_url = split_url[0]
             if base_url in self.deployment_url:
                 return id
-                #TODO: Add logic if deployment id is not found
+                # TODO: Add logic if deployment id is not found
 
     def _existing_env_vars(self):
         deployment_id = self._find_deployment_id()
 
         client = GraphqlClient(
             endpoint="https://api.astronomer.io/hub/v1",
-            headers={
-                "Authorization": f"Bearer {self.token}"
-            }
+            headers={"Authorization": f"Bearer {self.token}"},
         )
 
         query = """
@@ -73,17 +67,19 @@ class AstroEnvMigrationOperator(BaseOperator):
 
         try:
             env_vars = {}
-            deployments = client.execute(query,)["data"]["deployments"]
+            deployments = client.execute(query,)[
+                "data"
+            ]["deployments"]
             for deployment in deployments:
-                if deployment['id'] == deployment_id:
-                    env_vars = deployment['deploymentSpec']['environmentVariables']
+                if deployment["id"] == deployment_id:
+                    env_vars = deployment["deploymentSpec"]["environmentVariables"]
 
             existing_vars = {}
             for var in env_vars:
-                existing_vars[var['key']] = {
-                    "key": var['key'],
-                    "value": var['value'],
-                    "isSecret": var['isSecret']
+                existing_vars[var["key"]] = {
+                    "key": var["key"],
+                    "value": var["value"],
+                    "isSecret": var["isSecret"],
                 }
 
             return existing_vars
@@ -123,9 +119,7 @@ class AstroEnvMigrationOperator(BaseOperator):
     def execute(self, context: Any, session: Session) -> None:
         client = GraphqlClient(
             endpoint="https://api.astronomer.io/hub/v1",
-            headers={
-                "Authorization": f"Bearer {self.token}"
-            }
+            headers={"Authorization": f"Bearer {self.token}"},
         )
         query = """
         fragment EnvironmentVariable on EnvironmentVariable {
@@ -150,7 +144,7 @@ class AstroEnvMigrationOperator(BaseOperator):
                     complete_env_list[key] = {
                         "key": key,
                         "value": value,
-                        "isSecret": False
+                        "isSecret": False,
                     }
 
         client.execute(

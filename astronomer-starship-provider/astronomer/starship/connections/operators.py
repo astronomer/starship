@@ -6,19 +6,17 @@ from airflow.utils.session import provide_session
 from sqlalchemy.orm import Session
 from typing import Any, Sequence
 
+
 class AstroConnectionsMigrationOperator(BaseOperator):
     """
     Sends connections from Airflow metadatabase to Astronomer Deployment
     """
-    template_fields: Sequence[str] = ('token', 'deployment_url')
+
+    template_fields: Sequence[str] = ("token", "deployment_url")
     ui_color = "#974bde"
 
     def __init__(
-            self,
-            deployment_url,
-            token,
-            connection_exclude_list=None,
-            **kwargs
+        self, deployment_url, token, connection_exclude_list=None, **kwargs
     ) -> None:
         super().__init__(**kwargs)
         self.deployment_url = deployment_url
@@ -46,8 +44,8 @@ class AstroConnectionsMigrationOperator(BaseOperator):
                         "port": value.port,
                         "password": value.password or "",
                         "extra": value.extra,
-                    }
+                    },
                 )
 
-# Add test comment to test CICD process
 
+# Add test comment to test CICD process

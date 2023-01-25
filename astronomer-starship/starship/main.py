@@ -4,6 +4,9 @@ from cachetools.func import ttl_cache
 from airflow.plugins_manager import AirflowPlugin
 from airflow import models
 
+from airflow.www import auth
+from airflow.security import permissions
+
 import jwt
 
 from flask import Blueprint, session, request
@@ -23,6 +26,7 @@ bp = Blueprint(
     static_folder="static",
     static_url_path="/static/starship",
 )
+
 
 class AstroMigration(AppBuilderBaseView):
     default_view = "main"
@@ -114,6 +118,7 @@ class AstroMigration(AppBuilderBaseView):
         return resp.json()["connections"]
 
     @expose("/", methods=["GET", "POST"])
+    @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
     def main(self):
         session.update(request.form)
         return self.render_template("main.html")
@@ -129,18 +134,25 @@ class AstroMigration(AppBuilderBaseView):
         token = session.get("token")
 
         try:
-            jwt.decode(token, audience=["astronomer-ee"], key=self.get_jwk(token).key, algorithms=["RS256"])
+            jwt.decode(
+                token,
+                audience=["astronomer-ee"],
+                key=self.get_jwk(token).key,
+                algorithms=["RS256"],
+            )
         except jwt.exceptions.InvalidTokenError:
             return self.render_template("components/token_modal.html", show=True)
 
         return self.render_template("components/token_modal.html", show=False)
 
     @expose("/button/save_token", methods=("POST",))
+    @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
     def button_save_token(self):
         session["token"] = request.form.get("astroUserToken")
         return self.render_template("migration.html")
 
     @expose("/tabs/dags")
+    @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG)])
     def tabs_dags(self):
         data = {"component": "dags", "dags": self.local_client.get_dags()}
 
@@ -149,6 +161,7 @@ class AstroMigration(AppBuilderBaseView):
         return self.render_template("dags.html", data=data)
 
     @expose("/tabs/variables")
+    @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_VARIABLE)])
     def tabs_vars(self):
         data = {
             "component": "variables",
@@ -158,6 +171,7 @@ class AstroMigration(AppBuilderBaseView):
         return self.render_template("variables.html", data=data)
 
     @expose("/tabs/connections")
+    @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONNECTION)])
     def tabs_conns(self):
         data = {
             "component": "connections",
@@ -169,6 +183,7 @@ class AstroMigration(AppBuilderBaseView):
         return self.render_template("connections.html", data=data)
 
     @expose("/tabs/env")
+    @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
     def tabs_env(self):
         import os
 
@@ -183,6 +198,7 @@ class AstroMigration(AppBuilderBaseView):
         "/button/migrate/<string:type>/<string:deployment>/<string:target>",
         methods=("GET", "POST"),
     )
+    @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
     def button_migrate(self, type: str, deployment: str, target: str):
         if type == "conn":
             return self.button_migrate_conn(target, deployment)
@@ -213,7 +229,7 @@ class AstroMigration(AppBuilderBaseView):
             )
 
         deployment_conns = self.get_astro_connections(
-            deployment_url, session.get('token')
+            deployment_url, session.get("token")
         )
 
         is_migrated = conn_id in [
@@ -231,6 +247,7 @@ class AstroMigration(AppBuilderBaseView):
     @expose(
         "/button/migrate/var/<string:deployment>/<string:key>", methods=("GET", "POST")
     )
+    @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_VARIABLE)])
     def button_migrate_var(self, key: str, deployment: str):
         deployment_url = self.get_deployment_url(deployment)
 
@@ -243,9 +260,7 @@ class AstroMigration(AppBuilderBaseView):
                 json={"key": key, "value": local_vars[key].val},
             )
 
-        remote_vars = self.get_astro_variables(
-            deployment_url, session.get('token')
-        )
+        remote_vars = self.get_astro_variables(deployment_url, session.get("token"))
 
         is_migrated = key in [remote_var["key"] for remote_var in remote_vars]
 
@@ -258,10 +273,11 @@ class AstroMigration(AppBuilderBaseView):
         )
 
     @expose("/button/migrate/env/<string:deployment>", methods=("POST",))
+    @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
     def button_migrate_env(self, deployment: str):
         import os
 
-        deployments = self.astro_deployments(session.get('token'))
+        deployments = self.astro_deployments(session.get("token"))
 
         headers = {"Authorization": f"Bearer {session.get('token')}"}
         client = GraphqlClient(
@@ -320,8 +336,9 @@ class AstroMigration(AppBuilderBaseView):
         return self.tabs_env()
 
     @expose("/checkbox/migrate/env/<string:deployment>/<string:key>/", methods=("GET",))
+    @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
     def checkbox_migrate_env(self, key: str, deployment: str):
-        deployments = self.astro_deployments(session.get('token'))
+        deployments = self.astro_deployments(session.get("token"))
 
         remote_vars = {
             remote_var["key"]: {
@@ -353,6 +370,7 @@ class AstroMigration(AppBuilderBaseView):
         )
 
     @expose("/component/row/dags/<string:deployment>/<string:dag_id>")
+    @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG)])
     def dag_cutover_row_get(self, deployment: str, dag_id: str):
         return self.dag_cutover_row(deployment, dag_id)
 
@@ -363,6 +381,7 @@ class AstroMigration(AppBuilderBaseView):
             "POST",
         ),
     )
+    @auth.has_access([(permissions.ACTION_CAN_READ, permissions.DAG_ACTIONS)])
     def dag_cutover_row(
         self, deployment: str, dag_id: str, dest: str = "local", action: str = None
     ):
@@ -371,7 +390,7 @@ class AstroMigration(AppBuilderBaseView):
 
         dag = self.local_client.get_dags()[dag_id]
         deployment_url = self.get_deployment_url(deployment)
-        token = session.get('token')
+        token = session.get("token")
 
         if request.method == "POST":
             if action == "pause":
@@ -412,7 +431,7 @@ class AstroMigration(AppBuilderBaseView):
         )
 
     def get_deployment_url(self, deployment):
-        astro_deployments = self.astro_deployments(session.get('token'))
+        astro_deployments = self.astro_deployments(session.get("token"))
 
         if astro_deployments and astro_deployments.get(deployment):
             url = urlparse(
