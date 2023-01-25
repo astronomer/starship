@@ -1,21 +1,29 @@
 {% if not show %}
 <div id="astro-token-entry"
      hx-get="{{ url_for('AstroMigration.modal_token_entry') }}"
-     hx-trigger="load delay:5s"
+     hx-trigger="load delay:10s"
      hx-target="#astro-token-entry">
 </div>
 {% else %}
-<div id="astro-token-entry" class="modal fade in" tabindex="-1" role="dialog" style="display: block; padding-right: 15px;">
+<div id="astro-token-entry" class="modal fade in" tabindex="-1" role="dialog"
+     style="display: block; padding-right: 15px;">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <form>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="modal-header">
-                    <button type="button" class="close" aria-label="Close"><span aria-hidden="true">&times;</span>
-                    </button>
+                    <a href="{{ url_for('Airflow.index') }}">
+                        <button type="button" class="close" aria-label="Close"><span aria-hidden="true">&times;</span>
+                        </button>
+                    </a>
                     <h4 class="modal-title">Login to Astro</h4>
                 </div>
                 <div class="modal-body">
+                    {% if error == 'expired' %}
+                    <div class="alert alert-warning">Your token has expired!</div>
+                    {% elif error == 'invalid' %}
+                    <div class="alert alert-danger">Your token is invalid!</div>
+                    {% endif %}
                     <div class="form-group">
                         <a href="https://cloud.astronomer.io/token"
                            target="_blank"
@@ -32,7 +40,9 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-default">Close</button>
+                    <a href="{{ url_for('Airflow.index') }}">
+                        <button type="button" class="btn btn-default">Exit</button>
+                    </a>
                     <button type="button"
                             class="btn btn-primary"
                             hx-post="{{ url_for('AstroMigration.button_save_token') }}"

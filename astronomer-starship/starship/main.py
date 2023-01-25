@@ -134,6 +134,11 @@ class AstroMigration(AppBuilderBaseView):
     def modal_token_entry(self):
         token = session.get("token")
 
+        if not token:
+            return self.render_template(
+                "components/token_modal.html", show=True, error=None
+            )
+
         try:
             jwt.decode(
                 token,
@@ -141,8 +146,14 @@ class AstroMigration(AppBuilderBaseView):
                 key=self.get_jwk(token).key,
                 algorithms=["RS256"],
             )
+        except jwt.exceptions.ExpiredSignatureError:
+            return self.render_template(
+                "components/token_modal.html", show=True, error="expired"
+            )
         except jwt.exceptions.InvalidTokenError:
-            return self.render_template("components/token_modal.html", show=True)
+            return self.render_template(
+                "components/token_modal.html", show=True, error="invalid"
+            )
 
         return self.render_template("components/token_modal.html", show=False)
 
