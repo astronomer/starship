@@ -1,6 +1,6 @@
 from urllib.parse import urlparse
 
-from cachetools.func import ttl_cache, lru_cache
+from cachetools.func import ttl_cache
 from airflow.plugins_manager import AirflowPlugin
 from airflow import models
 
@@ -9,7 +9,7 @@ from airflow.security import permissions
 
 import jwt
 
-from flask import Blueprint, session, request
+from flask import Blueprint, session, request, redirect, url_for
 from flask_appbuilder import expose, BaseView as AppBuilderBaseView
 
 from starship.services.astrohub_client import AstroClient
@@ -50,7 +50,7 @@ class AstroMigration(AppBuilderBaseView):
         try:
             api_rv = client.execute(query)["data"]["self"]["user"]["username"]
 
-            return {deploy["id"]: deploy for deploy in (api_rv or [])}
+            return api_rv
         except Exception as exc:
             print(exc)
             return None
@@ -379,7 +379,13 @@ class AstroMigration(AppBuilderBaseView):
         return self.render_template(
             "components/target_deployment_select.html",
             deployments=deployments,
+            username=self.get_astro_username(token=session.get("token"))
         )
+
+    @expose("/logout")
+    def logout(self):
+        session.pop("token")
+        return redirect(url_for("Airflow.index"))
 
     @expose("/component/row/dags/<string:deployment>/<string:dag_id>")
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG)])
