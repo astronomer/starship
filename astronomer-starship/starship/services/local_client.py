@@ -27,5 +27,5 @@ class LocalAirflowClient:
     def get_dags(self):
         from airflow.models import DagBag
 
-        dags = DagBag(read_dags_from_db=True).dags
+        dags = DagBag().dags
         return dags

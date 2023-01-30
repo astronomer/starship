@@ -399,7 +399,7 @@ class AstroMigration(AppBuilderBaseView):
             "POST",
         ),
     )
-    @auth.has_access([(permissions.ACTION_CAN_READ, permissions.DAG_ACTIONS)])
+    @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG)])
     def dag_cutover_row(
         self, deployment: str, dag_id: str, dest: str = "local", action: str = None
     ):
