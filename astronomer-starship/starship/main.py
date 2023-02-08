@@ -256,6 +256,7 @@ class AstroMigration(AppBuilderBaseView):
                                 "extra": local_connections[conn_id].extra,
                             }
                         ),
+                        overwrite=True
                     )
 
                 if (

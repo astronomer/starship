@@ -1,5 +1,10 @@
 {% if is_migrated %}
-<button class="btn btn-outline-danger disabled">Migrated ✅</button>
+    {% if hook!="False" %}
+        <button hx-post="{{ url_for('AstroMigration.button_migrate', type=type, deployment=deployment, target=target,hook=hook) }}"
+        class="btn btn-primary mb3-l">Overwrite</button>
+    {% else %}
+        <button class="btn btn-outline-danger disabled">Migrated ✅</button>
+    {%  endif %}
 {% elif hook !="False" %}
 <button
         hx-post="{{ url_for('AstroMigration.button_migrate', type=type, deployment=deployment, target=target,hook=hook) }}"
