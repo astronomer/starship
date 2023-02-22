@@ -1,0 +1,2 @@
+<script>tippy('#label-test-{{conn_id}}', {content: {{data.message|tojson}},});</script>
+<span id="label-test-{{conn_id}}">{% if data.status %}✅{% else %}❓{% endif %}</span>

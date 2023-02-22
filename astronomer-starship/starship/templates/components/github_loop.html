@@ -1,0 +1,6 @@
+<div id="github-loop"
+     hx-get="{{ url_for('AstroMigration.loop_github_token') }}"
+     hx-trigger="load delay:{{interval}}s"
+     hx-target="#github-loop"
+     hx-swap="outerHTML"
+>{{data}}</div>

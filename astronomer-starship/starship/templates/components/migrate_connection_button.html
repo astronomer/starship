@@ -1,0 +1,21 @@
+{%  if not deployment %}
+    <button class="btn btn-default disabled">Migrate</button>
+{% else %}
+<div id="test-connection-{{conn_id}}"
+     hx-get="{{ url_for('AstroMigration.label_test_connection', deployment=session.selectedAstroDeployment or 'undefined', conn_id=conn_id) }}"
+     hx-trigger="load delay:100ms"
+     hx-target="#test-connection-{{conn_id}}"
+     hx-swap="outerHTML">
+</div>
+    {% if is_migrated %}
+    <button class="btn btn-success disabled">
+        Migrated
+    </button>
+    {% else %}
+    <button
+            hx-post="{{ url_for('AstroMigration.button_migrate_connection', deployment=deployment, conn_id=conn_id) }}"
+            class="btn btn-primary">
+        Migrate
+    </button>
+    {% endif %}
+{% endif %}

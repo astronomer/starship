@@ -17,6 +17,8 @@ from starship.services.local_client import LocalAirflowClient
 
 import requests
 
+from pydash import at
+
 from python_graphql_client import GraphqlClient
 
 bp = Blueprint(
@@ -48,7 +50,7 @@ class AstroMigration(AppBuilderBaseView):
         query = "{self {user {username}}}"
 
         try:
-            api_rv = client.execute(query)["data"]["self"]["user"]["username"]
+            api_rv = at(client.execute(query), "data.self.user.username")[0]
 
             return api_rv
         except Exception as exc:
@@ -88,7 +90,7 @@ class AstroMigration(AppBuilderBaseView):
             """
 
             try:
-                api_rv = client.execute(query)["data"]["deployments"]
+                api_rv = at(client.execute(query), "data.deployments")[0]
 
                 return {deploy["id"]: deploy for deploy in (api_rv or [])}
             except Exception as exc:
@@ -207,17 +209,11 @@ class AstroMigration(AppBuilderBaseView):
         return self.render_template("env.html", data=data)
 
     @expose(
-        "/button/migrate/<string:type>/<string:deployment>/<string:target>",
+        "/button_migrate_connection/<string:deployment>/<string:conn_id>",
         methods=("GET", "POST"),
     )
-    @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
-    def button_migrate(self, type: str, deployment: str, target: str):
-        if type == "conn":
-            return self.button_migrate_conn(target, deployment)
-        elif type == "var":
-            return self.button_migrate_var(target, deployment)
-
-    def button_migrate_conn(self, conn_id: str, deployment: str):
+    @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONNECTION)])
+    def button_migrate_connection(self, conn_id: str, deployment: str):
         deployment_url = self.get_deployment_url(deployment)
 
         if request.method == "POST":
@@ -249,18 +245,46 @@ class AstroMigration(AppBuilderBaseView):
         ]
 
         return self.render_template(
-            "components/migrate_button.html",
-            type="conn",
-            target=conn_id,
+            "components/migrate_connection_button.html",
+            conn_id=conn_id,
             deployment=deployment,
             is_migrated=is_migrated,
         )
 
+    @expose("/label_test_connection/<string:deployment>/<string:conn_id>")
+    @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONNECTION)])
+    def label_test_connection(self, conn_id: str, deployment: str):
+        deployment_url = self.get_deployment_url(deployment)
+
+        local_connections = {
+            conn.conn_id: conn for conn in self.local_client.get_connections()
+        }
+
+        rv = requests.post(
+            f"{deployment_url}/api/v1/connections/test",
+            headers={"Authorization": f"Bearer {session.get('token')}"},
+            json={
+                "connection_id": local_connections[conn_id].conn_id,
+                "conn_type": local_connections[conn_id].conn_type,
+                "host": local_connections[conn_id].host,
+                "login": local_connections[conn_id].login,
+                "schema": local_connections[conn_id].schema,
+                "port": local_connections[conn_id].port,
+                "password": local_connections[conn_id].password or "",
+                "extra": local_connections[conn_id].extra,
+            },
+        )
+
+        return self.render_template(
+            "components/test_connection_label.html", data=rv.json(), conn_id=conn_id
+        )
+
     @expose(
-        "/button/migrate/var/<string:deployment>/<string:key>", methods=("GET", "POST")
+        "/button/migrate/var/<string:deployment>/<string:variable>",
+        methods=("GET", "POST"),
     )
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_VARIABLE)])
-    def button_migrate_var(self, key: str, deployment: str):
+    def button_migrate_variable(self, variable: str, deployment: str):
         deployment_url = self.get_deployment_url(deployment)
 
         if request.method == "POST":
@@ -269,17 +293,16 @@ class AstroMigration(AppBuilderBaseView):
             requests.post(
                 f"{deployment_url}/api/v1/variables",
                 headers={"Authorization": f"Bearer {session.get('token')}"},
-                json={"key": key, "value": local_vars[key].val},
+                json={"key": variable, "value": local_vars[variable].val},
             )
 
         remote_vars = self.get_astro_variables(deployment_url, session.get("token"))
 
-        is_migrated = key in [remote_var["key"] for remote_var in remote_vars]
+        is_migrated = variable in [remote_var["key"] for remote_var in remote_vars]
 
         return self.render_template(
-            "components/migrate_button.html",
-            type="var",
-            target=key,
+            "components/migrate_variable_button.html",
+            variable=variable,
             deployment=deployment,
             is_migrated=is_migrated,
         )
@@ -379,7 +402,7 @@ class AstroMigration(AppBuilderBaseView):
         return self.render_template(
             "components/target_deployment_select.html",
             deployments=deployments,
-            username=self.get_astro_username(token=session.get("token"))
+            username=self.get_astro_username(token=session.get("token")),
         )
 
     @expose("/logout")
@@ -461,7 +484,7 @@ class AstroMigration(AppBuilderBaseView):
 v_appbuilder_view = AstroMigration()
 
 v_appbuilder_package = {
-    "name": "Migration Tool 🚀",
+    "name": "Starship",
     "category": "Astronomer",
     "view": v_appbuilder_view,
 }

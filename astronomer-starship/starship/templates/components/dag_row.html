@@ -1,7 +1,7 @@
 <tr id="dag-{{dag_.id}}">
     <td>{{ dag_.id }}</td>
     <td>{{ dag_.is_on_astro }}</td>
-    <td class="text-right">
+    <td>
         {% if dag_.is_paused_here %}
         <button class="btn btn-success"
                 hx-post="{{ url_for('AstroMigration.dag_cutover_row', deployment=session.selectedAstroDeployment or 'undefined', dest='local', dag_id=dag_.id, action='unpause') }}"
@@ -20,7 +20,7 @@
         </button>
         {% endif %}
     </td>
-    <td class="text-right">
+    <td>
         {% if not dag_.is_on_astro %}
         <button class="btn btn-default" disabled>
             <span class="glyphicon glyphicon-play" aria-hidden="true"></span>

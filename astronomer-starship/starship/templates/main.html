@@ -2,6 +2,8 @@
 
 {% block head_js %}
 {{ super() }}
+<script src="https://unpkg.com/@popperjs/core@2"></script>
+<script src="https://unpkg.com/tippy.js@6"></script>
 <script
         src="{{ url_for('starship.static', filename='js/htmx.min.js') }}"
         integrity="sha384-cZuAZ+ZbwkNRnrKi05G/fjBX+azI9DNOkNYysZ0I/X5ZFgsmMiBXgDZof30F5ofc"
@@ -29,6 +31,6 @@ Starship Migration Plugin
 
 {% block content %}
 <div id="content">
-{% include 'migration.html' %}
+    {% include 'migration.html' %}
 </div>
 {% endblock %}
