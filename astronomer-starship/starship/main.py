@@ -21,6 +21,7 @@ from pydash import at
 
 from python_graphql_client import GraphqlClient
 
+
 bp = Blueprint(
     "starship",
     __name__,
@@ -484,7 +485,7 @@ class AstroMigration(AppBuilderBaseView):
 v_appbuilder_view = AstroMigration()
 
 v_appbuilder_package = {
-    "name": "Starship",
+    "name": "Starship 🛸",
     "category": "Astronomer",
     "view": v_appbuilder_view,
 }
