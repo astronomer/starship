@@ -21,6 +21,62 @@ from pydash import at
 
 from python_graphql_client import GraphqlClient
 
+import datetime
+import json
+import socket
+import urllib.error
+from contextlib import redirect_stderr, redirect_stdout
+
+import requests
+from airflow.configuration import conf
+from airflow.plugins_manager import AirflowPlugin
+from astronomer.aeroscope.util import clean_airflow_report_output
+from flask import Blueprint, Response, flash, redirect, request
+from flask_appbuilder import BaseView as AppBuilderBaseView
+from flask_appbuilder import expose
+from wtforms import Form, StringField, validators
+from typing import Any, Dict, List, Union
+
+import base64
+import json
+import logging
+from json import JSONDecodeError
+
+
+def clean_airflow_report_output(log_string: str) -> Union[dict, str]:
+    r"""Look for the magic string from the Airflow report and then decode the base64 and convert to json
+    Or return output as a list, trimmed and split on newlines
+    >>> clean_airflow_report_output('INFO 123 - xyz - abc\n\n\nERROR - 1234\n%%%%%%%\naGVsbG8gd29ybGQ=')
+    'hello world'
+    >>> clean_airflow_report_output('INFO 123 - xyz - abc\n\n\nERROR - 1234\n%%%%%%%\neyJvdXRwdXQiOiAiaGVsbG8gd29ybGQifQ==')
+    {'output': 'hello world'}
+    """
+
+    def get_json_or_clean_str(o: str) -> Union[List[Any], Dict[Any, Any], Any]:
+        """Either load JSON (if we can) or strip and split the string, while logging the error"""
+        try:
+            return json.loads(o)
+        except (JSONDecodeError, TypeError) as e:
+            logging.debug(e)
+            logging.debug(o)
+            return o.strip()
+
+    log_lines = log_string.split("\n")
+    enumerated_log_lines = list(enumerate(log_lines))
+    found_i = -1
+    for i, line in enumerated_log_lines:
+        if "%%%%%%%" in line:
+            found_i = i + 1
+            break
+    if found_i != -1:
+        output = base64.decodebytes("\n".join(log_lines[found_i:]).encode("utf-8")).decode("utf-8")
+        try:
+            return json.loads(output)
+        except JSONDecodeError:
+            return get_json_or_clean_str(output)
+    else:
+        return get_json_or_clean_str(log_string)
+
 
 bp = Blueprint(
     "starship",
@@ -495,3 +551,91 @@ class StarshipPlugin(AirflowPlugin):
     name = "starship"
     flask_blueprints = [bp]
     appbuilder_views = [v_appbuilder_package]
+
+
+bp = Blueprint(
+    "aeroscope",
+    __name__,
+    template_folder="templates",  # registers airflow/plugins/templates as a Jinja template folder
+    static_folder="static",
+    static_url_path="/static/aeroscope",
+)
+
+
+class AeroForm(Form):
+    organization = StringField("Organization", [validators.Length(min=4, max=25)])
+    presigned_url = StringField("Pre-signed URL (optional)", [validators.URL(), validators.optional()])
+
+
+# Creating a flask appbuilder BaseView
+class Aeroscope(AppBuilderBaseView):
+    default_view = "aeroscope"
+
+    @expose("/", methods=("GET", "POST"))
+    def aeroscope(self):
+        form = AeroForm(request.form)
+        if request.method == "POST" and form.validate() and request.form["action"] == "Download":
+
+            import io
+            import runpy
+            from urllib.request import urlretrieve
+
+            VERSION = os.getenv("TELESCOPE_REPORT_RELEASE_VERSION", "latest")
+            a = "airflow_report.pyz"
+            if VERSION == "latest":
+                urlretrieve("https://github.com/astronomer/telescope/releases/latest/download/airflow_report.pyz", a)
+            else:
+                try:
+                    urlretrieve(
+                        f"https://github.com/astronomer/telescope/releases/download/{VERSION}/airflow_report.pyz", a
+                    )
+                except urllib.error.HTTPError as e:
+                    flash(f"Error finding specified version:{VERSION} -- Reason:{e.reason}")
+            s = io.StringIO()
+            with redirect_stdout(s), redirect_stderr(s):
+                runpy.run_path(a)
+            date = datetime.datetime.now(datetime.timezone.utc).isoformat()[:10]
+            content = {
+                "telescope_version": "aeroscope-latest",
+                "report_date": date,
+                "organization_name": form.organization.data,
+                "local": {socket.gethostname(): {"airflow_report": clean_airflow_report_output(s.getvalue())}},
+            }
+            if len(form.presigned_url.data) > 1:
+                upload = requests.put(form.presigned_url.data, data=json.dumps(content))
+                if upload.ok:
+                    flash("Upload successful")
+                else:
+                    flash(upload.reason, "error")
+            filename = f"{date}.{form.organization.data}.data.json"
+            return Response(
+                json.dumps(content),
+                mimetype="application/json",
+                headers={"Content-Disposition": f"attachment;filename={filename}"},
+            )
+        elif request.method == "POST" and request.form["action"] == "Back to Airflow":
+            return redirect(conf.get("webserver", "base_url"))
+
+        else:
+            return self.render_template("main.html", form=form)
+
+
+v_appbuilder_view = Aeroscope()
+
+
+# Defining the plugin class
+class AeroscopePlugin(AirflowPlugin):
+    name = "aeroscope"
+    hooks = []
+    macros = []
+    flask_blueprints = [bp]
+    appbuilder_views = [
+        {
+            "name": "Run Aeroscope Report",
+            "category": "Astronomer",
+            "view": v_appbuilder_view,
+        },
+    ]
+    appbuilder_menu_items = []
+    global_operator_extra_links = []
+    operator_extra_links = []
