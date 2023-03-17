@@ -1,2 +1,3 @@
 recursive-include starship/templates *
 recursive-include starship/static *
+recursive-include aeroscope/plugins/templates *
