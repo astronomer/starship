@@ -1,0 +1,35 @@
+{% extends base_template %}
+
+{% block head_js %}
+{{ super() }}
+{% endblock %}
+
+{% block head_css %}
+{{ super() }}
+
+{% endblock %}
+
+{% block page_title %}
+Aeroscope Plugin
+{% endblock %}
+
+{% block content %}
+{% from "aeroscope/formhelper.html" import render_field %}
+<form id="aeroscope" method="post">
+  <h1>Aeroscope</h1>
+  <p>This is a utility for running Telescope on a single Airflow instance. You can read more about Telescope
+    <a href="https://github.com/astronomer/telescope">here</a>.<br>
+    The pre-signed URL field is optional and is to be supplied by an Astronomer Representative.<br>
+    If the pre-signed URL is used, the results of the Telescope Report is shipped to Astronomer.
+  </p>
+  <dl>
+    {{ render_field(form.organization) }}
+    {{ render_field(form.presigned_url) }}
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+  </dl>
+  <p>
+    <input type=submit name="action" value=Download>
+    <input type="submit" name="action" value="Back to Airflow">
+  </p>
+</form>
+{% endblock %}

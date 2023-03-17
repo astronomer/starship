@@ -124,7 +124,7 @@ class AstroMigration(AppBuilderBaseView):
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
     def main(self):
         session.update(request.form)
-        return self.render_template("main.html")
+        return self.render_template("starship/main.html")
 
     @staticmethod
     @ttl_cache(ttl=3600)
@@ -139,7 +139,7 @@ class AstroMigration(AppBuilderBaseView):
 
         if not token:
             return self.render_template(
-                "components/token_modal.html", show=True, error=None
+                "starship/components/token_modal.html", show=True, error=None
             )
 
         try:
@@ -151,20 +151,20 @@ class AstroMigration(AppBuilderBaseView):
             )
         except jwt.exceptions.ExpiredSignatureError:
             return self.render_template(
-                "components/token_modal.html", show=True, error="expired"
+                "starship/components/token_modal.html", show=True, error="expired"
             )
         except jwt.exceptions.InvalidTokenError:
             return self.render_template(
-                "components/token_modal.html", show=True, error="invalid"
+                "starship/components/token_modal.html", show=True, error="invalid"
             )
 
-        return self.render_template("components/token_modal.html", show=False)
+        return self.render_template("starship/components/token_modal.html", show=False)
 
     @expose("/button/save_token", methods=("POST",))
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
     def button_save_token(self):
         session["token"] = request.form.get("astroUserToken")
-        return self.render_template("migration.html")
+        return self.render_template("starship/migration.html")
 
     @expose("/tabs/dags")
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG)])
@@ -173,7 +173,7 @@ class AstroMigration(AppBuilderBaseView):
 
         self.local_client.get_dags()
 
-        return self.render_template("dags.html", data=data)
+        return self.render_template("starship/dags.html", data=data)
 
     @expose("/tabs/variables")
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_VARIABLE)])
@@ -183,7 +183,7 @@ class AstroMigration(AppBuilderBaseView):
             "vars": {var.key: var for var in self.local_client.get_variables()},
         }
 
-        return self.render_template("variables.html", data=data)
+        return self.render_template("starship/variables.html", data=data)
 
     @expose("/tabs/connections")
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONNECTION)])
@@ -195,7 +195,7 @@ class AstroMigration(AppBuilderBaseView):
             },
         }
 
-        return self.render_template("connections.html", data=data)
+        return self.render_template("starship/connections.html", data=data)
 
     @expose("/tabs/env")
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
@@ -207,7 +207,7 @@ class AstroMigration(AppBuilderBaseView):
             "environ": os.environ,
         }
 
-        return self.render_template("env.html", data=data)
+        return self.render_template("starship/env.html", data=data)
 
     @expose(
         "/button_migrate_connection/<string:deployment>/<string:conn_id>",
@@ -246,7 +246,7 @@ class AstroMigration(AppBuilderBaseView):
         ]
 
         return self.render_template(
-            "components/migrate_connection_button.html",
+            "starship/components/migrate_connection_button.html",
             conn_id=conn_id,
             deployment=deployment,
             is_migrated=is_migrated,
@@ -277,7 +277,7 @@ class AstroMigration(AppBuilderBaseView):
         )
 
         return self.render_template(
-            "components/test_connection_label.html", data=rv.json(), conn_id=conn_id
+            "starship/components/test_connection_label.html", data=rv.json(), conn_id=conn_id
         )
 
     @expose(
@@ -302,7 +302,7 @@ class AstroMigration(AppBuilderBaseView):
         is_migrated = variable in [remote_var["key"] for remote_var in remote_vars]
 
         return self.render_template(
-            "components/migrate_variable_button.html",
+            "starship/components/migrate_variable_button.html",
             variable=variable,
             deployment=deployment,
             is_migrated=is_migrated,
@@ -390,7 +390,7 @@ class AstroMigration(AppBuilderBaseView):
         is_migrated = key in remote_vars.keys()
 
         return self.render_template(
-            "components/env_checkbox.html",
+            "starship/components/env_checkbox.html",
             target=key,
             deployment=deployment,
             is_migrated=is_migrated,
@@ -401,7 +401,7 @@ class AstroMigration(AppBuilderBaseView):
         deployments = self.astro_deployments(session.get("token"))
 
         return self.render_template(
-            "components/target_deployment_select.html",
+            "starship/components/target_deployment_select.html",
             deployments=deployments,
             username=self.get_astro_username(token=session.get("token")),
         )
@@ -461,7 +461,7 @@ class AstroMigration(AppBuilderBaseView):
         resp_contents = resp.json()
 
         return self.render_template(
-            "components/dag_row.html",
+            "starship/components/dag_row.html",
             dag_={
                 "id": dag.dag_id,
                 "is_on_astro": is_on_astro,
