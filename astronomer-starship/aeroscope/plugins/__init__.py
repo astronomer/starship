@@ -15,7 +15,7 @@ from flask_appbuilder import expose
 from wtforms import Form, StringField, validators
 
 bp = Blueprint(
-    "aeroscope",
+    "starship_aeroscope",
     __name__,
     template_folder="templates",  # registers airflow/plugins/templates as a Jinja template folder
     static_folder="static",
@@ -86,7 +86,7 @@ v_appbuilder_view = Aeroscope()
 
 # Defining the plugin class
 class AeroscopePlugin(AirflowPlugin):
-    name = "aeroscope"
+    name = "starship_aeroscope"
     hooks = []
     macros = []
     flask_blueprints = [bp]
