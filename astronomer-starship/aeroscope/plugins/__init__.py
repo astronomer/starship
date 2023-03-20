@@ -29,7 +29,7 @@ class AeroForm(Form):
 
 
 # Creating a flask appbuilder BaseView
-class Aeroscope(AppBuilderBaseView):
+class StarshipAeroscope(AppBuilderBaseView):
     default_view = "aeroscope"
 
     @expose("/", methods=("GET", "POST"))
@@ -81,7 +81,7 @@ class Aeroscope(AppBuilderBaseView):
             return self.render_template("aeroscope/main.html", form=form)
 
 
-v_appbuilder_view = Aeroscope()
+v_appbuilder_view = StarshipAeroscope()
 
 
 # Defining the plugin class
