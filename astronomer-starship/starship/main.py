@@ -36,8 +36,8 @@ class AstroMigration(AppBuilderBaseView):
 
     def __init__(self):
         super().__init__()
-        self.local_client = LocalAirflowClient()
-        self.astro_client = AstroClient()
+        self.local_client: LocalAirflowClient = LocalAirflowClient()
+        self.astro_client: AstroClient = AstroClient()
 
     def get_astro_username(self, token):
         if not token:
