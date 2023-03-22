@@ -13,8 +13,7 @@ Initial Setup
 
 2. Once your source environment installs ``astronomer-starship`` via the ``requirements.txt``, you will see a new Astronomer menu. Hover over that menu and select the ``Migration Tool 🚀`` option
 
-.. image:: https://github.com/astronomer/starship/raw/master/astronomer-starship/images/menu-item.png
-   :width: 800
+.. image:: images/menu-item.png
 
 3. After opening the plugin page, you will need to authenticate to Astronomer. To do this, please:
 
@@ -32,19 +31,11 @@ Migrating Airflow Connections
 To migrate connections from your source Airflow meta-database:
 
 1. Click on the ``Connections`` tab:
-
-.. image:: https://github.com/astronomer/starship/raw/master/astronomer-starship/images/connections-tab.png
-   :width: 800
-
 2. In the table displaying the connections that can be migrated, click the ``Migrate`` button for each connection that needs to be sent to the Target Deployment:
 
-.. image:: https://github.com/astronomer/starship/raw/master/astronomer-starship/images/connections-migrate.png
-   :width: 800
+.. image:: images/connections-migrate.png
 
 3. Once the ``Migrate`` button is clicked, the connection will be sent to the Target Deployment and will show as ``Migrated ✅`` in the plugin UI:
-
-.. image:: https://github.com/astronomer/starship/raw/master/astronomer-starship/images/connections-migrate-complete.png
-   :width: 800
 
 Migrating Airflow Variables
 ---------------------------
@@ -52,15 +43,9 @@ Migrating Airflow Variables
 To migrate variables from your source Airflow meta-database:
 
 1. Click on the ``Variables`` tab:
+2. In the table displaying the variables that can be migrated, click the ``Migrate`` button for each variable that needs to be sent to the Target Deployment
 
-.. image:: https://github.com/astronomer/starship/raw/master/astronomer-starship/images/variables-tab.png
-   :width: 800
-
-2. In the table displaying the variables that can be migrated, click the ``Migrate`` button for each connection that needs to be sent to the Target Deployment
-
-.. image:: https://github.com/astronomer/starship/raw/master/astronomer-starship/images/variables-migrate.png
-   :width: 800
-
+.. image:: images/variables-migrate.png
 3. Once the ``Migrate`` button is clicked, the variable will be sent to the Target Deployment and will show as ``Migrated ✅`` in the plugin UI:
 
 .. image:: https://github.com/astronomer/starship/raw/master/astronomer-starship/images/variables-migrate-complete.png
@@ -72,24 +57,12 @@ Migrating Environment Variables
 To migrate environment variables from your source Airflow:
 
 1. Click on the ``Environment Variables`` tab:
-
-.. image:: https://github.com/astronomer/starship/raw/master/astronomer-starship/images/env-tab.png
-   :width: 800
-
 2. In the table displaying the environment variables that can be migrated, ensure the checkbox is ticked for each environment variable that needs to be sent to the Target Deployment
 
-.. image:: https://github.com/astronomer/starship/raw/master/astronomer-starship/images/env-migrate.png
-   :width: 800
+.. image:: images/env-migrate.png
 
 3. Once all of the desired environment variable checkboxes have been selected, click the ``Migrate`` button in the table header
-
-.. image:: https://github.com/astronomer/starship/raw/master/astronomer-starship/images/env-migrate-button.png
-   :width: 800
-
 4. After clicking the ``Migrate`` button in the table header, each selected environment variable will be sent to the Target Deployment and the ticked checkbox will display ``Migrated ✅``
-
-.. image:: https://github.com/astronomer/starship/raw/master/astronomer-starship/images/env-migrate-complete.png
-   :width: 800
 
 Utilizing DAGs Cutover Tab
 --------------------------
@@ -97,24 +70,12 @@ Utilizing DAGs Cutover Tab
 The DAGs Cutover Tab can be utilized to pause DAGs in the source environment and unpause DAGs in the target environment (as long as the DAG id in both the source and target environment match). To do so, please:
 
 1. Click on the ``DAGs Cutover`` tab:
+2. In the table displaying the DAGs present in both the source and target environments, click the Pause ⏸️ icon under ``Local``
 
-.. image:: https://github.com/astronomer/starship/raw/master/astronomer-starship/images/cutover-tab.png
-   :width: 800
+.. image:: images/cutover-pause-local.png
 
-2. In the table displaying the DAGs present in both the source and target environments, click the Pause icon under ``Local``
-
-.. image:: https://github.com/astronomer/starship/raw/master/astronomer-starship/images/cutover-pause-local.png
-   :width: 800
-
-3. In the table displaying the DAGs present in both the source and target environments, click the Start icon under ``Remote``
-
-.. image:: https://github.com/astronomer/starship/raw/master/astronomer-starship/images/cutover-start-remote.png
-   :width: 800
-
-4. After completing this process, you will see the DAG is paused in the ``Local`` environment (so you will see a Start Icon) and is unpaused in the ``Remote`` environment (so you will see a Pause icon)
-
-.. image:: https://github.com/astronomer/starship/raw/master/astronomer-starship/images/cutover-complete.png
-   :width: 800
+3. In the table displaying the DAGs present in both the source and target environments, click the Start ▶️ icon under ``Remote``
+4. After completing this process, you will see the DAG is paused in the ``Local`` environment (a Start ▶️ Icon) and is un-paused in the ``Remote`` environment (a Pause ⏸️ icon)
 
 License
 -------
