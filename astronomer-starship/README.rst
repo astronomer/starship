@@ -63,8 +63,18 @@ To migrate variables from your source Airflow meta-database:
 
 3. Once the ``Migrate`` button is clicked, the variable will be sent to the Target Deployment and will show as ``Migrated ✅`` in the plugin UI:
 
-.. image:: https://github.com/astronomer/starship/raw/master/astronomer-starship/images/variables-migrate-complete.png
-   :width: 800
+
+Migrating Airflow Pools
+---------------------------
+
+To migrate pools from your source Airflow meta-database:
+
+1. Click on the ``Pools`` tab:
+2. In the table displaying the pools that can be migrated, click the ``Migrate`` button for each pool that needs to be sent to the Target Deployment
+
+.. image:: images/pools-migrate.png
+
+3. Once the ``Migrate`` button is clicked, the pool will be created in the Target Deployment and will show as ``Migrated ✅`` in the plugin UI:
 
 Migrating Environment Variables
 -------------------------------
