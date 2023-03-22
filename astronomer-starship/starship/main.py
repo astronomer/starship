@@ -185,6 +185,16 @@ class AstroMigration(AppBuilderBaseView):
 
         return self.render_template("starship/variables.html", data=data)
 
+    @expose("/tabs/pools")
+    @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_VARIABLE)])
+    def tabs_pools(self):
+        data = {
+            "component": "pools",
+            "pools": {pools.key: pools for pools in self.local_client.get_pools()},
+        }
+
+        return self.render_template("starship/pools.html", data=data)
+
     @expose("/tabs/connections")
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONNECTION)])
     def tabs_conns(self):

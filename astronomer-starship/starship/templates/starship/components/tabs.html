@@ -6,6 +6,9 @@
         <li class="nav-item {{ 'active' if data.component == 'variables' }}">
             <a class="nav-link" hx-get="{{ url_for('AstroMigration.tabs_vars') }}">Variables</a>
         </li>
+        <li class="nav-item {{ 'active' if data.component == 'pools' }}">
+            <a class="nav-link" hx-get="{{ url_for('AstroMigration.tabs_pools') }}">Pools</a>
+        </li>
         <li class="nav-item {{ 'active' if data.component == 'env' }}">
             <a class="nav-link" hx-get="{{ url_for('AstroMigration.tabs_env') }}">Environment Variables</a>
         </li>

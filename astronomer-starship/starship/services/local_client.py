@@ -18,6 +18,13 @@ class LocalAirflowClient:
         return connections
 
     @provide_session
+    def get_pools(self, session: Session):
+        from airflow.models import Pool
+
+        pools = session.query(Pool).order_by(Pool.id).all()
+        return pools
+
+    @provide_session
     def get_variables(self, session: Session):
         from airflow.models import Variable
 
