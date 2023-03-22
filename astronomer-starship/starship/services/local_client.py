@@ -1,3 +1,5 @@
+from typing import List
+
 from airflow.utils.session import provide_session
 from sqlalchemy.orm import Session
 
@@ -18,10 +20,10 @@ class LocalAirflowClient:
         return connections
 
     @provide_session
-    def get_pools(self, session: Session):
+    def get_pools(self, session: Session) -> List['Pool']:
         from airflow.models import Pool
 
-        pools = session.query(Pool).order_by(Pool.id).all()
+        pools = session.query(Pool).all()
         return pools
 
     @provide_session

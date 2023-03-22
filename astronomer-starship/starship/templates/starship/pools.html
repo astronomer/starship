@@ -10,20 +10,21 @@
                 <th scope="col">Name</th>
                 <th scope="col">Slots</th>
                 <th scope="col">Description</th>
+                <th scope="col"></th>
             </tr>
         </thead>
         <tbody>
-        {% for key, pool in data.pools.items() %}
+        {% for p, pool in data.pools.items() %}
             <tr>
-                <td>{{ pool.pool }}</td>
+                <td>{{ p }}</td>
                 <td>{{ pool.slots }}</td>
                 <td>{{ pool.description }}</td>
                 <td class="text-right">
-                    <div id="migrate-button-{{pool.pool}}"
+                    <div id="migrate-button-{{p}}"
                          hx-trigger="load delay:100ms"
-                         hx-target="#migrate-button-{{pool.pool}}"
+                         hx-get="{{ url_for('AstroMigration.button_migrate_pool', deployment=session.selectedAstroDeployment or 'undefined', pool_name=pool) }}"
+                         hx-target="#migrate-button-{{p}}"
                          hx-swap="innerHTML">
-                        <!--                       hx-get="{{ url_for('AstroMigration.button_migrate_variable', deployment=session.selectedAstroDeployment or 'undefined', variable=var.key) }}"-->
                         <button class="btn btn-default disabled">Migrate</button>
                     </div>
                 </td>
