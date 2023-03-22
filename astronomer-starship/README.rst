@@ -1,7 +1,7 @@
 Astronomer Starship Plugin
 ==========================
 
-Apache Airflow Plugin meant to assist customers migrating Variables, Connections, and Environment Variables from a source Airflow environment to an Astronomer environment.
+Starship is an Airflow Plugin meant to assist customers migrating Variables, Connections, and Environment Variables from a source Airflow to an Astro Airflow.
 
 Initial Setup
 -------------
@@ -11,7 +11,7 @@ Initial Setup
 
     astronomer-starship
 
-2. Once your source environment installs ``astronomer-starship`` via the ``requirements.txt``, you will see a new Astronomer menu. Hover over that menu and select the ``Migration Tool 🚀`` option
+2. Once your source environment has ``astronomer-starship`` installed, you will see a new Astronomer menu. Hover over that menu and select the ``Migration Tool 🚀`` option
 
 .. image:: images/menu-item.png
 
