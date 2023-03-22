@@ -190,7 +190,7 @@ class AstroMigration(AppBuilderBaseView):
     def tabs_pools(self):
         data = {
             "component": "pools",
-            "pools": {pools.key: pools for pools in self.local_client.get_pools()},
+            "pools": {pool.pool: pool for pool in self.local_client.get_pools()},
         }
 
         return self.render_template("starship/pools.html", data=data)
