@@ -1,0 +1,11 @@
+{%  if not deployment %}
+<button class="btn btn-default disabled">Migrate</button>
+{% elif is_migrated %}
+<button class="btn btn-success disabled">Migrated</button>
+{% else %}
+<button
+        hx-post="{{ url_for('AstroMigration.button_migrate_pool', deployment=deployment, pool_name=pool) }}"
+        class="btn btn-primary">
+    Migrate
+</button>
+{% endif %}
