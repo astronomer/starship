@@ -92,7 +92,7 @@ class AeroscopePlugin(AirflowPlugin):
     flask_blueprints = [bp]
     appbuilder_views = [
         {
-            "name": "Run Aeroscope Report",
+            "name": "Run Report 🔭 Telescope",
             "category": "Astronomer",
             "view": v_appbuilder_view,
         },
