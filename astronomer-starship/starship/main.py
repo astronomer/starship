@@ -1,3 +1,4 @@
+import os
 from urllib.parse import urlparse
 
 from cachetools.func import ttl_cache
@@ -82,9 +83,10 @@ class AstroMigration(AppBuilderBaseView):
         headers = {"Authorization": f"Bearer {token}"}
 
         orgs = self.astro_orgs(token)
+        short_name = os.getenv("STARSHIP_ORG_SHORTNAME", [_ for _ in orgs.values()][0]['shortName'])
 
         # FIXME use the first org for now. change to a select in the near term.
-        url = f"https://api.astronomer.io/v1alpha1/organizations/{[_ for _ in orgs.values()][0]['shortName']}/deployments"
+        url = f"https://api.astronomer.io/v1alpha1/organizations/{short_name}/deployments"
 
         try:
             api_rv = requests.get(url, headers=headers).json()["deployments"]
