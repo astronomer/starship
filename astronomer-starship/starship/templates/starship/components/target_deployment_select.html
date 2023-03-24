@@ -21,7 +21,7 @@
                         {% for deploy in deployments.values() %}
                         <option value="{{deploy.id}}" {{
                         'selected' if deploy.id == session.selectedAstroDeployment}}>
-                        {{deploy.workspace.label}} / {{deploy.label}}</option>
+                        {{deploy.label}}</option>
                         {% endfor %}
                         {% endif %}
                     </select>

@@ -57,45 +57,42 @@ class AstroMigration(AppBuilderBaseView):
             print(exc)
             return None
 
-    @ttl_cache(ttl=1)
+    @ttl_cache(ttl=30)
+    def astro_orgs(self, token):
+        if not token:
+            return {}
+
+        headers = {"Authorization": f"Bearer {token}"}
+        url = "https://api.astronomer.io/v1alpha1/organizations"
+
+        try:
+            api_rv = requests.get(url, headers=headers).json()
+
+            return {org["id"]: org for org in (api_rv or [])}
+        except Exception as exc:
+            print(exc)
+            return {}
+
+
+    @ttl_cache(ttl=30)
     def astro_deployments(self, token):
-        if token:
-            headers = {"Authorization": f"Bearer {token}"}
-            client = GraphqlClient(
-                endpoint="https://api.astronomer.io/hub/v1", headers=headers
-            )
-            query = """
-            {
-                deployments
-                {
-                    id,
-                    label,
-                    releaseName,
-                    workspace
-                    {
-                        id,
-                        label
-                    },
-                    deploymentShortId,
-                    deploymentSpec
-                    {
-                        environmentVariables
-                        webserver {
-                            ingressHostname,
-                            url
-                        }
-                    }
-                }
-            }
-            """
+        if not token:
+            return {}
 
-            try:
-                api_rv = at(client.execute(query), "data.deployments")[0]
+        headers = {"Authorization": f"Bearer {token}"}
 
-                return {deploy["id"]: deploy for deploy in (api_rv or [])}
-            except Exception as exc:
-                print(exc)
-                return {}
+        orgs = self.astro_orgs(token)
+
+        # FIXME use the first org for now. change to a select in the near term.
+        url = f"https://api.astronomer.io/v1alpha1/organizations/{[_ for _ in orgs.values()][0]['shortName']}/deployments"
+
+        try:
+            api_rv = requests.get(url, headers=headers).json()["deployments"]
+
+            return {deploy["id"]: deploy for deploy in (api_rv or [])}
+        except Exception as exc:
+            print(exc)
+            return {}
 
     def get_astro_config(self, deployment_url: str, token: str):
         resp = requests.get(
@@ -525,7 +522,7 @@ class AstroMigration(AppBuilderBaseView):
 
         if astro_deployments and astro_deployments.get(deployment):
             url = urlparse(
-                astro_deployments[deployment]["deploymentSpec"]["webserver"]["url"]
+                astro_deployments[deployment]["webServerUrl"]
             )
             return f"https:/{url.netloc}/{url.path}"
 
