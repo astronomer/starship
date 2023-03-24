@@ -1,15 +1,26 @@
 <div id="astro-token-entry"
      hx-get="{{ url_for('AstroMigration.modal_token_entry') }}"
      hx-trigger="load delay:100ms"
-     hx-target="#astro-token-entry" hx-swap="outerHTML">
+     hx-target="#astro-token-entry"
+     hx-swap="outerHTML">
 </div>
 <div id="astro-deployment-selector"
+     hx-indicator="#astro-deployment-selector-loading"
      hx-get="{{ url_for('AstroMigration.deployment_selector') }}"
      hx-trigger="load delay:100ms"
-     hx-target="#astro-deployment-selector" hx-swap="innerHTML">
+     hx-target="#astro-deployment-selector"
+     hx-swap="innerHTML">
+    <div id="astro-deployment-selector-loading" class="htmx-indicator">
+        {% include 'starship/components/target_deployment_select_loading.html' %}
+    </div>
 </div>
 <div id="tabs"
+     hx-indicator="#tabs-loading"
      hx-get="{{ url_for('AstroMigration.tabs_conns') }}"
      hx-trigger="load delay:100ms"
-     hx-target="#tabs" hx-swap="innerHTML">
+     hx-target="#tabs"
+     hx-swap="innerHTML">
+    <div id="tabs-loading" class="htmx-indicator">
+        {% include 'starship/components/tabs_loading.html' %}
+    </div>
 </div>
