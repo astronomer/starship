@@ -8,3 +8,6 @@ isort
 pylint
 pyupgrade
 pytest-cov
+
+pulumi
+pulumi-aws
