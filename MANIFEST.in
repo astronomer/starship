@@ -1,0 +1,3 @@
+recursive-include astronomer/starship/templates *
+recursive-include astronomer/starship/static *
+recursive-include astronomer/aeroscope/plugins/templates *
