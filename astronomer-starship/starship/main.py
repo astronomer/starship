@@ -1,9 +1,4 @@
-import os
-from urllib.parse import urlparse
-
-from cachetools.func import ttl_cache
 from airflow.plugins_manager import AirflowPlugin
-from airflow import models
 
 from airflow.www import auth
 from airflow.security import permissions
@@ -13,14 +8,12 @@ import jwt
 from flask import Blueprint, session, request, redirect, url_for
 from flask_appbuilder import expose, BaseView as AppBuilderBaseView
 
-from starship.services.astrohub_client import AstroClient
-from starship.services.local_client import LocalAirflowClient
-
 import requests
 
-from pydash import at
-
-from python_graphql_client import GraphqlClient
+from starship.services import local_airflow_client, remote_airflow_client
+from starship.services.astro_client import get_deployments, get_username, get_jwk, get_deployment_url, \
+    set_environment_variables
+from starship.services.remote_airflow_client import get_dag, test_connection, create_connection
 
 bp = Blueprint(
     "starship",
@@ -34,109 +27,11 @@ bp = Blueprint(
 class AstroMigration(AppBuilderBaseView):
     default_view = "main"
 
-    def __init__(self):
-        super().__init__()
-        self.local_client: LocalAirflowClient = LocalAirflowClient()
-        self.astro_client: AstroClient = AstroClient()
-
-    def get_astro_username(self, token):
-        if not token:
-            pass
-
-        headers = {"Authorization": f"Bearer {token}"}
-        client = GraphqlClient(
-            endpoint="https://api.astronomer.io/hub/v1", headers=headers
-        )
-
-        query = "{self {user {username}}}"
-
-        try:
-            api_rv = at(client.execute(query), "data.self.user.username")[0]
-
-            return api_rv
-        except Exception as exc:
-            print(exc)
-            return None
-
-    @ttl_cache(ttl=30)
-    def astro_orgs(self, token):
-        if not token:
-            return {}
-
-        headers = {"Authorization": f"Bearer {token}"}
-        url = "https://api.astronomer.io/v1alpha1/organizations"
-
-        try:
-            api_rv = requests.get(url, headers=headers).json()
-
-            return {org["id"]: org for org in (api_rv or [])}
-        except Exception as exc:
-            print(exc)
-            return {}
-
-
-    @ttl_cache(ttl=30)
-    def astro_deployments(self, token):
-        if not token:
-            return {}
-
-        headers = {"Authorization": f"Bearer {token}"}
-
-        orgs = self.astro_orgs(token)
-        short_name = os.getenv("STARSHIP_ORG_SHORTNAME", [_ for _ in orgs.values()][0]['shortName'])
-
-        # FIXME use the first org for now. change to a select in the near term.
-        url = f"https://api.astronomer.io/v1alpha1/organizations/{short_name}/deployments"
-
-        try:
-            api_rv = requests.get(url, headers=headers).json()["deployments"]
-
-            return {deploy["id"]: deploy for deploy in (api_rv or [])}
-        except Exception as exc:
-            print(exc)
-            return {}
-
-    def get_astro_config(self, deployment_url: str, token: str):
-        resp = requests.get(
-            f"{deployment_url}/api/v1/config",
-            headers={"Authorization": f"Bearer {token}"},
-        )
-        return resp.json()
-
-    def get_astro_variables(self, deployment_url: str, token: str):
-        resp = requests.get(
-            f"{deployment_url}/api/v1/variables",
-            headers={"Authorization": f"Bearer {token}"},
-        )
-        return resp.json()["variables"]
-
-    def get_astro_pools(self, deployment_url: str, token: str):
-        resp = requests.get(
-            f"{deployment_url}/api/v1/pools",
-            headers={"Authorization": f"Bearer {token}"},
-        )
-        return resp.json()["pools"]
-
-    @ttl_cache(ttl=1)
-    def get_astro_connections(self, deployment_url: str, token: str):
-        resp = requests.get(
-            f"{deployment_url}/api/v1/connections",
-            headers={"Authorization": f"Bearer {token}"},
-        )
-        return resp.json()["connections"]
-
     @expose("/", methods=["GET", "POST"])
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
     def main(self):
         session.update(request.form)
         return self.render_template("starship/main.html")
-
-    @staticmethod
-    @ttl_cache(ttl=3600)
-    def get_jwk(token: str):
-        jwks_url = "https://auth.astronomer.io/.well-known/jwks.json"
-        jwks_client = jwt.PyJWKClient(jwks_url)
-        return jwks_client.get_signing_key_from_jwt(token)
 
     @expose("/modal/token")
     def modal_token_entry(self):
@@ -151,7 +46,7 @@ class AstroMigration(AppBuilderBaseView):
             jwt.decode(
                 token,
                 audience=["astronomer-ee"],
-                key=self.get_jwk(token).key,
+                key=get_jwk(token).key,
                 algorithms=["RS256"],
             )
         except jwt.exceptions.ExpiredSignatureError:
@@ -174,9 +69,7 @@ class AstroMigration(AppBuilderBaseView):
     @expose("/tabs/dags")
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG)])
     def tabs_dags(self):
-        data = {"component": "dags", "dags": self.local_client.get_dags()}
-
-        self.local_client.get_dags()
+        data = {"component": "dags", "dags": local_airflow_client.get_dags()}
 
         return self.render_template("starship/dags.html", data=data)
 
@@ -185,7 +78,7 @@ class AstroMigration(AppBuilderBaseView):
     def tabs_vars(self):
         data = {
             "component": "variables",
-            "vars": {var.key: var for var in self.local_client.get_variables()},
+            "vars": {var.key: var for var in local_airflow_client.get_variables()},
         }
 
         return self.render_template("starship/variables.html", data=data)
@@ -195,7 +88,7 @@ class AstroMigration(AppBuilderBaseView):
     def tabs_pools(self):
         data = {
             "component": "pools",
-            "pools": {pool.pool: pool for pool in self.local_client.get_pools()},
+            "pools": {pool.pool: pool for pool in local_airflow_client.get_pools()},
         }
 
         return self.render_template("starship/pools.html", data=data)
@@ -206,7 +99,7 @@ class AstroMigration(AppBuilderBaseView):
         data = {
             "component": "connections",
             "conns": {
-                conn.conn_id: conn for conn in self.local_client.get_connections()
+                conn.conn_id: conn for conn in local_airflow_client.get_connections()
             },
         }
 
@@ -230,30 +123,15 @@ class AstroMigration(AppBuilderBaseView):
     )
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONNECTION)])
     def button_migrate_connection(self, conn_id: str, deployment: str):
-        deployment_url = self.get_deployment_url(deployment)
+        deployment_url = get_deployment_url(deployment)
 
         if request.method == "POST":
             local_connections = {
-                conn.conn_id: conn for conn in self.local_client.get_connections()
+                conn.conn_id: conn for conn in local_airflow_client.get_connections()
             }
+            create_connection(conn_id, deployment_url, local_connections)
 
-            r = requests.post(
-                f"{deployment_url}/api/v1/connections",
-                headers={"Authorization": f"Bearer {session.get('token')}"},
-                json={
-                    "connection_id": local_connections[conn_id].conn_id,
-                    "conn_type": local_connections[conn_id].conn_type,
-                    "host": local_connections[conn_id].host,
-                    "login": local_connections[conn_id].login,
-                    "schema": local_connections[conn_id].schema,
-                    "port": local_connections[conn_id].port,
-                    "password": local_connections[conn_id].password or "",
-                    "extra": local_connections[conn_id].extra,
-                },
-            )
-            r.raise_for_status()
-
-        deployment_conns = self.get_astro_connections(
+        deployment_conns = local_airflow_client.get_connections(
             deployment_url, session.get("token")
         )
 
@@ -274,26 +152,12 @@ class AstroMigration(AppBuilderBaseView):
         if not os.getenv("ENABLE_CONN_TEST"):
             return "❔"
 
-        deployment_url = self.get_deployment_url(deployment)
+        deployment_url = get_deployment_url(deployment)
 
         local_connections = {
-            conn.conn_id: conn for conn in self.local_client.get_connections()
+            conn.conn_id: conn for conn in local_airflow_client.get_connections()
         }
-
-        rv = requests.post(
-            f"{deployment_url}/api/v1/connections/test",
-            headers={"Authorization": f"Bearer {session.get('token')}"},
-            json={
-                "connection_id": local_connections[conn_id].conn_id,
-                "conn_type": local_connections[conn_id].conn_type,
-                "host": local_connections[conn_id].host,
-                "login": local_connections[conn_id].login,
-                "schema": local_connections[conn_id].schema,
-                "port": local_connections[conn_id].port,
-                "password": local_connections[conn_id].password or "",
-                "extra": local_connections[conn_id].extra,
-            },
-        )
+        rv = test_connection(conn_id, deployment_url, local_connections)
 
         return self.render_template(
             "starship/components/test_connection_label.html", data=rv.json(), conn_id=conn_id
@@ -305,19 +169,14 @@ class AstroMigration(AppBuilderBaseView):
     )
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_VARIABLE)])
     def button_migrate_variable(self, variable: str, deployment: str):
-        deployment_url = self.get_deployment_url(deployment)
+        deployment_url = get_deployment_url(deployment)
 
         if request.method == "POST":
-            local_vars = {var.key: var for var in self.local_client.get_variables()}
+            local_vars = {var.key: var for var in local_airflow_client.get_variables()}
 
-            r = requests.post(
-                f"{deployment_url}/api/v1/variables",
-                headers={"Authorization": f"Bearer {session.get('token')}"},
-                json={"key": variable, "value": local_vars[variable].val},
-            )
-            r.raise_for_status()
+            remote_airflow_client.create_variable(deployment_url, local_vars, variable)
 
-        remote_vars = self.get_astro_variables(deployment_url, session.get("token"))
+        remote_vars = remote_airflow_client.get_variables(deployment_url, session.get("token"))
 
         is_migrated = variable in [remote_var["key"] for remote_var in remote_vars]
 
@@ -334,10 +193,10 @@ class AstroMigration(AppBuilderBaseView):
     )
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_VARIABLE)])
     def button_migrate_pool(self, pool_name: str, deployment: str):
-        deployment_url = self.get_deployment_url(deployment)
+        deployment_url = get_deployment_url(deployment)
 
         if request.method == "POST":
-            pool = [p for p in self.local_client.get_pools() if p.pool == pool_name][0]
+            pool = [p for p in local_airflow_client.get_pools() if p.pool == pool_name][0]
 
             r = requests.post(
                 f"{deployment_url}/api/v1/pools",
@@ -347,7 +206,7 @@ class AstroMigration(AppBuilderBaseView):
             print(r.request.body)
             r.raise_for_status()
 
-        remote_vars = self.get_astro_pools(deployment_url, session.get("token"))
+        remote_vars = remote_airflow_client.get_pools(deployment_url, session.get("token"))
 
         is_migrated = any((True for remote_var in remote_vars if remote_var.get("name", "") == pool_name))
 
@@ -363,26 +222,7 @@ class AstroMigration(AppBuilderBaseView):
     def button_migrate_env(self, deployment: str):
         import os
 
-        deployments = self.astro_deployments(session.get("token"))
-
-        headers = {"Authorization": f"Bearer {session.get('token')}"}
-        client = GraphqlClient(
-            endpoint="https://api.astronomer.io/hub/v1", headers=headers
-        )
-
-        query = """
-        fragment EnvironmentVariable on EnvironmentVariable {
-            key
-            value
-            isSecret
-            updatedAt
-        }
-        mutation deploymentVariablesUpdate($input: EnvironmentVariablesInput!) {
-            deploymentVariablesUpdate(input: $input) {
-                ...EnvironmentVariable
-            }
-        }
-        """
+        deployments = get_deployments(session.get("token"))
 
         remote_vars = {
             remote_var["key"]: {
@@ -408,23 +248,14 @@ class AstroMigration(AppBuilderBaseView):
                     "isSecret": False,
                 },
             )
-
-        client.execute(
-            query,
-            {
-                "input": {
-                    "deploymentId": deployment,
-                    "environmentVariables": list(remote_vars.values()),
-                }
-            },
-        )
+        set_environment_variables(deployment, remote_vars)
 
         return self.tabs_env()
 
     @expose("/checkbox/migrate/env/<string:deployment>/<string:key>/", methods=("GET",))
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
     def checkbox_migrate_env(self, key: str, deployment: str):
-        deployments = self.astro_deployments(session.get("token"))
+        deployments = get_deployments(session.get("token"))
 
         remote_vars = {
             remote_var["key"]: {
@@ -448,12 +279,12 @@ class AstroMigration(AppBuilderBaseView):
 
     @expose("/component/astro-deployment-selector")
     def deployment_selector(self):
-        deployments = self.astro_deployments(session.get("token"))
+        deployments = get_deployments(session.get("token"))
 
         return self.render_template(
             "starship/components/target_deployment_select.html",
             deployments=deployments,
-            username=self.get_astro_username(token=session.get("token")),
+            username=get_username(token=session.get("token")),
         )
 
     @expose("/logout")
@@ -480,8 +311,8 @@ class AstroMigration(AppBuilderBaseView):
         if dest not in ["local", "astro"]:
             raise Exception("dest must be 'local' or 'astro'")
 
-        dag = self.local_client.get_dags()[dag_id]
-        deployment_url = self.get_deployment_url(deployment)
+        dag = local_airflow_client.get_dags()[dag_id]
+        deployment_url = get_deployment_url(deployment)
         token = session.get("token")
 
         if request.method == "POST":
@@ -493,18 +324,11 @@ class AstroMigration(AppBuilderBaseView):
                 raise Exception("action must be 'pause' or 'unpause'")
 
             if dest == "local":
-                models.DagModel.get_dagmodel(dag_id).set_is_paused(is_paused=is_paused)
+                local_airflow_client.set_dag_is_paused(dag_id, is_paused)
             else:
-                resp = requests.patch(
-                    f"{deployment_url}/api/v1/dags?dag_id_pattern={dag_id}",
-                    headers={"Authorization": f"Bearer {token}"},
-                    json={"is_paused": is_paused},
-                )
+                remote_airflow_client.set_dag_is_paused(dag_id, is_paused, deployment_url, token)
 
-        resp = requests.get(
-            f"{deployment_url}/api/v1/dags/{dag_id}",
-            headers={"Authorization": f"Bearer {token}"},
-        )
+        resp = get_dag(dag_id, deployment_url, token)
 
         is_on_astro = not resp.status_code == 404
 
@@ -521,15 +345,6 @@ class AstroMigration(AppBuilderBaseView):
                 else False,
             },
         )
-
-    def get_deployment_url(self, deployment):
-        astro_deployments = self.astro_deployments(session.get("token"))
-
-        if astro_deployments and astro_deployments.get(deployment):
-            url = urlparse(
-                astro_deployments[deployment]["webServerUrl"]
-            )
-            return f"https:/{url.netloc}/{url.path}"
 
 
 v_appbuilder_view = AstroMigration()
