@@ -5,29 +5,27 @@ from urllib.parse import urlparse
 import jwt
 import requests
 from cachetools.func import ttl_cache
-from flask import session
 from pydash import at
 from python_graphql_client import GraphqlClient
 from deprecated import deprecated
 
+ASTRO_AUTH = "https://auth.astronomer.io"
+ASTROHUB_API = "https://api.astronomer.io/hub/v1"
+ASTRO_ALPHA_API = "https://api.astronomer.io/v1alpha1"
+
 
 def get_username(token):
-    if not token:
-        pass
-
     headers = {"Authorization": f"Bearer {token}"}
     client = GraphqlClient(
-        endpoint="https://api.astronomer.io/hub/v1", headers=headers
+        endpoint=ASTROHUB_API, headers=headers
     )
-
     query = "{self {user {username}}}"
 
     try:
         api_rv = at(client.execute(query), "data.self.user.username")[0]
-
         return api_rv
-    except Exception as exc:
-        print(exc)
+    except Exception as e:
+        print(e)
         return None
 
 
@@ -35,14 +33,12 @@ def get_username(token):
 def get_deployments(token):
     if not token:
         return {}
-
     headers = {"Authorization": f"Bearer {token}"}
-
     orgs = get_organizations(token)
     short_name = os.getenv("STARSHIP_ORG_SHORTNAME", [_ for _ in orgs.values()][0]['shortName'])
 
     # FIXME use the first org for now. change to a select in the near term.
-    url = f"https://api.astronomer.io/v1alpha1/organizations/{short_name}/deployments"
+    url = f"{ASTRO_ALPHA_API}/organizations/{short_name}/deployments"
 
     try:
         api_rv = requests.get(url, headers=headers).json()["deployments"]
@@ -59,7 +55,7 @@ def get_organizations(token):
         return {}
 
     headers = {"Authorization": f"Bearer {token}"}
-    url = "https://api.astronomer.io/v1alpha1/organizations"
+    url = f"{ASTRO_ALPHA_API}/organizations"
 
     try:
         api_rv = requests.get(url, headers=headers).json()
@@ -70,10 +66,56 @@ def get_organizations(token):
         return {}
 
 
+@ttl_cache(ttl=3600)
+def get_jwk(token: str):
+    jwks_url = f"{ASTRO_AUTH}/.well-known/jwks.json"
+    jwks_client = jwt.PyJWKClient(jwks_url)
+    return jwks_client.get_signing_key_from_jwt(token)
+
+
+def get_deployment_url(deployment, token):
+    all_astro_deployments = get_deployments(token)
+
+    if all_astro_deployments and all_astro_deployments.get(deployment):
+        url = urlparse(
+            all_astro_deployments[deployment]["webServerUrl"]
+        )
+        return f"https:/{url.netloc}/{url.path}"
+
+
+def set_environment_variables(deployment, remote_vars, token):
+    headers = {"Authorization": f"Bearer {token}"}
+    client = GraphqlClient(
+        endpoint=ASTROHUB_API, headers=headers
+    )
+    query = """
+            fragment EnvironmentVariable on EnvironmentVariable {
+                key
+                value
+                isSecret
+                updatedAt
+            }
+            mutation deploymentVariablesUpdate($input: EnvironmentVariablesInput!) {
+                deploymentVariablesUpdate(input: $input) {
+                    ...EnvironmentVariable
+                }
+            }
+            """
+    client.execute(
+        query,
+        {
+            "input": {
+                "deploymentId": deployment,
+                "environmentVariables": list(remote_vars.values()),
+            }
+        },
+    )
+
+
 @deprecated
 class AstroClient:
     def __init__(
-            self, token: Optional[str] = None, url: str = "https://api.astronomer.io/hub/v1"
+            self, token: Optional[str] = None, url: str = ASTROHUB_API
     ):
         self.token = token
         self.url = url
@@ -109,49 +151,3 @@ class AstroClient:
                     """
 
         return client.execute(query).get("data")
-
-
-@ttl_cache(ttl=3600)
-def get_jwk(token: str):
-    jwks_url = "https://auth.astronomer.io/.well-known/jwks.json"
-    jwks_client = jwt.PyJWKClient(jwks_url)
-    return jwks_client.get_signing_key_from_jwt(token)
-
-
-def get_deployment_url(deployment):
-    all_astro_deployments = get_deployments(session.get("token"))
-
-    if all_astro_deployments and all_astro_deployments.get(deployment):
-        url = urlparse(
-            all_astro_deployments[deployment]["webServerUrl"]
-        )
-        return f"https:/{url.netloc}/{url.path}"
-
-
-def set_environment_variables(deployment, remote_vars):
-    headers = {"Authorization": f"Bearer {session.get('token')}"}
-    client = GraphqlClient(
-        endpoint="https://api.astronomer.io/hub/v1", headers=headers
-    )
-    query = """
-            fragment EnvironmentVariable on EnvironmentVariable {
-                key
-                value
-                isSecret
-                updatedAt
-            }
-            mutation deploymentVariablesUpdate($input: EnvironmentVariablesInput!) {
-                deploymentVariablesUpdate(input: $input) {
-                    ...EnvironmentVariable
-                }
-            }
-            """
-    client.execute(
-        query,
-        {
-            "input": {
-                "deploymentId": deployment,
-                "environmentVariables": list(remote_vars.values()),
-            }
-        },
-    )

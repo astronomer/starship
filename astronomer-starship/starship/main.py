@@ -123,7 +123,7 @@ class AstroMigration(AppBuilderBaseView):
     )
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONNECTION)])
     def button_migrate_connection(self, conn_id: str, deployment: str):
-        deployment_url = get_deployment_url(deployment)
+        deployment_url = get_deployment_url(deployment, session.get("token"))
 
         if request.method == "POST":
             local_connections = {
@@ -152,7 +152,8 @@ class AstroMigration(AppBuilderBaseView):
         if not os.getenv("ENABLE_CONN_TEST"):
             return "❔"
 
-        deployment_url = get_deployment_url(deployment)
+
+        deployment_url = get_deployment_url(deployment, session.get("token"))
 
         local_connections = {
             conn.conn_id: conn for conn in local_airflow_client.get_connections()
@@ -169,7 +170,7 @@ class AstroMigration(AppBuilderBaseView):
     )
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_VARIABLE)])
     def button_migrate_variable(self, variable: str, deployment: str):
-        deployment_url = get_deployment_url(deployment)
+        deployment_url = get_deployment_url(deployment, session.get("token"))
 
         if request.method == "POST":
             local_vars = {var.key: var for var in local_airflow_client.get_variables()}
@@ -193,7 +194,7 @@ class AstroMigration(AppBuilderBaseView):
     )
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_VARIABLE)])
     def button_migrate_pool(self, pool_name: str, deployment: str):
-        deployment_url = get_deployment_url(deployment)
+        deployment_url = get_deployment_url(deployment, session.get("token"))
 
         if request.method == "POST":
             pool = [p for p in local_airflow_client.get_pools() if p.pool == pool_name][0]
@@ -248,7 +249,7 @@ class AstroMigration(AppBuilderBaseView):
                     "isSecret": False,
                 },
             )
-        set_environment_variables(deployment, remote_vars)
+        set_environment_variables(deployment, remote_vars, session.get("token"))
 
         return self.tabs_env()
 
@@ -312,8 +313,8 @@ class AstroMigration(AppBuilderBaseView):
             raise Exception("dest must be 'local' or 'astro'")
 
         dag = local_airflow_client.get_dags()[dag_id]
-        deployment_url = get_deployment_url(deployment)
         token = session.get("token")
+        deployment_url = get_deployment_url(deployment, token)
 
         if request.method == "POST":
             if action == "pause":
