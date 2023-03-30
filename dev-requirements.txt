@@ -8,6 +8,15 @@ isort
 pylint
 pyupgrade
 pytest-cov
+pytest-integration
 
+pyyaml
+python-dotenv
+
+# e2e
 pulumi
 pulumi-aws
+sh
+pytest-selenium
+selenium~=4.3.0
+webdriver_manager
