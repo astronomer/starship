@@ -26,8 +26,8 @@ def get_pools(session: Session) -> List['Pool']:
 def get_variables(session: Session):
     from airflow.models import Variable
 
-    vars = session.query(Variable).order_by(Variable.key).all()
-    return vars
+    variables = session.query(Variable).order_by(Variable.key).all()
+    return variables
 
 
 def get_dags():
