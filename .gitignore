@@ -3,7 +3,9 @@ venv
 __pycache__
 /.idea/
 *.whl
-.env
+.env*
 *.egg-info/
 dist/
 .DS_Store
+.pytest_cache/
+lib/

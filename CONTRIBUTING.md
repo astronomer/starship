@@ -18,9 +18,13 @@ FROM quay.io/astronomer/astro-runtime:7.3.0
 ENV AIRFLOW__WEBSERVER__RELOAD_ON_PLUGIN_CHANGE=true
 ENV FLASK_ENV=development
 ENV FLASK_DEBUG=true
-COPY starship .
-RUN cd starship/astronomer-starship && python setup.py sdist
-RUN pip install -e starship/astronomer-starship
+
+COPY --chown=astro:astro --chmod=777 lib lib
+COPY --chown=astro:astro --chmod=777 starship/astronomer-starship astronomer-starship
+RUN pip install -e astronomer-starship
+
+COPY --chown=astro:astro --chmod=777 starship/astronomer-starship-provider astronomer-starship-provider
+RUN pip install -e astronomer-starship-provider
 ```
 3. create `docker-compose.override.yml` with
 ```
@@ -28,7 +32,8 @@ version: "3.1"
 services:
   webserver:
     volumes:
-      - starship/astronomer-starship:/usr/local/airflow/starship/astronomer-starship:rw
+      - ./starship/astronomer-starship:/usr/local/airflow/astronomer-starship:rw
+      - ./starship/astronomer-starship-provider:/usr/local/airflow/astronomer-starship-provider:rw
     command: >
       bash -c 'if [[ -z "$$AIRFLOW__API__AUTH_BACKEND" ]] && [[ $$(pip show -f apache-airflow | grep basic_auth.py) ]];
         then export AIRFLOW__API__AUTH_BACKEND=airflow.api.auth.backend.basic_auth ;
@@ -42,6 +47,8 @@ services:
 5. Run with `astro dev start -i local` 
 
 **note:** that we have `astronomer-starship` mounted into our image via `docker-compose.override.yml`, so we don't need to always rebuild. We also have various flask/airflow debug and plugin reload settings enabled.
+
+**note**: alternative, possibly easier instructions here - https://airflow.apache.org/docs/apache-airflow/stable/authoring-and-scheduling/plugins.html#troubleshooting
 
 ## Restarting just the Webserver
 Not all changes take effect on just a page reload, you can restart the webserver without restarting the start:

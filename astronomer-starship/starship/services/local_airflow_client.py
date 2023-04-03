@@ -1,5 +1,6 @@
 from typing import List
 
+from airflow import DAG
 from airflow.models import DagModel
 from airflow.utils.session import provide_session
 from sqlalchemy.orm import Session
@@ -22,6 +23,10 @@ def get_pools(session: Session) -> List['Pool']:
     return pools
 
 
+def get_pool(pool_name):
+    return [p for p in get_pools() if p.pool == pool_name][0]
+
+
 @provide_session
 def get_variables(session: Session):
     from airflow.models import Variable
@@ -30,11 +35,19 @@ def get_variables(session: Session):
     return variables
 
 
+def get_variable(variable: str):
+    return [v for v in get_variables() if v.key == variable][0]
+
+
 def get_dags():
     from airflow.models import DagBag
 
     dags = DagBag().dags
     return dags
+
+
+def get_dag(dag_id: str) -> DAG:
+    return get_dags()[dag_id]
 
 
 def set_dag_is_paused(dag_id, is_paused):
