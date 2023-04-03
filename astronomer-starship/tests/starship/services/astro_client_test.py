@@ -10,6 +10,7 @@ from starship.services.astro_client import \
 
 @pytest.mark.skipif(condition=not os.getenv("MANUAL_TESTS", False),
                     reason="requires a real user, who ran `astro login` recently")
+@pytest.mark.slow_integration_test
 def test_get_username(user_token):
     actual = get_username(user_token)
     expected = '@astronomer.io'
@@ -42,6 +43,7 @@ def test_get_organizations(e2e_workspace_token):
 
 @pytest.mark.skipif(condition=not os.getenv("MANUAL_TESTS", False),
                     reason="requires a real user, who ran `astro login` recently")
+@pytest.mark.slow_integration_test
 def test_get_jwk(user_token, e2e_workspace_token):
     with pytest.raises(PyJWKClientError, match="Unable to find a signing key"):
         get_jwk(e2e_workspace_token)
