@@ -7,7 +7,7 @@
 <div id="astro-deployment-selector"
      hx-indicator="#astro-deployment-selector-loading"
      hx-get="{{ url_for('AstroMigration.deployment_selector') }}"
-     hx-trigger="load delay:100ms"
+     hx-trigger="load delay:10ms"
      hx-target="#astro-deployment-selector"
      hx-swap="innerHTML">
     <div id="astro-deployment-selector-loading" class="htmx-indicator">
@@ -16,8 +16,8 @@
 </div>
 <div id="tabs"
      hx-indicator="#tabs-loading"
-     hx-get="{{ url_for('AstroMigration.tabs_conns') }}"
-     hx-trigger="load delay:100ms"
+     hx-get="{{ url_for(data.tab) }}"
+     hx-trigger="load delay:10ms"
      hx-target="#tabs"
      hx-swap="innerHTML">
     <div id="tabs-loading" class="htmx-indicator">
