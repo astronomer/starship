@@ -1,23 +1,69 @@
 import json
+import os
 from sys import argv
 
+import pulumi
+import pytest
 from pulumi import FileAsset, Config, ResourceOptions
-from pulumi.automation import create_or_select_stack, LocalWorkspaceOptions, ConfigValue
+from pulumi.automation import create_or_select_stack, LocalWorkspaceOptions, ConfigValue, UpResult
 from pulumi_aws import s3, mwaa, ec2, iam, get_caller_identity, get_availability_zones
-
-VERSION = "2.2.2"
-NAME = f"starship-mwaa-{VERSION.replace('.', '-')}"
-REQUIREMENTS_TXT = "requirements.txt"
-SUPER_RAD_DAG_PY = "super_rad_dag.py"
-START_CIDR_OFFSET = 10
-_CIDR_BLOCK = "10.192.{}.0"
+import sh
 
 
-def cidr_block(plus: int = 0) -> str:
-    return _CIDR_BLOCK.format(0+plus)
+# sh_args = {"_in": sys.stdin, "_out": sys.stdout, "_err": sys.stderr, "_tee": True}
 
 
-def pulumi_program():
+@pytest.fixture
+def astro_deployment(
+        name, version,
+):
+    # TODO
+    sh.astro("deployment", "create")
+
+
+@pytest.fixture
+def mwaa_instance(
+        stack_name: str, project_name: str, region: str, name: str,
+        version: str, _cidr_block: str, start_cidr_offset: int
+) -> UpResult:
+    stack = create_or_select_stack(
+        stack_name=stack_name,
+        project_name=project_name,
+        program=_create_mwaa,
+        opts=LocalWorkspaceOptions(
+            env_vars={
+                "VERSION": version,
+                "NAME": name,
+                "START_CIDR_OFFSET": start_cidr_offset,
+                "_CIDR_BLOCK": _cidr_block
+            },
+        ),
+    )
+    stack.workspace.install_plugin("aws", "v5.0.0")
+    stack.set_all_config({
+        "aws:region": ConfigValue(region),
+        "aws:defaultTags": ConfigValue(json.dumps(
+            {"tags": {"managed_by": "pulumi", "pulumi_stack": stack_name, "pulumi_project": project_name}}
+        ))
+    })
+    up_result = stack.up(on_output=print)  # also stack.refresh
+    print(f"Update Summary: \n{json.dumps(up_result.summary.resource_changes, indent=4)}")
+    yield up_result
+    destroy_result = stack.destroy()
+    print(f"Destroy Summary: \n{json.dumps(destroy_result.summary.resource_changes, indent=4)}")
+
+
+def _create_mwaa():
+    name = os.getenv("NAME")
+    version = os.getenv("VERSION")
+    _cidr_block = os.getenv("_CIDR_BLOCK")
+    start_cidr_offset = os.getenv("START_CIDR_OFFSET")
+
+    def cidr_block(plus: int = 0) -> str:
+        return _cidr_block.format(0 + plus)
+
+    requirements_txt = "requirements.txt"
+    super_rad_dag_py = "super_rad_dag.py"
     aws_config = Config("aws")
     region = aws_config.require("region")
     acct = get_caller_identity().account_id
@@ -25,10 +71,10 @@ def pulumi_program():
 
     # S3 BUCKET
     # https://docs.aws.amazon.com/mwaa/latest/userguide/mwaa-s3-bucket.html
-    bucket = s3.BucketV2(NAME, bucket=NAME, )
-    s3.BucketAclV2(NAME, bucket=bucket.id, acl="private")
+    bucket = s3.BucketV2(name, bucket=name, )
+    s3.BucketAclV2(name, bucket=bucket.id, acl="private")
     s3.BucketPublicAccessBlock(
-        NAME,
+        name,
         bucket=bucket.id,
         block_public_acls=True,
         block_public_policy=True,
@@ -36,54 +82,54 @@ def pulumi_program():
         restrict_public_buckets=True
     )
     s3.BucketVersioningV2(
-        NAME,
+        name,
         bucket=bucket.id,
         versioning_configuration=s3.BucketVersioningV2VersioningConfigurationArgs(status="Enabled")
     )
 
     # REQUIREMENTS.TXT
     requirements = s3.BucketObjectv2(
-        REQUIREMENTS_TXT,
-        key=REQUIREMENTS_TXT,
+        requirements_txt,
+        key=requirements_txt,
         bucket=bucket.id,
-        source=FileAsset(f"resources/{REQUIREMENTS_TXT}"),
+        source=FileAsset(f"resources/{requirements_txt}"),
     )
 
     # DAGS
     dag = s3.BucketObjectv2(
-        SUPER_RAD_DAG_PY,
-        key=f"dags/{SUPER_RAD_DAG_PY}",
+        super_rad_dag_py,
+        key=f"dags/{super_rad_dag_py}",
         bucket=bucket.id,
-        source=FileAsset(f"resources/dags/{SUPER_RAD_DAG_PY}"),
+        source=FileAsset(f"resources/dags/{super_rad_dag_py}"),
     )
 
     # NETWORKING
     # https://docs.aws.amazon.com/mwaa/latest/userguide/networking-about.html
     vpc = ec2.Vpc(
-        NAME,
+        name,
         cidr_block=f"{cidr_block(plus=0)}/16",
         enable_dns_support=True,
         enable_dns_hostnames=True,
     )
-    route_table = ec2.RouteTable(f"{NAME}-route-table", vpc_id=vpc.id)
-    ec2.MainRouteTableAssociation(f"{NAME}-route-table-association", route_table_id=route_table.id, vpc_id=vpc.id)
+    route_table = ec2.RouteTable(f"{name}-route-table", vpc_id=vpc.id)
+    ec2.MainRouteTableAssociation(f"{name}-route-table-association", route_table_id=route_table.id, vpc_id=vpc.id)
 
-    internet_gateway = ec2.InternetGateway(NAME)
+    internet_gateway = ec2.InternetGateway(name)
     internet_gateway_attachment = ec2.InternetGatewayAttachment(
-        NAME,
+        name,
         internet_gateway_id=internet_gateway.id,
         vpc_id=vpc.id
     )
 
     ec2.Route(
-        f"{NAME}-default-public-route",
+        f"{name}-default-public-route",
         route_table_id=route_table.id,
         destination_cidr_block="0.0.0.0/0",
         gateway_id=internet_gateway.id,
         opts=ResourceOptions(depends_on=[internet_gateway_attachment])
     )
     sg = ec2.SecurityGroup(
-        NAME,
+        name,
         vpc_id=vpc.id,
         ingress=[ec2.SecurityGroupIngressArgs(protocol='-1', from_port=0, to_port=0, self=True)],
         egress=[ec2.SecurityGroupEgressArgs(protocol='-1', from_port=0, to_port=0, cidr_blocks=["0.0.0.0/0"])]
@@ -95,48 +141,48 @@ def pulumi_program():
 
         # PUBLIC
         subnet_resource = ec2.Subnet(
-            f"{NAME}-subnet-{i}",
+            f"{name}-subnet-{i}",
             vpc_id=vpc.id,
             availability_zone=azs.names[_i],
-            cidr_block=f"{cidr_block(START_CIDR_OFFSET + i)}/24",
+            cidr_block=f"{cidr_block(start_cidr_offset + i)}/24",
             map_public_ip_on_launch=True,
         )
         nat_gateway_eip = ec2.Eip(
-            f"{NAME}-nat-gateway-eip-{i}", vpc=True,
+            f"{name}-nat-gateway-eip-{i}", vpc=True,
             opts=ResourceOptions(depends_on=[internet_gateway_attachment])
         )
         nat_gateway = ec2.NatGateway(
-            f"{NAME}-nat-gateway-{i}",
+            f"{name}-nat-gateway-{i}",
             allocation_id=nat_gateway_eip.allocation_id,
             subnet_id=subnet_resource.id
         )
         ec2.RouteTableAssociation(
-            f"{NAME}-subnet-route-table-association-{i}",
+            f"{name}-subnet-route-table-association-{i}",
             route_table_id=route_table.id,
             subnet_id=subnet_resource.id
         )
 
         # PRIVATE
         private_subnet_resource = ec2.Subnet(
-            f"{NAME}-private-subnet-{i}",
+            f"{name}-private-subnet-{i}",
             vpc_id=vpc.id,
             availability_zone=azs.names[_i],
-            cidr_block=f"{cidr_block(START_CIDR_OFFSET + 10 + i)}/24",
+            cidr_block=f"{cidr_block(start_cidr_offset + 10 + i)}/24",
             map_public_ip_on_launch=False,
         )
         subnet_ids.append(private_subnet_resource.id)
         private_route_table = ec2.RouteTable(
-            f"{NAME}-private-route-table-{i}",
+            f"{name}-private-route-table-{i}",
             vpc_id=vpc.id
         )
         ec2.Route(
-            f"{NAME}-default-private-route-{i}",
+            f"{name}-default-private-route-{i}",
             route_table_id=private_route_table.id,
             destination_cidr_block="0.0.0.0/0",
             nat_gateway_id=nat_gateway.id
         )
         ec2.RouteTableAssociation(
-            f"{NAME}-private-subnet-route-table-association-{i}",
+            f"{name}-private-subnet-route-table-association-{i}",
             route_table_id=private_route_table.id,
             subnet_id=private_subnet_resource.id
         )
@@ -144,16 +190,16 @@ def pulumi_program():
     # IAM
     # https://docs.aws.amazon.com/mwaa/latest/userguide/mwaa-create-role.html
     role = iam.Role(
-        NAME,
+        name,
         inline_policies=[iam.RoleInlinePolicyArgs(
-            name=NAME,
+            name=name,
             policy=bucket.bucket.apply(lambda _bucket: json.dumps({
                 "Version": "2012-10-17",
                 "Statement": [
                     {
                         "Effect": "Allow",
                         "Action": "airflow:PublishMetrics",
-                        "Resource": f"arn:aws:airflow:{region}:*:environment/{NAME}"
+                        "Resource": f"arn:aws:airflow:{region}:*:environment/{name}"
                     },
                     {
                         "Effect": "Deny",
@@ -187,7 +233,7 @@ def pulumi_program():
                             "logs:GetQueryResults"
                         ],
                         "Resource": [
-                            f"arn:aws:logs:{region}:*:log-group:airflow-{NAME}-*"
+                            f"arn:aws:logs:{region}:*:log-group:airflow-{name}-*"
                         ]
                     },
                     {
@@ -263,15 +309,15 @@ def pulumi_program():
     )
 
     airflow = mwaa.Environment(
-        NAME,
-        name=NAME,
-        airflow_version=VERSION,
+        name,
+        name=name,
+        airflow_version=version,
         dag_s3_path="dags/",
         source_bucket_arn=bucket.arn,
         environment_class="mw1.small",
         min_workers=1,
         max_workers=1,
-        requirements_s3_path=REQUIREMENTS_TXT,
+        requirements_s3_path=requirements_txt,
         requirements_s3_object_version=requirements.version_id,
         # plugins_s3_object_version="",
         # plugins_s3_path
@@ -286,53 +332,28 @@ def pulumi_program():
         ),
         webserver_access_mode="PUBLIC_ONLY"
     )
+    pulumi.export("airflow_version", airflow.airflow_version)
+    pulumi.export("dag_s3_path", airflow.dag_s3_path)
+    pulumi.export("webserver_url", airflow.webserver_url)
+    pulumi.export("airflow_configuration_options", airflow.airflow_configuration_options)
+    pulumi.export("environment_class", airflow.environment_class)
+    pulumi.export("requirements_s3_path", airflow.requirements_s3_path)
+    pulumi.export("plugins_s3_path", airflow.plugins_s3_path)
+    pulumi.export("status", airflow.status)
 
 
-# ############################ #
-# required
-# curl -fsSL https://get.pulumi.com | sh
-# export PATH="$HOME/.pulumi/bin:$PATH"
-
-# PulumiAutoHook.get_conn #
-# project_name = conn.extra_dejson.get("extra__pulumi__project_name")
-# stack_name = conn.extra_dejson.get("extra__pulumi__stack_name")
-# backend_url = conn.host
-
-# if conn.password:
-#     self.env_vars["PULUMI_ACCESS_TOKEN"] = conn.password
-
-# config_passphrase = conn.extra_dejson.get("extra__pulumi__config_passphrase")
-# if config_passphrase:
-#     env_vars["PULUMI_CONFIG_PASSPHRASE"] = config_passphrase
-
-
-stack = create_or_select_stack(
-    stack_name="stack_name",
-    project_name="project_name",
-    program=pulumi_program,
-    opts=LocalWorkspaceOptions(
-        # env_vars=env_vars,
-        # if backend_url:
-        #     stack_opts.project_settings = auto.ProjectSettings(
-        #         name="project_name",
-        #         runtime="python",
-        #         backend=auto.ProjectBackend(url="backend_url"),
-        #     )
-    ),
+@pytest.mark.skipif(condition=not os.getenv("MANUAL_TESTS", False),
+                    reason="requires a real user, who ran `astro login` recently")
+@pytest.mark.slow_integration_test
+@pytest.mark.parametrize(
+    "mwaa_instance",
+    [
+        # stack_name: str, project_name: str, region: str, name: str,
+        # version: str, _cidr_block: str, start_cidr_offset: int
+        ["e2e", "starship-mwaa-2-2-2", "us-east-1", "starship-mwaa-2-2-2", "2.2.2", "10.192.{}.0", 10]
+    ], indirect=True  # this passes the above through to MWAA
 )
-stack.workspace.install_plugin("aws", "v5.0.0")
-stack.set_config("aws:region", ConfigValue("us-east-1"))
-stack.set_config("aws:defaultTags", ConfigValue(json.dumps(
-    {"tags": {"managed_by": "pulumi"}}
-)))
-
-
-if len(argv) > 1 and argv[1] == "destroy":
-    result = stack.destroy(on_output=print)
-    print(f"update summary: \n{json.dumps(result.summary.resource_changes, indent=4)}")
-elif len(argv) > 1 and argv[1] == "refresh":
-    result = stack.refresh(on_output=print)
-    print(f"refresh summary: \n{json.dumps(result.summary.resource_changes, indent=4)}")
-else:
-    result = stack.up(on_output=print)
-    print(f"update summary: \n{json.dumps(result.summary.resource_changes, indent=4)}")
+def test_e2e(mwaa_instance: UpResult):
+    mwaa_instance.outputs.get()
+    # install starship
+    # create astro deployment
