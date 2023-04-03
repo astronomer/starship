@@ -9,7 +9,7 @@ from starship.services.remote_airflow_client import get_connections, get_pools, 
     delete_pool, is_pool_migrated, delete_variable, is_variable_migrated
 
 
-@pytest.mark.integration
+@pytest.mark.integration_test
 def test_create_and_get_connections(e2e_deployment_url, e2e_deployment_id, e2e_workspace_token, e2e_api_token):
     from airflow.models import Connection
 
@@ -57,7 +57,7 @@ def test_create_and_get_connections(e2e_deployment_url, e2e_deployment_id, e2e_w
     )
 
 
-@pytest.mark.integration
+@pytest.mark.integration_test
 def test_create_and_get_pools(e2e_deployment_url, e2e_deployment_id, e2e_workspace_token, e2e_api_token):
     # GIVEN
 
@@ -98,7 +98,7 @@ def test_create_and_get_pools(e2e_deployment_url, e2e_deployment_id, e2e_workspa
     )
 
 
-@pytest.mark.integration
+@pytest.mark.integration_test
 def test_create_and_get_variables(e2e_deployment_url, e2e_deployment_id, e2e_workspace_token, e2e_api_token):
     # GIVEN
     test_variable = Variable(key="foo", val="bar", description="e2e test")
@@ -133,19 +133,19 @@ def test_create_and_get_variables(e2e_deployment_url, e2e_deployment_id, e2e_wor
     )
 
 
-@pytest.mark.integration
+@pytest.mark.integration_test
 def test_get_config(e2e_deployment_url, e2e_deployment_id, e2e_workspace_token, e2e_api_token):
     with pytest.raises(HTTPError):
         get_config(e2e_deployment_url, e2e_api_token)
 
 
-@pytest.mark.integration
+@pytest.mark.integration_test
 def test_set_dag_is_paused(e2e_deployment_url, e2e_deployment_id, e2e_workspace_token, e2e_api_token):
     actual = set_dag_is_paused("astronomer_monitoring_dag", True, e2e_deployment_url, e2e_api_token)
     assert actual.ok
 
 
-@pytest.mark.integration
+@pytest.mark.integration_test
 def test_get_dag(e2e_deployment_url, e2e_deployment_id, e2e_workspace_token, e2e_api_token):
     actual = get_dag("astronomer_monitoring_dag", e2e_deployment_url, e2e_api_token)
     assert actual.json()['dag_id'] == "astronomer_monitoring_dag"
