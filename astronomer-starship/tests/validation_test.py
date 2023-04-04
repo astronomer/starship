@@ -15,5 +15,9 @@ def test_version(package):
 
 
 def test_render_docs():
+    """test_render_docs
+    https://packaging.python.org/en/latest/guides/making-a-pypi-friendly-readme/#validating-restructuredtext-markup
+    """
     sh.python("setup.py", "sdist")
     sh.twine("check", "dist/*")
+    assert True, "we check .rst without errors"
