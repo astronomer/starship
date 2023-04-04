@@ -9,6 +9,7 @@ from airflow.www import auth
 from airflow.security import permissions
 
 import jwt
+from airflow.www.app import csrf
 
 from flask import Blueprint, session, request, redirect, url_for
 from flask_appbuilder import expose, BaseView as AppBuilderBaseView
@@ -153,9 +154,10 @@ class AstroMigration(AppBuilderBaseView):
 
     @expose("/daghistory/receive/<string:deployment>/<string:dest>/<string:dag_id>/<string:action>"
         ,methods=["GET", "POST"])
-    # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
+    @csrf.exempt
     def receive_dag_history(self, deployment: str, dag_id: str, dest: str = "local", action: str = None):
-        data = request.form
+        data = request.json
+        # return data
         try:
             return receive_dag(dag=dag_id,deployment=deployment,dest=dest,action=action,data=data)
         except Exception as e:

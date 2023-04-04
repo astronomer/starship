@@ -54,8 +54,6 @@ def migrate_dag(dag:str,deployment_url:str,deployment:str,csfr:dict):
         #         "sla_miss"
                    ]:
         result.append(migrate(table_name=table,dag_id=dag))
-    data = urllib.parse.urlencode(result[0][0])
-    data+='&'+urllib.parse.urlencode(csfr)
     # headers={
     # # 'User-Agent':' Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/111.0',
     # 'Accept':'*/*' ,
@@ -76,32 +74,35 @@ def migrate_dag(dag:str,deployment_url:str,deployment:str,csfr:dict):
     # }
     # requests.post(f"http://localhost:8080/astromigration/daghistory/receive/clfr61wko539379c0fn377567g/astro/{dag}/send",data=data,headers=headers)
     # return str(type(result[0][0]))
-    return data
-
+    return str(result[0][0].items())
 
 def receive_dag(dag:str=None,deployment:str=None,dest:str=None,action:str=None,data:dict={}):
-    data=data.to_dict()
-    del data['csrf_token']
-    #TODO: deleting this unitl i figure out how to handle bools & bytes
-    del data['external_trigger']
-    del data['conf']
-    table_name='dag_run'
-    # sql_alchemy_conn = os.environ["AIRFLOW__CORE__SQL_ALCHEMY_CONN"]
-    # conn_url = f"{sql_alchemy_conn}/postgres"
-    # dest_session = settings.Session()
-    # dest_engine = create_engine(conn_url, echo=False)
+    try:
+        # data=data.to_dict()
+        # del data['csrf_token']
+        #TODO: deleting this unitl i figure out how to handle bools & bytes
+        del data['external_trigger']
+        del data['conf']
+        table_name='dag_run'
+        # sql_alchemy_conn = os.environ["AIRFLOW__CORE__SQL_ALCHEMY_CONN"]
+        # conn_url = f"{sql_alchemy_conn}/postgres"
+        # dest_session = settings.Session()
+        # dest_engine = create_engine(conn_url, echo=False)
 
-    dest_session = settings.Session()
-    dest_engine = dest_session.get_bind()
-    dest_metadata_obj = MetaData(bind=dest_engine)
-    dest_table = get_table(dest_metadata_obj, dest_engine, table_name)
-    dest_engine.execute(
-        sqlalchemy.dialects.postgresql.insert(dest_table).on_conflict_do_nothing(),
-        # ### ^POTENTIALLY CHANGE HERE^ ###
-        [data]
-    )
-    dest_session.commit()
+        dest_session = settings.Session()
+        # dest_session = session.e
 
+        dest_engine = dest_session.get_bind()
+        dest_metadata_obj = MetaData(bind=dest_engine)
+        dest_table = get_table(dest_metadata_obj, dest_engine, table_name)
+        dest_engine.execute(
+            sqlalchemy.dialects.postgresql.insert(dest_table).on_conflict_do_nothing(),
+            # ### ^POTENTIALLY CHANGE HERE^ ###
+            [data]
+        )
+        dest_session.commit()
+    except Exception as e:
+        return str(e)
     # urllib.parse.urlencode(data)
     # return urllib.parse.urlencode(data)
 
