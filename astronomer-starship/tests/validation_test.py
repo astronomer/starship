@@ -1,3 +1,5 @@
+import sh
+
 def test_version(package):
     import configparser
     import requests
@@ -10,3 +12,8 @@ def test_version(package):
     [shipped_versions.append(version) for version, details in releases.items()]
 
     assert local_version not in shipped_versions
+
+
+def test_render_docs():
+    sh.python("setup.py", "sdist")
+    sh.twine("check", "dist/*")
