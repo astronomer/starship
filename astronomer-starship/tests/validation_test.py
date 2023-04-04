@@ -1,5 +1,6 @@
 import sh
 
+
 def test_version(package):
     import configparser
     import requests
