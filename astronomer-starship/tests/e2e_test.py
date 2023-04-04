@@ -1,16 +1,12 @@
 import json
 import os
-from sys import argv
 
 import pulumi
 import pytest
-from pulumi import FileAsset, Config, ResourceOptions
-from pulumi.automation import create_or_select_stack, LocalWorkspaceOptions, ConfigValue, UpResult
-from pulumi_aws import s3, mwaa, ec2, iam, get_caller_identity, get_availability_zones
 import sh
-
-
-# sh_args = {"_in": sys.stdin, "_out": sys.stdout, "_err": sys.stderr, "_tee": True}
+from pulumi import FileAsset, Config, ResourceOptions
+from pulumi.automation import create_or_select_stack, ConfigValue, UpResult
+from pulumi_aws import s3, mwaa, ec2, iam, get_caller_identity, get_availability_zones
 
 
 @pytest.fixture
@@ -18,33 +14,26 @@ def astro_deployment(
         name, version,
 ):
     # TODO
+    # sh_args = {"_in": sys.stdin, "_out": sys.stdout, "_err": sys.stderr, "_tee": True}
     sh.astro("deployment", "create")
 
 
 @pytest.fixture
 def mwaa_instance(
-        stack_name: str, project_name: str, region: str, name: str,
-        version: str, _cidr_block: str, start_cidr_offset: int
+        request
 ) -> UpResult:
-    stack = create_or_select_stack(
-        stack_name=stack_name,
-        project_name=project_name,
-        program=_create_mwaa,
-        opts=LocalWorkspaceOptions(
-            env_vars={
-                "VERSION": version,
-                "NAME": name,
-                "START_CIDR_OFFSET": start_cidr_offset,
-                "_CIDR_BLOCK": _cidr_block
-            },
-        ),
-    )
+    stack_name, project_name, region, name, version, _cidr_block, start_cidr_offset = request.param
+    stack = create_or_select_stack(stack_name=stack_name, project_name=project_name, program=_create_mwaa,)
     stack.workspace.install_plugin("aws", "v5.0.0")
     stack.set_all_config({
         "aws:region": ConfigValue(region),
         "aws:defaultTags": ConfigValue(json.dumps(
             {"tags": {"managed_by": "pulumi", "pulumi_stack": stack_name, "pulumi_project": project_name}}
-        ))
+        )),
+        "version": ConfigValue(version),
+        "name": ConfigValue(name),
+        "start_cidr_offset": ConfigValue(start_cidr_offset),
+        "_cidr_block": ConfigValue(_cidr_block)
     })
     up_result = stack.up(on_output=print)  # also stack.refresh
     print(f"Update Summary: \n{json.dumps(up_result.summary.resource_changes, indent=4)}")
@@ -54,17 +43,26 @@ def mwaa_instance(
 
 
 def _create_mwaa():
-    name = os.getenv("NAME")
-    version = os.getenv("VERSION")
-    _cidr_block = os.getenv("_CIDR_BLOCK")
-    start_cidr_offset = os.getenv("START_CIDR_OFFSET")
-
     def cidr_block(plus: int = 0) -> str:
         return _cidr_block.format(0 + plus)
 
     requirements_txt = "requirements.txt"
     super_rad_dag_py = "super_rad_dag.py"
     aws_config = Config("aws")
+    other_config = Config()
+
+    name = other_config.require("name")
+    print(f"name: {name}")
+
+    version = other_config.require("version")
+    print(f"version: {version}")
+
+    _cidr_block = other_config.require("_cidr_block")
+    print(f"_cidr_block: {_cidr_block}")
+
+    start_cidr_offset = int(other_config.require("start_cidr_offset"))
+    print(f"start_cidr_offset: {start_cidr_offset}")
+
     region = aws_config.require("region")
     acct = get_caller_identity().account_id
     azs = get_availability_zones(state="available")
@@ -350,7 +348,7 @@ def _create_mwaa():
     [
         # stack_name: str, project_name: str, region: str, name: str,
         # version: str, _cidr_block: str, start_cidr_offset: int
-        ["e2e", "starship-mwaa-2-2-2", "us-east-1", "starship-mwaa-2-2-2", "2.2.2", "10.192.{}.0", 10]
+        ["e2e", "starship-mwaa-2-2-2", "us-east-1", "starship-mwaa-2-2-2", "2.2.2", "10.192.{}.0", "10"]
     ], indirect=True  # this passes the above through to MWAA
 )
 def test_e2e(mwaa_instance: UpResult):
