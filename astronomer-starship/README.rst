@@ -26,7 +26,7 @@ Initial Setup
 4. After authenticating to Astronomer, you will need to select the deployment that you are sending metadata to. To do this, select a deployment from the ``Target Deployment`` dropdown and click the ``Select`` button
 
 Running Aeroscope Report
------------------
+------------------------
 To run the Aeroscope Report, to get a snapshot of your source Airflow Instance
 
 1. Hover over the Astronomer menu in the Airflow UI and select ``Run Aeroscope Report``
@@ -54,11 +54,11 @@ To migrate variables from your source Airflow meta-database:
 2. In the table displaying the variables that can be migrated, click the ``Migrate`` button for each variable that needs to be sent to the Target Deployment
 
 .. image:: images/variables-migrate.png
-3. Once the ``Migrate`` button is clicked, the variable will be sent to the Target Deployment and will show as ``Migrated ✅`` in the plugin UI:
 
+3. Once the ``Migrate`` button is clicked, the variable will be sent to the Target Deployment and will show as ``Migrated ✅`` in the plugin UI
 
 Migrating Airflow Pools
----------------------------
+-----------------------
 
 To migrate pools from your source Airflow meta-database:
 

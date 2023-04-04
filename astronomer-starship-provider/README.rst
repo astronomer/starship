@@ -81,8 +81,3 @@ The ``AstroMigrationOperator`` can be configured as follows:
           connection_exclude_list=["some_conn_1"],
           env_include_list=["FOO", "BAR"]
       )
-
-
-   
-
-     
