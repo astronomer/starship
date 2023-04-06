@@ -10,6 +10,8 @@ from typing import Optional
 import requests
 from airflow.configuration import conf
 from airflow.plugins_manager import AirflowPlugin
+
+from aeroscope.plugins.airflow_report import airflow_report
 from aeroscope.util import clean_airflow_report_output
 from flask import Blueprint, Response, flash, redirect, request
 from flask_appbuilder import BaseView as AppBuilderBaseView
@@ -36,33 +38,14 @@ class AeroForm(Form):
 
 
 def get_aeroscope_report(date: str, organization: str):
-    import io
-    import runpy
-    from urllib.request import urlretrieve
-
-    version = os.getenv("TELESCOPE_REPORT_RELEASE_VERSION", "latest")
-    a = "airflow_report.pyz"
-    if version == "latest":
-        urlretrieve("https://github.com/astronomer/telescope/releases/latest/download/airflow_report.pyz", a)
-    else:
-        try:
-            urlretrieve(
-                f"https://github.com/astronomer/telescope/releases/download/{version}/airflow_report.pyz", a
-            )
-        except urllib.error.HTTPError as e:
-            flash(f"Error finding specified version:{version} -- Reason:{e.reason}")
-    s = io.StringIO()
-    with redirect_stdout(s), redirect_stderr(s):
-        runpy.run_path(a)
     return {
         "telescope_version": "aeroscope-latest",
         "report_date": date,
         "organization_name": organization,
-        "local": {socket.gethostname(): {"airflow_report": clean_airflow_report_output(s.getvalue())}},
+        "airflow_report": airflow_report(),
     }
 
 
-# Creating a flask appbuilder BaseView
 class StarshipAeroscope(AppBuilderBaseView):
     default_view = "aeroscope"
 
@@ -93,10 +76,10 @@ class StarshipAeroscope(AppBuilderBaseView):
             return self.render_template(
                 "aeroscope/report.html",
                 form=form,
-                data=get_aeroscope_report(
+                telescope_data=json.dumps(get_aeroscope_report(
                     date=date,
                     organization=form.organization.data,
-                )
+                ), default=str)
             )
         else:
             return self.render_template("aeroscope/main.html", form=form)
