@@ -6,7 +6,7 @@ import requests
 import yaml
 from dotenv import load_dotenv
 
-from starship.services.astro_client import ASTRO_AUTH, get_deployment_url
+from astronomer.starship.services.astro_client import ASTRO_AUTH, get_deployment_url
 
 
 @pytest.fixture
@@ -31,11 +31,11 @@ def e2e_api_token() -> str:
             "client_id": astro_id,
             "client_secret": astro_key,
             "audience": "astronomer-ee",
-            "grant_type": "client_credentials"
-        }
+            "grant_type": "client_credentials",
+        },
     )
     r.raise_for_status()
-    return r.json()['access_token']
+    return r.json()["access_token"]
 
 
 @pytest.fixture
@@ -50,7 +50,9 @@ def e2e_workspace_token() -> str:
 @pytest.fixture
 def user_token() -> str:
     with open(Path.home() / ".astro/config.yaml") as f:
-        _, token = yaml.safe_load(f)['contexts']["astronomer_io"]["token"].split("Bearer ")
+        _, token = yaml.safe_load(f)["contexts"]["astronomer_io"]["token"].split(
+            "Bearer "
+        )
     return token
 
 
