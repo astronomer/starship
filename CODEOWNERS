@@ -1,0 +1,14 @@
+# Lines starting with '#' are comments.
+# Each line is a file pattern followed by one or more owners.
+# These owners will be the default owners for everything in the repo.
+# * <@insert_github_username>
+#
+# Order is important. The last matching pattern has the most precedence.
+
+
+# This file is also being managed automatically by the gitown tool.
+* @fritz-astronomer
+.pre-commit-config.yaml @fritz-astronomer
+CODEOWNERS @fritz-astronomer
+pyproject.toml @fritz-astronomer
+poetry.lock @fritz-astronomer
