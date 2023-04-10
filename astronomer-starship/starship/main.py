@@ -147,8 +147,9 @@ class AstroMigration(AppBuilderBaseView):
         data = request.form
         deployment_url = self.get_deployment_url(deployment)
         # return dag_id
+        token=session.get('token')
         try:
-            return migrate_dag(dag_id,deployment_url=deployment_url,deployment=deployment,csfr=data)
+            return migrate_dag(dag_id,deployment_url=deployment_url,deployment=deployment,csfr=data, token=token)
         except Exception as e:
             return str(e)
 
@@ -157,6 +158,7 @@ class AstroMigration(AppBuilderBaseView):
     @csrf.exempt
     def receive_dag_history(self, deployment: str, dag_id: str, dest: str = "local", action: str = None):
         data = request.json
+        token=session.get('token')
         # return data
         try:
             return receive_dag(dag=dag_id,deployment=deployment,dest=dest,action=action,data=data)

@@ -9,6 +9,7 @@ import os
 from flask import jsonify
 import urllib.parse
 import requests
+import datetime
 
 
 def get_table(_metadata_obj, _engine, _table_name):
@@ -17,7 +18,7 @@ def get_table(_metadata_obj, _engine, _table_name):
     except NoSuchTableError:
         return Table(_table_name, _metadata_obj, autoload_with=_engine)
 def migrate(table_name: str, batch_size: int = 100000, dag_id:str=''):
-    try:
+
         logging.info(f"Creating source SQL Connections ..")
         # sql_alchemy_conn = os.environ["AIRFLOW__CORE__SQL_ALCHEMY_CONN"]
         # conn_url = f"{sql_alchemy_conn}/postgres"
@@ -33,48 +34,43 @@ def migrate(table_name: str, batch_size: int = 100000, dag_id:str=''):
         source_result = source_engine.execution_options(stream_results=True) \
             .execute(f"SELECT * FROM {source_table.name} where dag_id='{dag_id}' limit 1")
         rtn=[]
-        for result in source_result:
-            rtn.append(result._mapping)
+        for result in source_result.fetchall():
+            result=dict(result._asdict())
+            for key,value in result.items():
+                if isinstance(value,memoryview):
+                    result[key]=value.tobytes().decode('iso-8859-1')
+                if isinstance(value,datetime.datetime):
+                    result[key]=f"{value.strftime('%Y-%m-%d %H:%M:%S.%f+00')}"
+            result["table"]=table_name
+            rtn.append(result)
 
         return rtn
-    except Exception as e:
-        return str(e)
+    # except Exception as e:
+    #     return str(e)
 
-def migrate_dag(dag:str,deployment_url:str,deployment:str,csfr:dict):
+def migrate_dag(dag:str,deployment_url:str,deployment:str,csfr:dict,token:str):
     result=[]
     for table in  [
-        "dag_run",
-        #         "task_instance",
-        #         "task_reschedule",
-        #         "trigger",
-        #         "task_fail",
-        #         "xcom",
-        #         "rendered_task_instance_fields",
-        #         "sensor_instance",
-        #         "sla_miss"
+            "dag_run",
+            "task_instance",
+            # "task_reschedule",
+            # "trigger",
+            # "task_fail",
+            # "xcom",
+            # "rendered_task_instance_fields",
+            # "sensor_instance",
+            # "sla_miss"
                    ]:
         result.append(migrate(table_name=table,dag_id=dag))
-    # headers={
-    # # 'User-Agent':' Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/111.0',
-    # 'Accept':'*/*' ,
-    # 'Accept-Language':'en-US,en;q=0.5',
-    # 'Accept-Encoding':'gzip, deflate, br' ,
-    # # 'HX-Request':' true',
-    # # 'HX-Target':' dag-example_dag_basic',
-    # # 'HX-Current-URL':' http://localhost:8080/astromigration/',
-    # 'Content-Type':'application/x-www-form-urlencoded',
-    # # 'Origin':' http://localhost:8080',
-    # # 'DNT':' 1',
-    # 'Connection':'keep-alive',
-    # # 'Referer':' http://localhost:8080/astromigration/',
-    # # 'Cookie':' session=efe9be01-b45a-4450-aa58-07ad2b87e1b4.FgYSPmVAL1T-ONa5jvy1_yubNmc',
-    # 'Sec-Fetch-Dest':'empty',
-    # 'Sec-Fetch-Mode':'cors',
-    # 'Sec-Fetch-Site':'same-origin',
-    # }
-    # requests.post(f"http://localhost:8080/astromigration/daghistory/receive/clfr61wko539379c0fn377567g/astro/{dag}/send",data=data,headers=headers)
-    # return str(type(result[0][0]))
-    return str(result[0][0].items())
+    headers={
+     'Content-Type':'application/json',
+        "Authorization": f"Bearer {token}"
+      }
+    logging.info(f"curl --location {deployment_url}/astromigration/daghistory/receive/{deployment}/astro/{dag}/send --header {json.dumps(headers)} --data '{json.dumps(result[0][0])}'" )
+    requests.post(f"{deployment_url}/astromigration/daghistory/receive/{deployment}/astro/{dag}/send",data=json.dumps(result[0][0]),headers=headers)
+
+    return str(type(result[0][0]))
+
 
 def receive_dag(dag:str=None,deployment:str=None,dest:str=None,action:str=None,data:dict={}):
     try:
@@ -83,7 +79,8 @@ def receive_dag(dag:str=None,deployment:str=None,dest:str=None,action:str=None,d
         #TODO: deleting this unitl i figure out how to handle bools & bytes
         del data['external_trigger']
         del data['conf']
-        table_name='dag_run'
+        del data['id']
+        table_name=data.pop('table')
         # sql_alchemy_conn = os.environ["AIRFLOW__CORE__SQL_ALCHEMY_CONN"]
         # conn_url = f"{sql_alchemy_conn}/postgres"
         # dest_session = settings.Session()
