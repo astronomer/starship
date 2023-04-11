@@ -57,7 +57,7 @@ def migrate(table_name: str, batch_size: int = 100000, dag_id:str=''):
 
         return rtn
 
-def migrate_dag(dag:str,deployment_url:str,deployment:str,csfr:dict,token:str):
+def migrate_dag(dag:str,deployment_url:str,deployment:str,token:str):
     result=[]
     for table in  [
             "dag_run"
@@ -68,23 +68,18 @@ def migrate_dag(dag:str,deployment_url:str,deployment:str,csfr:dict,token:str):
         "Authorization": f"Bearer {token}"
       }
 
-    # deployment_url="http://host.docker.internal:8081"
-    logging.info(f"curl --location {deployment_url}/astromigration/daghistory/receive/{deployment}/astro/{dag}/send --header {json.dumps(headers)} --data '{json.dumps(result[0])}'" )
-    requests.post(f"{deployment_url}/astromigration/daghistory/receive/{deployment}/astro/{dag}/send",data=json.dumps(result[0]),headers=headers)
+    response = requests.post(f"{deployment_url}/astromigration/daghistory/receive/{deployment}/astro/{dag}/send",data=json.dumps(result[0]),headers=headers)
+
+    return response.ok
 
 
+def receive_dag(data:list=[]):
 
-    return str(type(result[0][0]))
-
-
-def receive_dag(dag:str=None,deployment:str=None,dest:str=None,action:str=None,data:list={}):
-    try:
         dest_session = settings.Session()
         dest_engine = dest_session.get_bind()
         dest_metadata_obj = MetaData(bind=dest_engine)
         for datum in data:
             try:
-                # del datum['external_trigger']
                 del datum['conf']
                 del datum['id']
             except:
@@ -96,7 +91,5 @@ def receive_dag(dag:str=None,deployment:str=None,dest:str=None,action:str=None,d
                 [datum]
             )
             dest_session.commit()
-    except Exception as e:
-        return str(e)
 
 

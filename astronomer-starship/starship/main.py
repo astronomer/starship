@@ -140,31 +140,19 @@ class AstroMigration(AppBuilderBaseView):
         jwks_client = jwt.PyJWKClient(jwks_url)
         return jwks_client.get_signing_key_from_jwt(token)
 
-    # @expose("/daghistory/send/<string:deployment>/<string:dest>/<string:dag_id>/<string:action>"
-    #     ,methods=["GET", "POST"])
-    # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
-    # def migrate_dag_history(self, deployment: str, dag_id: str, dest: str = "local", action: str = None):
-    #     data = request.form
-    #     deployment_url = self.get_deployment_url(deployment)
-    #     # return dag_id
-    #     token=session.get('token')
-    #
-    #     migrate_dag(dag_id,deployment_url=deployment_url,deployment=deployment,csfr=data, token=token)
-    #     return self.dag_cutover_row(deployment,dag_id,dest,action)
 
     @expose("/daghistory/receive/<string:deployment>/<string:dest>/<string:dag_id>/<string:action>"
         ,methods=["GET", "POST"])
     @csrf.exempt
     def receive_dag_history(self, deployment: str, dag_id: str, dest: str = "local", action: str = None):
-        logging.info('160')
         data = request.json
-        logging.info(data)
         token=session.get('token')
         # return data
         try:
-            return receive_dag(dag=dag_id,deployment=deployment,dest=dest,action=action,data=data)
+            receive_dag(data=data)
+            return 200
         except Exception as e:
-            return str(e)
+            return 500
 
     @expose("/modal/token")
     def modal_token_entry(self):
@@ -515,17 +503,14 @@ class AstroMigration(AppBuilderBaseView):
             elif action == "unpause":
                 is_paused = False
             elif action == "migrate":
-                data = request.form
                 token = session.get('token')
-                migrate_dag(dag_id, deployment_url=deployment_url, deployment=deployment, csfr=data, token=token)
+                migrate_dag(dag_id, deployment_url=deployment_url, deployment=deployment, token=token)
             else:
                 raise Exception("action must be 'pause', 'unpause', or 'migrate'")
 
             if dest == "local" and action is not "migrate":
                 models.DagModel.get_dagmodel(dag_id).set_is_paused(is_paused=is_paused)
             elif action != "migrate":
-                logging.info(is_paused)
-                logging.info(action)
                 resp = requests.patch(
                     f"{deployment_url}/api/v1/dags?dag_id_pattern={dag_id}",
                     headers={"Authorization": f"Bearer {token}"},
@@ -545,7 +530,6 @@ class AstroMigration(AppBuilderBaseView):
 
         resp_contents = resp.json()
         resp_contents2= resp2.json()
-        logging.info(resp_contents2)
         return self.render_template(
             "starship/components/dag_row.html",
             dag_={
