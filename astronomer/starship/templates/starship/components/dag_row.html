@@ -48,9 +48,13 @@
         <button class="btn btn-default" disabled>
             <span class="glyphicon glyphicon-upload" aria-hidden="true"></span>
         </button>
+        {% elif dag_.has_history_on_astro %}
+                <button class="btn btn-default" disabled>
+            History Present on Target
+        </button>
         {%  else %}
               <button class="btn btn-default"
-                hx-post="{{ url_for('AstroMigration.migrate_dag_history', deployment=session.selectedAstroDeployment or 'undefined', dag_id=dag_.id, dest='astro', action='send') }}"
+                hx-post="{{ url_for('AstroMigration.dag_cutover_row', deployment=session.selectedAstroDeployment or 'undefined', dag_id=dag_.id, dest='astro', action='migrate') }}"
                 hx-target="#dag-{{dag_.id}}"
                 hx-swap="outerHTML"
               >

@@ -65,10 +65,10 @@ def migrate_dag(dag:str,deployment_url:str,deployment:str,csfr:dict,token:str):
         result.append(migrate(table_name=table,dag_id=dag))
     headers={
      'Content-Type':'application/json',
-        # "Authorization": f"Bearer {token}"
+        "Authorization": f"Bearer {token}"
       }
 
-    deployment_url="http://host.docker.internal:8081"
+    # deployment_url="http://host.docker.internal:8081"
     logging.info(f"curl --location {deployment_url}/astromigration/daghistory/receive/{deployment}/astro/{dag}/send --header {json.dumps(headers)} --data '{json.dumps(result[0])}'" )
     requests.post(f"{deployment_url}/astromigration/daghistory/receive/{deployment}/astro/{dag}/send",data=json.dumps(result[0]),headers=headers)
 
