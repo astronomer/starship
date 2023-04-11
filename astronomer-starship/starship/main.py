@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 from cachetools.func import ttl_cache
 from airflow.plugins_manager import AirflowPlugin
 from airflow import models
-
+import logging
 from airflow.www import auth
 from airflow.security import permissions
 
@@ -157,7 +157,9 @@ class AstroMigration(AppBuilderBaseView):
         ,methods=["GET", "POST"])
     @csrf.exempt
     def receive_dag_history(self, deployment: str, dag_id: str, dest: str = "local", action: str = None):
+        logging.info('160')
         data = request.json
+        logging.info(data)
         token=session.get('token')
         # return data
         try:

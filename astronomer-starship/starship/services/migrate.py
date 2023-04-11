@@ -20,9 +20,6 @@ def get_table(_metadata_obj, _engine, _table_name):
 def migrate(table_name: str, batch_size: int = 100000, dag_id:str=''):
 
         logging.info(f"Creating source SQL Connections ..")
-        # sql_alchemy_conn = os.environ["AIRFLOW__CORE__SQL_ALCHEMY_CONN"]
-        # conn_url = f"{sql_alchemy_conn}/postgres"
-        # source_engine = create_engine(conn_url, echo=False)
         session = settings.Session()
         source_engine = session.get_bind()
         source_metadata_obj = MetaData(bind=source_engine)
@@ -32,7 +29,7 @@ def migrate(table_name: str, batch_size: int = 100000, dag_id:str=''):
         # noinspection SqlInjection
         logging.info(f"Fetching data for {table_name} from source...")
         source_result = source_engine.execution_options(stream_results=True) \
-            .execute(f"SELECT * FROM {source_table.name} where dag_id='{dag_id}' limit 1")
+            .execute(f"SELECT * FROM {source_table.name} where dag_id='{dag_id}' order by start_date desc limit 5")
         rtn=[]
         for result in source_result.fetchall():
             result=dict(result._asdict())
@@ -43,63 +40,64 @@ def migrate(table_name: str, batch_size: int = 100000, dag_id:str=''):
                     result[key]=f"{value.strftime('%Y-%m-%d %H:%M:%S.%f+00')}"
             result["table"]=table_name
             rtn.append(result)
+            source_table = get_table(source_metadata_obj, source_engine, "task_instance")
+            sub_result=source_engine.execution_options(stream_results=True) \
+            .execute(f"SELECT * FROM {source_table.name} where dag_id='{dag_id}' and run_id='{result['run_id']}'")
+            for ti_result in sub_result.fetchall():
+                ti_result_new=dict(ti_result._asdict())
+                ti_result=dict(ti_result._asdict())
+                ti_result["table"]='task_instance'
+                for ti_key,ti_value in ti_result_new.items():
+                    if isinstance(ti_value, memoryview):
+                        del ti_result[ti_key]
+                    if isinstance(ti_value, datetime.datetime):
+                        ti_result[ti_key] = f"{ti_value.strftime('%Y-%m-%d %H:%M:%S.%f+00')}"
+                rtn.append(ti_result)
+
 
         return rtn
-    # except Exception as e:
-    #     return str(e)
 
 def migrate_dag(dag:str,deployment_url:str,deployment:str,csfr:dict,token:str):
     result=[]
     for table in  [
-            "dag_run",
-            "task_instance",
-            # "task_reschedule",
-            # "trigger",
-            # "task_fail",
-            # "xcom",
-            # "rendered_task_instance_fields",
-            # "sensor_instance",
-            # "sla_miss"
+            "dag_run"
                    ]:
         result.append(migrate(table_name=table,dag_id=dag))
     headers={
      'Content-Type':'application/json',
-        "Authorization": f"Bearer {token}"
+        # "Authorization": f"Bearer {token}"
       }
-    logging.info(f"curl --location {deployment_url}/astromigration/daghistory/receive/{deployment}/astro/{dag}/send --header {json.dumps(headers)} --data '{json.dumps(result[0][0])}'" )
-    requests.post(f"{deployment_url}/astromigration/daghistory/receive/{deployment}/astro/{dag}/send",data=json.dumps(result[0][0]),headers=headers)
+
+    deployment_url="http://host.docker.internal:8081"
+    logging.info(f"curl --location {deployment_url}/astromigration/daghistory/receive/{deployment}/astro/{dag}/send --header {json.dumps(headers)} --data '{json.dumps(result[0])}'" )
+    requests.post(f"{deployment_url}/astromigration/daghistory/receive/{deployment}/astro/{dag}/send",data=json.dumps(result[0]),headers=headers)
+
+
 
     return str(type(result[0][0]))
 
 
-def receive_dag(dag:str=None,deployment:str=None,dest:str=None,action:str=None,data:dict={}):
+def receive_dag(dag:str=None,deployment:str=None,dest:str=None,action:str=None,data:list={}):
     try:
-        # data=data.to_dict()
-        # del data['csrf_token']
-        #TODO: deleting this unitl i figure out how to handle bools & bytes
-        del data['external_trigger']
-        del data['conf']
-        del data['id']
-        table_name=data.pop('table')
-        # sql_alchemy_conn = os.environ["AIRFLOW__CORE__SQL_ALCHEMY_CONN"]
-        # conn_url = f"{sql_alchemy_conn}/postgres"
-        # dest_session = settings.Session()
-        # dest_engine = create_engine(conn_url, echo=False)
-
         dest_session = settings.Session()
-        # dest_session = session.e
-
         dest_engine = dest_session.get_bind()
         dest_metadata_obj = MetaData(bind=dest_engine)
-        dest_table = get_table(dest_metadata_obj, dest_engine, table_name)
-        dest_engine.execute(
-            sqlalchemy.dialects.postgresql.insert(dest_table).on_conflict_do_nothing(),
-            # ### ^POTENTIALLY CHANGE HERE^ ###
-            [data]
-        )
-        dest_session.commit()
+        for datum in data:
+            #TODO: deleting this unitl i figure out how to handle bools & bytes
+            try:
+                del datum['external_trigger']
+                del datum['conf']
+                del datum['id']
+            except:
+                logging.info('tried to delte something that doesn"t exist')
+            table_name=datum.pop('table')
+            dest_table = get_table(dest_metadata_obj, dest_engine, table_name)
+            dest_engine.execute(
+                sqlalchemy.dialects.postgresql.insert(dest_table).on_conflict_do_nothing(),
+                [datum]
+            )
+            dest_session.commit()
     except Exception as e:
         return str(e)
-    # urllib.parse.urlencode(data)
-    # return urllib.parse.urlencode(data)
+
 
