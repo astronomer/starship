@@ -83,13 +83,12 @@ def receive_dag(dag:str=None,deployment:str=None,dest:str=None,action:str=None,d
         dest_engine = dest_session.get_bind()
         dest_metadata_obj = MetaData(bind=dest_engine)
         for datum in data:
-            #TODO: deleting this unitl i figure out how to handle bools & bytes
             try:
-                del datum['external_trigger']
+                # del datum['external_trigger']
                 del datum['conf']
                 del datum['id']
             except:
-                logging.info('tried to delte something that doesn"t exist')
+                logging.info('tried to deleting something that doesn"t exist, don"t worry it still doesn"t exist')
             table_name=datum.pop('table')
             dest_table = get_table(dest_metadata_obj, dest_engine, table_name)
             dest_engine.execute(
