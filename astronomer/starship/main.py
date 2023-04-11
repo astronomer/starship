@@ -1,20 +1,24 @@
 from typing import Optional
 
 from airflow.plugins_manager import AirflowPlugin
-
+from airflow import models
+import logging
 from airflow.www import auth
 from airflow.security import permissions
 
 import jwt
+from airflow.www.app import csrf
 
 from flask import Blueprint, session, request, redirect, url_for
 from flask_appbuilder import expose, BaseView as AppBuilderBaseView
 
-import os
+import requests
 
-from starship.services import astro_client, remote_airflow_client, local_airflow_client
-from starship.services.astro_client import is_environment_variable_migrated
-from starship.services.remote_airflow_client import is_pool_migrated
+from astronomer.starship.services import astro_client, remote_airflow_client, local_airflow_client
+from astronomer.starship.services.astro_client import is_environment_variable_migrated
+from astronomer.starship.services.remote_airflow_client import is_pool_migrated
+
+import os
 
 bp = Blueprint(
     "starship",
@@ -63,6 +67,18 @@ class AstroMigration(AppBuilderBaseView):
     def main(self):
         session.update(request.form)
         return self.render_template("starship/main.html", data={"tab": session.get("tab", "AstroMigration.tabs_conns")})
+    @expose("/daghistory/receive/<string:deployment>/<string:dest>/<string:dag_id>/<string:action>"
+        ,methods=["GET", "POST"])
+    @csrf.exempt
+    def receive_dag_history(self, deployment: str, dag_id: str, dest: str = "local", action: str = None):
+        data = request.json
+        token=session.get('token')
+        # return data
+        try:
+            remote_airflow_client.receive_dag(data=data)
+            return 200
+        except Exception as e:
+            return 500
 
     @expose("/modal/token")
     def modal_token_entry(self):
@@ -288,15 +304,18 @@ class AstroMigration(AppBuilderBaseView):
                 is_paused = True
             elif action == "unpause":
                 is_paused = False
+            elif action == "migrate":
+                token = session.get('token')
+                remote_airflow_client.migrate_dag(dag_id, deployment_url=deployment_url, deployment=deployment, token=token)
             else:
-                raise RuntimeError("action must be 'pause' or 'unpause'")
-
-            if dest == "local":
-                local_airflow_client.set_dag_is_paused(dag_id, is_paused)
-            else:
+                raise Exception("action must be 'pause', 'unpause', or 'migrate'")
+            if dest == "local" and action is not "migrate":
                 remote_airflow_client.set_dag_is_paused(dag_id, is_paused, deployment_url, token)
+            elif action != "migrate":
+                local_airflow_client.set_dag_is_paused(dag_id, is_paused)
 
         r = remote_airflow_client.get_dag(dag_id, deployment_url, token)
+        dag_runs = remote_airflow_client.get_dag_runs(dag_id, deployment_url, token).json()
         is_on_astro = not r.status_code == 404
         remote_dag = r.json()
         local_dag = local_airflow_client.get_dag(dag_id)
@@ -308,6 +327,8 @@ class AstroMigration(AppBuilderBaseView):
                 "is_on_astro": is_on_astro,
                 "is_paused_here": local_dag.is_paused,
                 "is_paused_on_astro": remote_dag["is_paused"] if is_on_astro else False,
+                "has_history_on_astro": bool(dag_runs["total_entries"])
+
             },
         )
 
