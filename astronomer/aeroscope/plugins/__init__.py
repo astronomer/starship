@@ -28,9 +28,11 @@ class AeroForm(Form):
     organization = StringField("Organization", [validators.Length(min=4, max=25)])
     presigned_url = StringField(
         "Pre-signed URL (optional)",
-        description=dedent("""The pre-signed URL field is optional and is to be supplied by an Astronomer Representative.
-    If the pre-signed URL is used, the results of the Telescope Report is shipped to Astronomer."""),
-        validators=[validators.URL(), validators.optional()]
+        description=dedent(
+            """The pre-signed URL field is optional and is to be supplied by an Astronomer Representative.
+    If the pre-signed URL is used, the results of the Telescope Report is shipped to Astronomer."""
+        ),
+        validators=[validators.URL(), validators.optional()],
     )
 
 
@@ -42,11 +44,15 @@ def get_aeroscope_report(date: str, organization: str):
     version = os.getenv("TELESCOPE_REPORT_RELEASE_VERSION", "latest")
     a = "airflow_report.pyz"
     if version == "latest":
-        urlretrieve("https://github.com/astronomer/telescope/releases/latest/download/airflow_report.pyz", a)
+        urlretrieve(
+            "https://github.com/astronomer/telescope/releases/latest/download/airflow_report.pyz",
+            a,
+        )
     else:
         try:
             urlretrieve(
-                f"https://github.com/astronomer/telescope/releases/download/{version}/airflow_report.pyz", a
+                f"https://github.com/astronomer/telescope/releases/download/{version}/airflow_report.pyz",
+                a,
             )
         except urllib.error.HTTPError as e:
             flash(f"Error finding specified version:{version} -- Reason:{e.reason}")
@@ -57,7 +63,11 @@ def get_aeroscope_report(date: str, organization: str):
         "telescope_version": "aeroscope-latest",
         "report_date": date,
         "organization_name": organization,
-        "local": {socket.gethostname(): {"airflow_report": clean_airflow_report_output(s.getvalue())}},
+        "local": {
+            socket.gethostname(): {
+                "airflow_report": clean_airflow_report_output(s.getvalue())
+            }
+        },
     }
 
 
@@ -69,7 +79,11 @@ class StarshipAeroscope(AppBuilderBaseView):
     def aeroscope(self):
         form = AeroForm(request.form)
         date = datetime.datetime.now(datetime.timezone.utc).isoformat()[:10]
-        if request.method == "POST" and form.validate() and request.form["action"] == "Send/Download Report":
+        if (
+            request.method == "POST"
+            and form.validate()
+            and request.form["action"] == "Send/Download Report"
+        ):
             filename = f"{date}.{form.organization.data}.data.json"
             content = get_aeroscope_report(
                 date=date,
