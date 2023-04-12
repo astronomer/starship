@@ -1,78 +1,55 @@
 {% extends base_template %}
 
 {% block head_js %}
-    {{ super() }}
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-colorschemes"></script>
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 {% endblock %}
 
 {% block head_css %}
-    {{ super() }}
+{{ super() }}
 {% endblock %}
 
 {% block page_title %}
-    Run Report 🔭 Telescope
+Run Report 🔭 Telescope
 {% endblock %}
 
 {% block content %}
-    <div class="container">
-        <div class="page-header">
-            <h1>Run Report 🔭 Telescope</h1>
-        </div>
-        <div class="row">
-            <p>This is a utility for running Telescope on a single Airflow instance. You can read more about Telescope
-                <a href="https://github.com/astronomer/telescope">here</a>.<br>
-            </p>
-        </div>
-        <h2>Report Results</h2>
-        <div>
-            <canvas id="myChart"></canvas>
-        </div>
-        <script>
-            let _data = JSON.parse('{{ telescope_data | safe }}')
-            console.log(_data)
-
-            {#
-                DAGs sorted by parsing time
-                Operators appearing in DAGs
-                DAGs sorted by tasks
-
-                  type: 'line',
-                  type: 'bar',
-                  {x: 'Sales', y: 20},
-
-                  type: 'scatter'
-                  {x: 30, y: 20},
-                  x = num_task, y = parsing_time (filtering -1s)
-            #}
-
-            let dags_by_usage = {"title": "DAGs by Usage", "label": "Duration - Seconds", "type": "bar", data: []}
-            let dags_by_parsing_time = {"title": "DAGs by Parsing Time", "type": "scatter", data: []}
-            for (const dag of _data['airflow_report']['dags_report']){
-                console.log(dag)
-                dags_by_usage['data'].push({"x": dag['dag_id'], "y": dag['max_duration']})
-            }
-
-            for (const chart of [dags_by_usage]){
-               new Chart(document.getElementById('myChart'), {
-                type: chart['type'],
-                data: {
-                    datasets: [{
-                        label: chart['label'],
-                        data: chart['data']
-                    }]
-                },
-                options: {
-                    {#scales: {y: {beginAtZero: true}},#}
-                    plugins: {
-                        title: {display: true, text: chart['title']},
-                        {#colorschemes: {scheme: 'tableau.PurplePinkGray12'}#}
-                    },
-                    {#indexAxis: 'y',#}
-                }
-            });
-            }
-        </script>
+<div class="container">
+    <div class="page-header">
+        <h1>Run Report 🔭 Telescope</h1>
     </div>
+    <div class="row">
+        <p>This is a utility for running Telescope on a single Airflow instance. You can read more about Telescope
+            <a href="https://github.com/astronomer/telescope">here</a>.<br>
+        </p>
+    </div>
+    <h2>PRETTY CHARTS HERE</h2>
+    <div>
+        <canvas id="myChart"></canvas>
+    </div>
+    <script>
+        const ctx = document.getElementById('myChart');
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange'],
+                datasets: [{
+                    label: '# of Votes',
+                    data: [12, 19, 3, 5, 2, 3],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
+    {{data}}
+</div>
 
 {% endblock %}
