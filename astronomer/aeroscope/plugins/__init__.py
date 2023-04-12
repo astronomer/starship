@@ -5,16 +5,15 @@ import socket
 import urllib.error
 from contextlib import redirect_stderr, redirect_stdout
 from textwrap import dedent
-from typing import Optional
 
 import requests
-from airflow.configuration import conf
 from airflow.plugins_manager import AirflowPlugin
-from aeroscope.util import clean_airflow_report_output
-from flask import Blueprint, Response, flash, redirect, request
+from flask import Blueprint, Response, flash, request
 from flask_appbuilder import BaseView as AppBuilderBaseView
 from flask_appbuilder import expose
 from wtforms import Form, StringField, validators
+
+from astronomer.aeroscope.util import clean_airflow_report_output
 
 bp = Blueprint(
     "starship_aeroscope",
@@ -87,16 +86,6 @@ class StarshipAeroscope(AppBuilderBaseView):
                 json.dumps(content),
                 mimetype="application/json",
                 headers={"Content-Disposition": f"attachment;filename={filename}"},
-            )
-        elif request.method == "POST" and form.validate() and request.form["action"] == "Show Report":
-
-            return self.render_template(
-                "aeroscope/report.html",
-                form=form,
-                data=get_aeroscope_report(
-                    date=date,
-                    organization=form.organization.data,
-                )
             )
         else:
             return self.render_template("aeroscope/main.html", form=form)

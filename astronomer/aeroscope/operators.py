@@ -10,7 +10,7 @@ from contextlib import redirect_stderr, redirect_stdout
 
 from airflow.exceptions import AirflowFailException
 from airflow.models import BaseOperator
-from aeroscope.util import clean_airflow_report_output
+from astronomer.aeroscope.util import clean_airflow_report_output
 
 
 class AeroscopeOperator(BaseOperator):
