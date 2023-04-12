@@ -172,7 +172,7 @@ def get_dag_runs(dag_id, deployment_url, token) -> Response:
 def migrate_dag(dag: str, deployment_url: str, token: str):
     result = local_airflow_client.migrate(table_name="dag_run", dag_id=dag)
     r = requests.post(
-        f"{deployment_url}/astromigration/dag_history/receive/",
+        f"{deployment_url}/astromigration/dag_history/receive",
         data=json.dumps(result),
         headers={
             "Content-Type": "application/json",
