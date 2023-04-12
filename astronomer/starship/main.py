@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import Optional
 
@@ -6,7 +7,7 @@ from airflow.plugins_manager import AirflowPlugin
 from airflow.security import permissions
 from airflow.www import auth
 from airflow.www.app import csrf
-from flask import Blueprint, redirect, request, session, url_for
+from flask import Blueprint, Response, redirect, request, session, url_for
 from flask_appbuilder import BaseView as AppBuilderBaseView
 from flask_appbuilder import expose
 
@@ -72,9 +73,10 @@ class AstroMigration(AppBuilderBaseView):
         data = request.json
         try:
             local_airflow_client.receive_dag(data=data)
-            return 200
+            return Response("OK", 200)
         except Exception as e:
-            return 500
+            logging.exception(e)
+            return Response(str(e), 200)
 
     @expose("/modal/token")
     def modal_token_entry(self):
