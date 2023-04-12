@@ -1,24 +1,14 @@
+import json
 from typing import Any, List
 
 import requests
 from airflow.models import Connection, Pool, Variable
 from cachetools.func import ttl_cache
-from requests import Response
 from deprecated import deprecated
-from astronomer.starship.services.local_airflow_client import migrate
+from requests import Response
 
-import json
+from astronomer.starship.services import local_airflow_client
 
-import sqlalchemy
-from airflow import settings
-from sqlalchemy import MetaData, Table, create_engine
-from sqlalchemy.exc import NoSuchTableError
-import logging
-import os
-from flask import jsonify
-import urllib.parse
-import requests
-import datetime
 
 def conn_to_json(connection: Connection) -> dict:
     return {
@@ -43,7 +33,9 @@ def get_connections(deployment_url: str, token: str) -> List[Any]:
     return r.json()["connections"]
 
 
-def delete_connection(deployment_url: str, token: str, connection: Connection) -> Response:
+def delete_connection(
+    deployment_url: str, token: str, connection: Connection
+) -> Response:
     r = requests.delete(
         f"{deployment_url}/api/v1/connections/{connection.conn_id}",
         headers={"Authorization": f"Bearer {token}"},
@@ -52,11 +44,13 @@ def delete_connection(deployment_url: str, token: str, connection: Connection) -
     return r
 
 
-def do_test_connection(deployment_url: str, token: str, connection: Connection) -> Response:
+def do_test_connection(
+    deployment_url: str, token: str, connection: Connection
+) -> Response:
     r = requests.post(
         f"{deployment_url}/api/v1/connections/test",
         headers={"Authorization": f"Bearer {token}"},
-        json=conn_to_json(connection)
+        json=conn_to_json(connection),
     )
     r.raise_for_status()
     return r
@@ -66,7 +60,7 @@ def create_connection(deployment_url, token, connection) -> Response:
     r = requests.post(
         f"{deployment_url}/api/v1/connections",
         headers={"Authorization": f"Bearer {token}"},
-        json=conn_to_json(connection)
+        json=conn_to_json(connection),
     )
     r.raise_for_status()
     return r
@@ -164,6 +158,8 @@ def get_dag(dag_id, deployment_url, token) -> Response:
     )
     r.raise_for_status()
     return r
+
+
 def get_dag_runs(dag_id, deployment_url, token) -> Response:
     r = requests.get(
         f"{deployment_url}/api/v1/dags/{dag_id}/dagRuns",
@@ -172,17 +168,16 @@ def get_dag_runs(dag_id, deployment_url, token) -> Response:
     r.raise_for_status()
     return r
 
-def migrate_dag(dag:str,deployment_url:str,deployment:str,token:str):
-    result=[]
-    for table in  [
-            "dag_run"
-                   ]:
-        result.append(migrate(table_name=table,dag_id=dag))
-    headers={
-     'Content-Type':'application/json',
-        "Authorization": f"Bearer {token}"
-      }
 
-    response = requests.post(f"{deployment_url}/astromigration/daghistory/receive/{deployment}/astro/{dag}/send",data=json.dumps(result[0]),headers=headers)
-
-    return response.ok
+def migrate_dag(dag: str, deployment_url: str, token: str):
+    result = local_airflow_client.migrate(table_name="dag_run", dag_id=dag)
+    r = requests.post(
+        f"{deployment_url}/astromigration/dag_history/receive/",
+        data=json.dumps(result),
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}",
+        },
+    )
+    r.raise_for_status()
+    return r.ok
