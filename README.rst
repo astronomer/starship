@@ -39,11 +39,11 @@ Initial Setup
 
 4. After authenticating to Astronomer, you will need to select the deployment that you are sending metadata to. To do this, select a deployment from the ``Target Deployment`` dropdown and click the ``Select`` button
 
-Running Aeroscope Report
+Running Telescope Report
 ------------------------
-To run the Aeroscope Report, to get a snapshot of your source Airflow Instance
+To run the Telescope Report, to get a snapshot of your source Airflow Instance
 
-1. Hover over the Astronomer menu in the Airflow UI and select ``Run Aeroscope Report``
+1. Hover over the Astronomer menu in the Airflow UI and select ``Run Report 🔭 Telescope``
 2. #### TODO ####
 
 
