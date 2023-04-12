@@ -1,20 +1,23 @@
+import logging
+import os
 from typing import Optional
 
-from airflow.plugins_manager import AirflowPlugin
-
-from airflow.www import auth
-from airflow.security import permissions
-
 import jwt
+from airflow.plugins_manager import AirflowPlugin
+from airflow.security import permissions
+from airflow.www import auth
+from airflow.www.app import csrf
+from flask import Blueprint, Response, redirect, request, session, url_for
+from flask_appbuilder import BaseView as AppBuilderBaseView
+from flask_appbuilder import expose
 
-from flask import Blueprint, session, request, redirect, url_for
-from flask_appbuilder import expose, BaseView as AppBuilderBaseView
-
-import os
-
-from starship.services import astro_client, remote_airflow_client, local_airflow_client
-from starship.services.astro_client import is_environment_variable_migrated
-from starship.services.remote_airflow_client import is_pool_migrated
+from astronomer.starship.services import (
+    astro_client,
+    local_airflow_client,
+    remote_airflow_client,
+)
+from astronomer.starship.services.astro_client import is_environment_variable_migrated
+from astronomer.starship.services.remote_airflow_client import is_pool_migrated
 
 bp = Blueprint(
     "starship",
@@ -29,18 +32,15 @@ def get_page_data(page):
     return {
         "AstroMigration.tabs_vars": {
             "component": "variables",
-            "vars": {
-                var.key: var for var in local_airflow_client.get_variables()
-            },
+            "vars": {var.key: var for var in local_airflow_client.get_variables()},
         },
         "AstroMigration.tabs_dags": {
             "component": "dags",
-            "dags": local_airflow_client.get_dags()},
+            "dags": local_airflow_client.get_dags(),
+        },
         "AstroMigration.tabs_pools": {
             "component": "pools",
-            "pools": {
-                pool.pool: pool for pool in local_airflow_client.get_pools()
-            },
+            "pools": {pool.pool: pool for pool in local_airflow_client.get_pools()},
         },
         "AstroMigration.tabs_conns": {
             "component": "connections",
@@ -51,7 +51,7 @@ def get_page_data(page):
         "AstroMigration.tabs_env": {
             "component": "env",
             "environ": os.environ,
-        }
+        },
     }[page]
 
 
@@ -62,7 +62,21 @@ class AstroMigration(AppBuilderBaseView):
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
     def main(self):
         session.update(request.form)
-        return self.render_template("starship/main.html", data={"tab": session.get("tab", "AstroMigration.tabs_conns")})
+        return self.render_template(
+            "starship/main.html",
+            data={"tab": session.get("tab", "AstroMigration.tabs_conns")},
+        )
+
+    @expose("/dag_history/receive", methods=["GET", "POST"])
+    @csrf.exempt
+    def receive_dag_history(self):
+        data = request.json
+        try:
+            local_airflow_client.receive_dag(data=data)
+            return Response("OK", 200)
+        except Exception as e:
+            logging.exception(e)
+            return Response(str(e), 200)
 
     @expose("/modal/token")
     def modal_token_entry(self):
@@ -95,38 +109,48 @@ class AstroMigration(AppBuilderBaseView):
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
     def button_save_token(self):
         session["token"] = request.form.get("astroUserToken")
-        tab = session.get('tab', 'AstroMigration.tabs_conns')
+        tab = session.get("tab", "AstroMigration.tabs_conns")
         return self.render_template("starship/migration.html", data={"tab": tab})
 
     @expose("/tabs/dags")
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG)])
     def tabs_dags(self):
         session["tab"] = "AstroMigration.tabs_dags"
-        return self.render_template("starship/dags.html", data=get_page_data(session['tab']))
+        return self.render_template(
+            "starship/dags.html", data=get_page_data(session["tab"])
+        )
 
     @expose("/tabs/variables")
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_VARIABLE)])
     def tabs_vars(self):
         session["tab"] = "AstroMigration.tabs_vars"
-        return self.render_template("starship/variables.html", data=get_page_data(session['tab']))
+        return self.render_template(
+            "starship/variables.html", data=get_page_data(session["tab"])
+        )
 
     @expose("/tabs/pools")
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_VARIABLE)])
     def tabs_pools(self):
         session["tab"] = "AstroMigration.tabs_pools"
-        return self.render_template("starship/pools.html", data=get_page_data(session['tab']))
+        return self.render_template(
+            "starship/pools.html", data=get_page_data(session["tab"])
+        )
 
     @expose("/tabs/connections")
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONNECTION)])
     def tabs_conns(self):
         session["tab"] = "AstroMigration.tabs_conns"
-        return self.render_template("starship/connections.html", data=get_page_data(session['tab']))
+        return self.render_template(
+            "starship/connections.html", data=get_page_data(session["tab"])
+        )
 
     @expose("/tabs/env")
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
     def tabs_env(self):
         session["tab"] = "AstroMigration.tabs_env"
-        return self.render_template("starship/env.html", data=get_page_data(session['tab']))
+        return self.render_template(
+            "starship/env.html", data=get_page_data(session["tab"])
+        )
 
     @expose(
         "/button_migrate_connection/<string:deployment>/<string:conn_id>",
@@ -134,14 +158,16 @@ class AstroMigration(AppBuilderBaseView):
     )
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONNECTION)])
     def button_migrate_connection(self, conn_id: str, deployment: str):
-        token = session.get('token')
+        token = session.get("token")
         deployment_url = astro_client.get_deployment_url(deployment, token)
 
         if request.method == "POST":
             local_connections = {
                 conn.conn_id: conn for conn in local_airflow_client.get_connections()
             }
-            remote_airflow_client.create_connection(deployment_url, token, local_connections[conn_id])
+            remote_airflow_client.create_connection(
+                deployment_url, token, local_connections[conn_id]
+            )
 
         deployment_conns = remote_airflow_client.get_connections(deployment_url, token)
 
@@ -165,10 +191,14 @@ class AstroMigration(AppBuilderBaseView):
         local_connection = {
             conn.conn_id: conn for conn in local_airflow_client.get_connections()
         }[conn_id]
-        r = remote_airflow_client.do_test_connection(deployment_url, token, local_connection)
+        r = remote_airflow_client.do_test_connection(
+            deployment_url, token, local_connection
+        )
 
         return self.render_template(
-            "starship/components/test_connection_label.html", data=r.json(), conn_id=conn_id
+            "starship/components/test_connection_label.html",
+            data=r.json(),
+            conn_id=conn_id,
         )
 
     @expose(
@@ -181,9 +211,13 @@ class AstroMigration(AppBuilderBaseView):
         deployment_url = astro_client.get_deployment_url(deployment, token)
 
         if request.method == "POST":
-            remote_airflow_client.create_variable(deployment_url, local_airflow_client.get_variable(variable))
+            remote_airflow_client.create_variable(
+                deployment_url, local_airflow_client.get_variable(variable)
+            )
 
-        is_migrated = remote_airflow_client.is_variable_migrated(deployment_url, token, variable)
+        is_migrated = remote_airflow_client.is_variable_migrated(
+            deployment_url, token, variable
+        )
 
         return self.render_template(
             "starship/components/migrate_variable_button.html",
@@ -223,14 +257,16 @@ class AstroMigration(AppBuilderBaseView):
     def button_migrate_env(self, deployment: str):
         token = session.get("token")
         items = dict(**request.form)
-        del items['csrf_token']
-        astro_client.set_changed_environment_variables(deployment, token, iter(items.values()))
+        del items["csrf_token"]
+        astro_client.set_changed_environment_variables(
+            deployment, token, iter(items.values())
+        )
         return self.tabs_env()
 
     @expose("/checkbox/migrate/env/<string:deployment>/<string:key>/", methods=("GET",))
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
     def checkbox_migrate_env(self, key: str, deployment: str):
-        token = session.get('token')
+        token = session.get("token")
         is_migrated = is_environment_variable_migrated(deployment, token, key)
         return self.render_template(
             "starship/components/env_checkbox.html",
@@ -241,15 +277,15 @@ class AstroMigration(AppBuilderBaseView):
 
     @expose("/component/astro-deployment-selector")
     def deployment_selector(self):
-        deployments = session.get('deployments')
+        deployments = session.get("deployments")
         if not deployments:
             deployments = astro_client.get_deployments(session.get("token"))
-            session['deployments'] = deployments
+            session["deployments"] = deployments
 
-        user = session.get('user')
+        user = session.get("user")
         if not user:
             user = astro_client.get_username(token=session.get("token"))
-            session['user'] = user
+            session["user"] = user
 
         return self.render_template(
             "starship/components/target_deployment_select.html",
@@ -260,8 +296,8 @@ class AstroMigration(AppBuilderBaseView):
     @expose("/logout")
     def logout(self):
         session.pop("token")
-        session.pop('user')
-        session.pop('deployments')
+        session.pop("user")
+        session.pop("deployments")
         return redirect(url_for("Airflow.index"))
 
     @expose("/component/row/dags/<string:deployment>/<string:dag_id>")
@@ -271,32 +307,41 @@ class AstroMigration(AppBuilderBaseView):
 
     @expose(
         "/component/row/dags/<string:deployment>/<string:dest>/<string:dag_id>/<string:action>",
-        methods=("GET", "POST",),
+        methods=(
+            "GET",
+            "POST",
+        ),
     )
     @auth.has_access([(permissions.ACTION_CAN_EDIT, permissions.RESOURCE_DAG)])
     def dag_cutover_row(
-            self, deployment: str, dag_id: str, dest: str = "local", action: str = None
+        self, deployment: str, dag_id: str, dest: str = "local", action: str = "init"
     ):
         if dest not in ["local", "astro"]:
             raise RuntimeError("dest must be 'local' or 'astro'")
+        if action not in ["pause", "unpause", "migrate", "init"]:
+            raise Exception("action must be 'pause', 'unpause', or 'migrate'")
 
         token = session.get("token")
         deployment_url = astro_client.get_deployment_url(deployment, token)
 
         if request.method == "POST":
-            if action == "pause":
-                is_paused = True
-            elif action == "unpause":
-                is_paused = False
+            if action == "migrate":
+                remote_airflow_client.migrate_dag(
+                    dag_id, deployment_url=deployment_url, token=token
+                )
             else:
-                raise RuntimeError("action must be 'pause' or 'unpause'")
-
-            if dest == "local":
-                local_airflow_client.set_dag_is_paused(dag_id, is_paused)
-            else:
-                remote_airflow_client.set_dag_is_paused(dag_id, is_paused, deployment_url, token)
+                is_paused = "pause" == action
+                if dest == "local":
+                    local_airflow_client.set_dag_is_paused(dag_id, is_paused)
+                else:
+                    remote_airflow_client.set_dag_is_paused(
+                        dag_id, is_paused, deployment_url, token
+                    )
 
         r = remote_airflow_client.get_dag(dag_id, deployment_url, token)
+        dag_runs = remote_airflow_client.get_dag_runs(
+            dag_id, deployment_url, token
+        ).json()
         is_on_astro = not r.status_code == 404
         remote_dag = r.json()
         local_dag = local_airflow_client.get_dag(dag_id)
@@ -308,6 +353,7 @@ class AstroMigration(AppBuilderBaseView):
                 "is_on_astro": is_on_astro,
                 "is_paused_here": local_dag.is_paused,
                 "is_paused_on_astro": remote_dag["is_paused"] if is_on_astro else False,
+                "has_history_on_astro": bool(dag_runs["total_entries"]),
             },
         )
 

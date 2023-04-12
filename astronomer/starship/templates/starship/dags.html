@@ -11,12 +11,13 @@
             <th scope="col">Present on Astro?</th>
             <th scope="col" style="width: 8%">Local</th>
             <th scope="col" style="width: 8%">Remote</th>
+            <th scope="col" style="width: 8%">Migrate</th>
         </tr>
         </thead>
         <tbody>
         {% for k, v in data.dags.items() %}
         <tr id="dag-{{k}}"
-            hx-get="{{ url_for('AstroMigration.dag_cutover_row_get', deployment=session.selectedAstroDeployment or 'undefined', dag_id=k) }}"
+            hx-get="{{ url_for('AstroMigration.dag_cutover_row_get', deployment=session.selectedAstroDeployment or 'undefined', dag_id=k, action='init') }}"
             hx-trigger="load delay:100ms"
             hx-target="#dag-{{k}}"
             hx-swap="outerHTML">
