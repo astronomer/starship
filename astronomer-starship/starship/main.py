@@ -272,7 +272,7 @@ class AstroMigration(AppBuilderBaseView):
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONNECTION)])
     def label_test_connection(self, conn_id: str, deployment: str):
         if not os.getenv("ENABLE_CONN_TEST"):
-            return "🟡"
+            return "❔"
 
         deployment_url = self.get_deployment_url(deployment)
 
