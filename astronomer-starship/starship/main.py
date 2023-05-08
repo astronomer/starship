@@ -13,8 +13,12 @@ import requests
 import os
 
 from starship.services import astro_client, remote_airflow_client, local_airflow_client
-from starship.services.astro_client import is_environment_variable_migrated
-from starship.services.remote_airflow_client import is_pool_migrated
+from starship.services.astro_client import is_environment_variable_migrated, get_jwk
+from starship.services.astro_client import get_deployment_url
+from starship.services.astro_client import get_deployments
+from starship.services.remote_airflow_client import create_connection, get_dag
+from starship.services.remote_airflow_client import test_connection
+from starship.services.astro_client import get_username
 
 bp = Blueprint(
     "starship",
@@ -142,7 +146,7 @@ class AstroMigration(AppBuilderBaseView):
             }
             create_connection(conn_id, deployment_url, local_connections)
 
-        deployment_conns = local_airflow_client.get_connections(
+        deployment_conns = remote_airflow_client.get_connections(
             deployment_url, session.get("token")
         )
 
