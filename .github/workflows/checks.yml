@@ -1,43 +1,16 @@
-name: Python Unit Tests
+name: pre-commit
+
 on:
-  pull_request:
-    branches:
-      - master
-    paths:
-      - 'astronomer-starship-provider/**'
-      - 'astronomer-starship/**'
+  - pull_request
 
 jobs:
-  build:
+  pre-commit:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-
-    - name: Set up Python 3.8
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.8
-
-    - uses: dorny/paths-filter@v2
-      id: filter
-      with:
-        filters: |
-          astronomer-starship-provider:
-            - 'astronomer-starship-provider/**'
-          astronomer-starship:
-            - 'astronomer-starship/**'
-
-    # run only if 'astronomer-starship' was changed
-    - name: astronomer-starship
-      if: steps.filter.outputs.astronomer-starship == 'true'
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v3
+    - name: Run pre-commit
       run: |
-        make install_dev
-        pytest tests/validation_tests.py --package astronomer-starship
-
-    # run only if 'astronomer-starship-provider' was changed
-    - name: astronomer-starship-provider
-      if: steps.filter.outputs.astronomer-starship-provider == 'true'
-      run: |
-        make install_dev
-        pytest tests/validation_tests.py --package astronomer-starship-provider
-
+        pip install pre-commit
+        git fetch origin
+        pre-commit run --from-ref origin/${{ github.event.pull_request.base.ref }} --to-ref ${{ github.event.pull_request.head.sha }}
