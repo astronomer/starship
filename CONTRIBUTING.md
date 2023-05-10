@@ -7,6 +7,10 @@ Install it locally to prevent needing to fix things after they fail in CICD
 ```shell
 pre-commit install
 ```
+It will run when you commit, or you can run
+```shell
+pre-commit run
+```
 
 # Tagging A Release
 ```
@@ -26,7 +30,14 @@ to set the version:
 poetry version
 ```
 
+NOTE: This automatically happens when a tag is pushed, you don't need to run this
 For production:
+setup:
+```shell
+poetry config pypi-token.pypi pypi-PYPITOKENPYPITOKENPYPITOKEN
+```
+
+run:
 ```shell
 poetry build
 poetry publish
@@ -34,6 +45,17 @@ poetry publish
 or
 ```shell
 poetry --build publish
+```
+
+For dev (test pypi):
+setup:
+```shell
+poetry config repositories.testpypi https://test.pypi.org/legacy/
+poetry config pypi-token.testpypi pypi-PYPITOKENPYPITOKENPYPITOKEN
+```
+run:
+```shell
+poetry build --publish -r testpypi
 ```
 
 # Developing CICD
