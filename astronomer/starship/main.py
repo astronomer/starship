@@ -1,7 +1,6 @@
-import logging
 import os
+import logging
 from typing import Optional
-
 import jwt
 from airflow.plugins_manager import AirflowPlugin
 from airflow.security import permissions
@@ -212,7 +211,7 @@ class AstroMigration(AppBuilderBaseView):
 
         if request.method == "POST":
             remote_airflow_client.create_variable(
-                deployment_url, local_airflow_client.get_variable(variable)
+                deployment_url, token, local_airflow_client.get_variable(variable)
             )
 
         is_migrated = remote_airflow_client.is_variable_migrated(
