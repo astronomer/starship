@@ -10,9 +10,8 @@ import io
 import runpy
 from urllib.request import urlretrieve
 import requests
-from airflow.configuration import conf
 from airflow.plugins_manager import AirflowPlugin
-from flask import Blueprint, Response, flash, redirect, request
+from flask import Blueprint, Response, flash, request
 from flask_appbuilder import BaseView as AppBuilderBaseView
 from flask_appbuilder import expose
 from wtforms import Form, StringField, validators
@@ -50,7 +49,7 @@ class StarshipAeroscope(AppBuilderBaseView):
         if (
             request.method == "POST"
             and form.validate()
-            and request.form["action"] == "Download"
+            and request.form["action"] == "Send/Download Report"
         ):
             VERSION = os.getenv("TELESCOPE_REPORT_RELEASE_VERSION", "latest")
             a = "airflow_report.pyz"
@@ -95,9 +94,6 @@ class StarshipAeroscope(AppBuilderBaseView):
                 mimetype="application/json",
                 headers={"Content-Disposition": f"attachment;filename={filename}"},
             )
-        elif request.method == "POST" and request.form["action"] == "Back to Airflow":
-            return redirect(conf.get("webserver", "base_url"))
-
         else:
             return self.render_template("aeroscope/main.html", form=form)
 
