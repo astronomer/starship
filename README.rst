@@ -1,5 +1,5 @@
 Astronomer Starship
-=============================
+===================
 A suite of Apache Airflow utilities containing Plugins and Operators from Astronomer. The purpose of these utilities is to better assist customers migrating Variables, Connections, and Environment Variables to Astronomer hosted Airflow environments from MWAA, GCC, and OSS environments, as well as Astronomer Software and Nebula instances.
 
 Depending on the source environment, either the Webserver Plugin or the `AstroMigrationOperator` should be used for migrating these elements.
@@ -7,9 +7,9 @@ Depending on the source environment, either the Webserver Plugin or the `AstroMi
 **Note:** In order to use the Starship utilities, the source Airflow environment must be running Airflow 2.x
 
 Choosing the right package
-------------
-- The [AstroMigrationOperator](https://github.com/astronomer/starship/tree/master/astronomer-starship-provider) should be used if migrating from a Google Cloud Composer 1 (with Airflow 2.x) or MWAA v2.0.2 environment. These environments do not support webserver plugins and will require using the `AstroMigrationOperator` to migrate Connections, Variables, and Environment Variables.
-- The [Starship Plugin](https://github.com/astronomer/starship/tree/master/astronomer-starship) should be used for migrating from all other environments including Google Cloud Composer 2, MWAA v2.2.2, OSS, and Astronomer Software/Nebula instances.
+--------------------------
+- The `AstroMigrationOperator <https://github.com/astronomer/starship/tree/master/astronomer-starship-provider>`_ should be used if migrating from a Google Cloud Composer 1 (with Airflow 2.x) or MWAA v2.0.2 environment. These environments do not support webserver plugins and will require using the `AstroMigrationOperator` to migrate Connections, Variables, and Environment Variables.
+- The `Starship Plugin <https://github.com/astronomer/starship/tree/master/astronomer-starship>`_ should be used for migrating from all other environments including Google Cloud Composer 2, MWAA v2.2.2, OSS, and Astronomer Software/Nebula instances.
 
 
 Astronomer Starship Plugin
@@ -44,7 +44,7 @@ Running Telescope Report
 To run the Telescope Report, to get a snapshot of your source Airflow Instance
 
 1. Hover over the Astronomer menu in the Airflow UI and select ``Run Report 🔭 Telescope``
-2. #### TODO ####
+2. !!! TODO !!!
 
 
 Migrating Airflow Connections
@@ -52,7 +52,7 @@ Migrating Airflow Connections
 
 To migrate connections from your source Airflow meta-database:
 
-1. Click on the ``Connections`` tab:
+1.. Click on the ``Connections`` tab:
 2. In the table displaying the connections that can be migrated, click the ``Migrate`` button for each connection that needs to be sent to the Target Deployment:
 
 .. image:: images/connections-migrate.png
@@ -69,7 +69,7 @@ To migrate variables from your source Airflow meta-database:
 
 .. image:: images/variables-migrate.png
 
-3. Once the ``Migrate`` button is clicked, the variable will be sent to the Target Deployment and will show as ``Migrated ✅`` in the plugin UI
+#. Once the ``Migrate`` button is clicked, the variable will be sent to the Target Deployment and will show as ``Migrated ✅`` in the plugin UI
 
 Migrating Airflow Pools
 -----------------------

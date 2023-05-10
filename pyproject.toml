@@ -1,4 +1,112 @@
+[tool.poetry]
+name = "astronomer-starship"
+version = "1.0.0"
+description = "Migrations to Astro"
+authors = ["ADE Team <ade@astronomer.io>"]
+readme = "README.rst"
+repository = "https://github.com/astronomer/starship"
+homepage = "https://astronomer.io"
+license = "Proprietary"
+packages = [{include = "astronomer"}]  #, from = "." }]
+include = [
+  "astronomer/starship/templates/*",
+  "astronomer/starship/static/*",
+  "astronomer/aeroscope/plugins/templates/*"
+]
+
+#[tool.setuptools]
+#package-dir = {"" = "astronomer"}
+#
+#[tool.setuptools.packages.find]
+#where = ["astronomer"]
+
+[tool.poetry.dependencies]
+python = ">=3.8.1,<4.0"
+pydash = "^7.0.0"
+python-graphql-client = "^0.4.3"
+requests = "^2.28.2"
+cachetools = "^5.3.0"
+pygithub = "^1.58.1"
+
+[tool.poetry.group.orion.dependencies]
+click = "^8.1.3"
+halo = "^0.0.31"
+sh = "^2.0.2"
+fs = "^2.4.16"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.2.1"
+black = "^23.1.0"
+pytest-cov = "^4.0.0"
+requests = "^2.28.2"
+twine = "^4.0.2"
+pre-commit = "^3.2.2"
+ruff = "^0.0.261"
+isort = "^5.12.0"
+pylint = "^2.17.2"
+pyupgrade = "^3.3.1"
+pytest-integration = "^0.2.3"
+pyyaml = "^6.0"
+python-dotenv = "^1.0.0"
+pulumi = "^3.63.0"
+pulumi-aws = "^5.35.0"
+sh = "^2.0.3"
+
+
+[tool.poetry.group.aws.dependencies]
+boto3 = "^1.26.81"
+boto3-stubs = {extras = ["mwaa", "s3"], version = "^1.26.81"}
+fs-s3fs = "^1.1.1"
+
+[tool.poetry.scripts]
+# Entry points for the package https://python-poetry.org/docs/pyproject/#scripts
+orion = "orion.__main__:migrate"
+
+# dynamically add plugin to Airflow Plugins
+[tool.poetry.plugins] # Optional super table
+[tool.poetry.plugins."airflow.plugins"]
+"starship" = "astronomer.starship.main:StarshipPlugin"
+"starship_aeroscope" = "astronomer.aeroscope.plugins:AeroscopePlugin"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+# https://github.com/psf/black
+color = true
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+skips = [
+  "B301",
+  "B403",
+  "B310",  # urlopen in Aeroscope
+  "B608"  # SQL Injection in DAG History Migration
+]
+
+[tool.ruff]
+line-length = 120
+
+[tool.rstcheck]
+report_level = "WARNING"
+
 [tool.pytest.ini_options]
+# https://docs.pytest.org/en/6.2.x/customize.html#pyproject-toml
+# Directories that are not visited by pytest collector:
+#norecursedirs =["tests/resources/", "hooks", "*.egg", ".eggs", "dist", "build", "docs", ".tox", ".git", "__pycache__"]
+doctest_optionflags = ["NUMBER", "NORMALIZE_WHITESPACE", "IGNORE_EXCEPTION_DETAIL"]
+
+# Extra options:
 addopts = [
-    "--import-mode=importlib",
+#  "--ignore=tests/resources/example-dag.py",
+#  "--ignore=resources/fix.py",
+#  "--numprocesses=auto",
+  "--strict-markers",
+  "--tb=short",
+  "--disable-warnings",
+  "--no-header",
+  "--doctest-modules",
+  "--doctest-continue-on-failure",
 ]

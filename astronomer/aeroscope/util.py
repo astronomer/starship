@@ -11,7 +11,7 @@ def clean_airflow_report_output(log_string: str) -> Union[dict, str]:
     Or return output as a list, trimmed and split on newlines
     >>> clean_airflow_report_output('INFO 123 - xyz - abc\n\n\nERROR - 1234\n%%%%%%%\naGVsbG8gd29ybGQ=')
     'hello world'
-    >>> clean_airflow_report_output('INFO 123 - xyz - abc\n\n\nERROR - 1234\n%%%%%%%\neyJvdXRwdXQiOiAiaGVsbG8gd29ybGQifQ==')
+    >>> clean_airflow_report_output('INFO 123-xyz - abc\n\nERROR-1234\n%%%%%%%\neyJvdXRwdXQiOiAiaGVsbG8gd29ybGQifQ==')
     {'output': 'hello world'}
     """
 
@@ -32,7 +32,9 @@ def clean_airflow_report_output(log_string: str) -> Union[dict, str]:
             found_i = i + 1
             break
     if found_i != -1:
-        output = base64.decodebytes("\n".join(log_lines[found_i:]).encode("utf-8")).decode("utf-8")
+        output = base64.decodebytes(
+            "\n".join(log_lines[found_i:]).encode("utf-8")
+        ).decode("utf-8")
         try:
             return json.loads(output)
         except JSONDecodeError:

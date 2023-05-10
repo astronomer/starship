@@ -18,9 +18,7 @@ ASTRO_ALPHA_API = "https://api.astronomer.io/v1alpha1"
 
 def get_username(token):
     headers = {"Authorization": f"Bearer {token}"}
-    client = GraphqlClient(
-        endpoint=ASTROHUB_API, headers=headers
-    )
+    client = GraphqlClient(endpoint=ASTROHUB_API, headers=headers)
     query = "{self {user {username}}}"
 
     try:
@@ -37,7 +35,9 @@ def get_deployments(token):
         return {}
     headers = {"Authorization": f"Bearer {token}"}
     orgs = get_organizations(token)
-    short_name = os.getenv("STARSHIP_ORG_SHORTNAME", [_ for _ in orgs.values()][0]['shortName'])
+    short_name = os.getenv(
+        "STARSHIP_ORG_SHORTNAME", [_ for _ in orgs.values()][0]["shortName"]
+    )
 
     # FIXME use the first org for now. change to a select in the near term.
     url = f"{ASTRO_ALPHA_API}/organizations/{short_name}/deployments"
@@ -85,17 +85,15 @@ def get_deployment_url(deployment, token):
     all_astro_deployments = get_deployments(token)
 
     if all_astro_deployments and all_astro_deployments.get(deployment):
-        url = urlparse(
-            all_astro_deployments[deployment]["webServerUrl"]
-        )
+        url = urlparse(all_astro_deployments[deployment]["webServerUrl"])
         return f"https:/{url.netloc}/{url.path}"
 
 
-def set_environment_variables(deployment: str, token: str, remote_vars: dict[dict[str, Any]]):
+def set_environment_variables(
+    deployment: str, token: str, remote_vars: dict[dict[str, Any]]
+):
     headers = {"Authorization": f"Bearer {token}"}
-    client = GraphqlClient(
-        endpoint=ASTROHUB_API, headers=headers
-    )
+    client = GraphqlClient(endpoint=ASTROHUB_API, headers=headers)
     query = """
             fragment EnvironmentVariable on EnvironmentVariable {
                 key
@@ -120,15 +118,17 @@ def set_environment_variables(deployment: str, token: str, remote_vars: dict[dic
     )
 
 
-def set_changed_environment_variables(deployment: str, token: str, items: Iterator[str]) -> None:
+def set_changed_environment_variables(
+    deployment: str, token: str, items: Iterator[str]
+) -> None:
     """
     :param deployment - deployment id
     :param token - user or deployment or workspace token
-    :param items: str - e.g. {'env-AIRFLOW__WEBSERVER__RELOAD_ON_PLUGIN_CHANGE': 'AIRFLOW__WEBSERVER__RELOAD_ON_PLUGIN_CHANGE'}
+    :param items: str {'env-AIRFLOW__WEBSERVER__RELOAD_ON_PLUGIN_CHANGE': 'AIRFLOW__WEBSERVER__RELOAD_ON_PLUGIN_CHANGE'}
     """
     remote_vars = get_environment_variables(deployment, token)
     for item in items:
-        if not item in remote_vars.keys():
+        if item not in remote_vars.keys():
             remote_vars.setdefault(
                 item,
                 {
@@ -157,11 +157,12 @@ def get_environment_variables(deployment: str, token: str):
         # NEW STYLE? - separate object
         headers = {
             "Authorization": f"Bearer {token}",
-            "astro-current-org-id": "clacwluxo0u3i0t09epts2tjg"
+            "astro-current-org-id": "clacwluxo0u3i0t09epts2tjg",
         }
         client = GraphqlClient(
             #  api.astronomer.io/hub/graphql
-            endpoint=ASTROHUB_GRAPHQL_API, headers=headers
+            endpoint=ASTROHUB_GRAPHQL_API,
+            headers=headers,
         )
         query = """
           fragment EnvironmentVariable on EnvironmentVariable {
@@ -189,7 +190,11 @@ def get_environment_variables(deployment: str, token: str):
             query,
             {"id": deployment},
         )
-        return r.get('data', {}).get('deploymentSpec', {}).get('environmentVariablesObjects', {})
+        return (
+            r.get("data", {})
+            .get("deploymentSpec", {})
+            .get("environmentVariablesObjects", {})
+        )
 
 
 def is_environment_variable_migrated(deployment: str, token: str, key: str) -> bool:
@@ -198,9 +203,7 @@ def is_environment_variable_migrated(deployment: str, token: str, key: str) -> b
 
 @deprecated
 class AstroClient:
-    def __init__(
-            self, token: Optional[str] = None, url: str = ASTROHUB_API
-    ):
+    def __init__(self, token: Optional[str] = None, url: str = ASTROHUB_API):
         self.token = token
         self.url = url
 

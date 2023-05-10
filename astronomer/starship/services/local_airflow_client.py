@@ -10,20 +10,18 @@ from deprecated import deprecated
 from sqlalchemy import MetaData, Table
 from sqlalchemy.exc import NoSuchTableError
 from sqlalchemy.orm import Session
+from airflow.models import Connection
+from airflow.models import Pool
 
 
 @provide_session
 def get_connections(session: Session) -> List["Connection"]:
-    from airflow.models import Connection
-
     connections = session.query(Connection).order_by(Connection.conn_id).all()
     return connections
 
 
 @provide_session
 def get_pools(session: Session) -> List["Pool"]:
-    from airflow.models import Pool
-
     pools = session.query(Pool).all()
     return pools
 
@@ -66,7 +64,7 @@ class LocalAirflowClient:
 
 @provide_session
 def migrate(session: Session, table_name: str, dag_id: str):
-    logging.info(f"Creating source SQL Connections ..")
+    logging.info("Creating source SQL Connections ..")
     source_engine = session.get_bind()
     source_metadata_obj = MetaData(bind=source_engine)
     source_table = get_table(source_metadata_obj, source_engine, table_name)
@@ -114,7 +112,7 @@ def receive_dag(data: list = []):
         try:
             del datum["conf"]
             del datum["id"]
-        except:
+        except Exception:
             logging.info(
                 'tried to deleting something that doesn"t exist, don"t worry it still doesn"t exist'
             )

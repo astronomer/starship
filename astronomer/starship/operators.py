@@ -25,7 +25,7 @@ class AstroMigrationOperator(BaseOperator):
         variables_exclude_list=None,
         connection_exclude_list=None,
         env_include_list=None,
-        **kwargs
+        **kwargs,
     ) -> None:
         super().__init__(**kwargs)
         self.deployment_url = deployment_url

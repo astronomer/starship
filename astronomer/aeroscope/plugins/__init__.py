@@ -6,9 +6,13 @@ import urllib.error
 from contextlib import redirect_stderr, redirect_stdout
 from textwrap import dedent
 
+import io
+import runpy
+from urllib.request import urlretrieve
 import requests
+from airflow.configuration import conf
 from airflow.plugins_manager import AirflowPlugin
-from flask import Blueprint, Response, flash, request
+from flask import Blueprint, Response, flash, redirect, request
 from flask_appbuilder import BaseView as AppBuilderBaseView
 from flask_appbuilder import expose
 from wtforms import Form, StringField, validators
@@ -36,41 +40,6 @@ class AeroForm(Form):
     )
 
 
-def get_aeroscope_report(date: str, organization: str):
-    import io
-    import runpy
-    from urllib.request import urlretrieve
-
-    version = os.getenv("TELESCOPE_REPORT_RELEASE_VERSION", "latest")
-    a = "airflow_report.pyz"
-    if version == "latest":
-        urlretrieve(
-            "https://github.com/astronomer/telescope/releases/latest/download/airflow_report.pyz",
-            a,
-        )
-    else:
-        try:
-            urlretrieve(
-                f"https://github.com/astronomer/telescope/releases/download/{version}/airflow_report.pyz",
-                a,
-            )
-        except urllib.error.HTTPError as e:
-            flash(f"Error finding specified version:{version} -- Reason:{e.reason}")
-    s = io.StringIO()
-    with redirect_stdout(s), redirect_stderr(s):
-        runpy.run_path(a)
-    return {
-        "telescope_version": "aeroscope-latest",
-        "report_date": date,
-        "organization_name": organization,
-        "local": {
-            socket.gethostname(): {
-                "airflow_report": clean_airflow_report_output(s.getvalue())
-            }
-        },
-    }
-
-
 # Creating a flask appbuilder BaseView
 class StarshipAeroscope(AppBuilderBaseView):
     default_view = "aeroscope"
@@ -78,29 +47,57 @@ class StarshipAeroscope(AppBuilderBaseView):
     @expose("/", methods=("GET", "POST"))
     def aeroscope(self):
         form = AeroForm(request.form)
-        date = datetime.datetime.now(datetime.timezone.utc).isoformat()[:10]
         if (
             request.method == "POST"
             and form.validate()
-            and request.form["action"] == "Send/Download Report"
+            and request.form["action"] == "Download"
         ):
-            filename = f"{date}.{form.organization.data}.data.json"
-            content = get_aeroscope_report(
-                date=date,
-                organization=form.organization.data,
-            )
+            VERSION = os.getenv("TELESCOPE_REPORT_RELEASE_VERSION", "latest")
+            a = "airflow_report.pyz"
+            if VERSION == "latest":
+                urlretrieve(
+                    "https://github.com/astronomer/telescope/releases/latest/download/airflow_report.pyz",
+                    a,
+                )
+            else:
+                try:
+                    urlretrieve(
+                        f"https://github.com/astronomer/telescope/releases/download/{VERSION}/airflow_report.pyz",
+                        a,
+                    )
+                except urllib.error.HTTPError as e:
+                    flash(
+                        f"Error finding specified version:{VERSION} -- Reason:{e.reason}"
+                    )
+            s = io.StringIO()
+            with redirect_stdout(s), redirect_stderr(s):
+                runpy.run_path(a)
+            date = datetime.datetime.now(datetime.timezone.utc).isoformat()[:10]
+            content = {
+                "telescope_version": "aeroscope-latest",
+                "report_date": date,
+                "organization_name": form.organization.data,
+                "local": {
+                    socket.gethostname(): {
+                        "airflow_report": clean_airflow_report_output(s.getvalue())
+                    }
+                },
+            }
             if len(form.presigned_url.data) > 1:
                 upload = requests.put(form.presigned_url.data, data=json.dumps(content))
                 if upload.ok:
                     flash("Upload successful")
                 else:
                     flash(upload.reason, "error")
-
+            filename = f"{date}.{form.organization.data}.data.json"
             return Response(
                 json.dumps(content),
                 mimetype="application/json",
                 headers={"Content-Disposition": f"attachment;filename={filename}"},
             )
+        elif request.method == "POST" and request.form["action"] == "Back to Airflow":
+            return redirect(conf.get("webserver", "base_url"))
+
         else:
             return self.render_template("aeroscope/main.html", form=form)
 

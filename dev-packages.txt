@@ -1,3 +1,0 @@
-chromium-common=105.0.5195.52-1~deb11u1 -V
-chromium=105.0.5195.52-1~deb11u1 -V
-chromium-driver=105.0.5195.52-1~deb11u1 -V
