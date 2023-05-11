@@ -1,0 +1,65 @@
+<tr id="dag-{{dag_.id}}">
+    <td>{{ dag_.id }}</td>
+    <td>{{ dag_.is_on_astro }}</td>
+    <td>
+        {% if dag_.is_paused_here %}
+        <button class="btn btn-success"
+                hx-post="{{ url_for('AstroMigration.dag_cutover_row', deployment=session.selectedAstroDeployment or 'undefined', dag_id=dag_.id, dest='local', action='unpause') }}"
+                hx-target="#dag-{{dag_.id}}"
+                hx-swap="outerHTML"
+        >
+            <span class="glyphicon glyphicon-play" aria-hidden="true"></span>
+        </button>
+        {% else %}
+        <button class="btn btn-danger"
+                hx-post="{{ url_for('AstroMigration.dag_cutover_row', deployment=session.selectedAstroDeployment or 'undefined', dag_id=dag_.id, dest='local', action='pause') }}"
+                hx-target="#dag-{{dag_.id}}"
+                hx-swap="outerHTML"
+        >
+            <span class="glyphicon glyphicon-pause" aria-hidden="true"></span>
+        </button>
+        {% endif %}
+    </td>
+    <td>
+        {% if not dag_.is_on_astro %}
+        <button class="btn btn-default" disabled>
+            <span class="glyphicon glyphicon-play" aria-hidden="true"></span>
+        </button>
+        {% elif dag_.is_paused_on_astro %}
+        <button class="btn btn-success"
+                hx-post="{{ url_for('AstroMigration.dag_cutover_row', deployment=session.selectedAstroDeployment or 'undefined', dag_id=dag_.id, dest='astro', action='unpause') }}"
+                hx-target="#dag-{{dag_.id}}"
+                hx-swap="outerHTML"
+        >
+            <span class="glyphicon glyphicon-play" aria-hidden="true"></span>
+        </button>
+        {% else %}
+        <button class="btn btn-danger"
+                hx-post="{{ url_for('AstroMigration.dag_cutover_row', deployment=session.selectedAstroDeployment or 'undefined', dag_id=dag_.id, dest='astro', action='pause') }}"
+                hx-target="#dag-{{dag_.id}}"
+                hx-swap="outerHTML"
+        >
+            <span class="glyphicon glyphicon-pause" aria-hidden="true"></span>
+        </button>
+        {% endif %}
+    </td>
+    <td>
+    {% if not dag_.is_on_astro %}
+        <button class="btn btn-default" disabled>
+            <span class="glyphicon glyphicon-upload" aria-hidden="true"></span>
+        </button>
+        {% elif dag_.has_history_on_astro %}
+                <button class="btn btn-default" disabled>
+            History Present on Target
+        </button>
+        {%  else %}
+              <button class="btn btn-default"
+                hx-post="{{ url_for('AstroMigration.dag_cutover_row', deployment=session.selectedAstroDeployment or 'undefined', dag_id=dag_.id, dest='astro', action='migrate') }}"
+                hx-target="#dag-{{dag_.id}}"
+                hx-swap="outerHTML"
+              >
+            <span class="glyphicon glyphicon-upload" aria-hidden="true"></span>
+        </button>
+        {%  endif %}
+    </td>
+</tr>

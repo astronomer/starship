@@ -1,0 +1,7 @@
+{%  if not deployment %}
+<button class="btn btn-outline-secondary disabled">Migrate</button>
+{% elif is_migrated %}
+<p>Migrated ✅</p>
+{% else %}
+<input class="form-check-input custom-control-input form-switch" type="checkbox" name="env-{{target}}" value="{{target}}"/>
+{% endif %}

@@ -1,0 +1,39 @@
+{% extends "starship/components/tabs.html" %}
+
+{% block body %}
+{% if 'pools' in data and data.pools|length > 0 %}
+<form>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <table class="table table-striped table-bordered table-hover">
+        <thead>
+            <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Slots</th>
+                <th scope="col">Description</th>
+                <th scope="col"></th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for p, pool in data.pools.items() %}
+            <tr>
+                <td>{{ p }}</td>
+                <td>{{ pool.slots }}</td>
+                <td>{{ pool.description }}</td>
+                <td class="text-right">
+                    <div id="migrate-button-{{p}}"
+                         hx-trigger="load delay:100ms"
+                         hx-get="{{ url_for('AstroMigration.button_migrate_pool', deployment=session.selectedAstroDeployment or 'undefined', pool_name=pool) }}"
+                         hx-target="#migrate-button-{{p}}"
+                         hx-swap="innerHTML">
+                        <button class="btn btn-default disabled">Migrate</button>
+                    </div>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</form>
+{% else %}
+<h4>No pools found in local metadata database.</h4>
+{% endif %}
+{% endblock %}

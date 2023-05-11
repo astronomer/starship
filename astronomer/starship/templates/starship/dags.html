@@ -1,0 +1,32 @@
+{% extends "starship/components/tabs.html" %}
+
+{% block body %}
+{% if 'dags' in data and data.dags|length > 0 %}
+<form>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    <table class="table table-striped table-bordered table-hover">
+        <thead>
+        <tr>
+            <th scope="col">DAG</th>
+            <th scope="col">Present on Astro?</th>
+            <th scope="col" style="width: 8%">Local</th>
+            <th scope="col" style="width: 8%">Remote</th>
+            <th scope="col" style="width: 8%">Migrate</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for k, v in data.dags.items() %}
+        <tr id="dag-{{k}}"
+            hx-get="{{ url_for('AstroMigration.dag_cutover_row_get', deployment=session.selectedAstroDeployment or 'undefined', dag_id=k, action='init') }}"
+            hx-trigger="load delay:100ms"
+            hx-target="#dag-{{k}}"
+            hx-swap="outerHTML">
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</form>
+{% else %}
+<h4>No DAGs found in local instance.</h4>
+{% endif %}
+{% endblock %}

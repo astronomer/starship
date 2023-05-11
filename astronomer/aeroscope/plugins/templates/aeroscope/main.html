@@ -1,0 +1,75 @@
+{% extends base_template %}
+
+{% block head_js %}
+{{ super() }}
+{% endblock %}
+
+{% block head_css %}
+{{ super() }}
+
+{% endblock %}
+
+{% block page_title %}
+Run Report 🔭 Telescope
+{% endblock %}
+
+{% block content %}
+{% for message in get_flashed_messages() %}
+<div class="alert alert-warning">
+    <button type="button" class="close" data-dismiss="alert">&times;</button>
+    {{ message }}
+</div>
+{% endfor %}
+
+<div class="container">
+    <div class="page-header">
+        <h1>Run Report 🔭 Telescope</h1>
+    </div>
+    <div class="row">
+        <p>This is a utility for running Telescope on a single Airflow instance. You can read more about Telescope
+            <a href="https://github.com/astronomer/telescope">here</a>.<br>
+        </p>
+    </div>
+    <form id="aeroscope" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="form-group">
+            <label for="org-input">{{ form.organization.label }}</label>
+            {{ form.organization(class="form-control", id="org-input")|safe }}
+            {% if form.organization.errors %}
+            <span class="glyphicon glyphicon-remove form-control-feedback" aria-hidden="true"></span>
+            <span id="org-input-error" class="sr-only">(error)</span>
+            {% endif %}
+            {% if form.organization.desc %}
+            <p class="help-block">
+                {{ form.organization.desc }}
+            </p>
+            {% endif %}
+        </div>
+        {% if form.organization.errors %}
+        <ul class=errors>
+            {% for error in form.organization.errors %}
+            <div class="alert alert-danger" role="alert">{{ error }}</div>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        <div class="form-group">
+            <label for="url-input">{{ form.presigned_url.label }}</label>
+            {{ form.presigned_url(class="form-control", id="url-input")|safe }}
+            {% if form.presigned_url.description %}
+            <p class="help-block">
+                {{ form.presigned_url.description }}
+            </p>
+            {% endif %}
+        </div>
+        {% if form.presigned_url.errors %}
+        <ul class=errors>
+            {% for error in form.presigned_url.errors %}
+            <div class="alert alert-danger" role="alert">{{ error }}</div>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        <input type=submit class="btn btn-default" type="button" name="action" value="Send/Download Report">
+    </form>
+</div>
+
+{% endblock %}

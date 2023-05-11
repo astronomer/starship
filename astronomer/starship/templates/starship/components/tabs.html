@@ -1,0 +1,26 @@
+<div class="container">
+    <ul class="nav nav-tabs">
+        <li class="nav-item {{ 'active' if data.component == 'connections' }}">
+            <a class="nav-link" hx-get="{{ url_for('AstroMigration.tabs_conns') }}">Connections</a>
+        </li>
+        <li class="nav-item {{ 'active' if data.component == 'variables' }}">
+            <a class="nav-link" hx-get="{{ url_for('AstroMigration.tabs_vars') }}">Variables</a>
+        </li>
+        <li class="nav-item {{ 'active' if data.component == 'pools' }}">
+            <a class="nav-link" hx-get="{{ url_for('AstroMigration.tabs_pools') }}">Pools</a>
+        </li>
+        <li class="nav-item {{ 'active' if data.component == 'env' }}">
+            <a class="nav-link" hx-get="{{ url_for('AstroMigration.tabs_env') }}">Environment Variables</a>
+        </li>
+        <li class="nav-item {{ 'active' if data.component == 'dags' }}">
+            <a class="nav-link" hx-get="{{ url_for('AstroMigration.tabs_dags') }}">DAGs cutover</a>
+        </li>
+    </ul>
+</div>
+<div class="tab-content" id="tabs-content">
+    <div class="container">
+        {% block body %}
+        <!-- Tab content goes here -->
+        {% endblock %}
+    </div>
+</div>

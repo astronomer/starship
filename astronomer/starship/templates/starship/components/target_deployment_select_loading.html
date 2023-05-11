@@ -1,0 +1,28 @@
+<div class="container" style="padding-top: 15px;">
+    <form method="post">
+        <div class="form-group">
+            <div class="row">
+                <div class="col-lg-3">
+                    <label for="currentUser" class="form-label">Current user</label>
+                </div>
+                <div class="col-lg-6">
+                    <label id="currentUser" class="form-label"><span>Loading.......</span>
+                        (<a>Logout</a>)</label>
+                </div>
+            </div>
+            <div class="row" style="padding-top: 15px;">
+                <div class="col-lg-3">
+                    <label for="selectedAstroDeployment" class="form-label">Target Deployment</label>
+                </div>
+                <div class="col-lg-6">
+                    <select id="selectedAstroDeployment" class="form-control" name="selectedAstroDeployment">
+                        <option value="" selected disabled>Select deployment</option>
+                    </select>
+                </div>
+                <div class="col-lg-3">
+                    <button type="submit" disabled class="btn btn-primary mb3-l">Select</button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>

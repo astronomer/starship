@@ -1,0 +1,38 @@
+{% extends "starship/components/tabs.html" %}
+
+{% block body %}
+{% if 'vars' in data and data.vars|length > 0 %}
+    <form>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <table class="table table-striped table-bordered table-hover">
+            <thead>
+            <tr>
+                <th scope="col">Key</th>
+                <th scope="col">Value</th>
+                <th>
+                </th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for key, var in data.vars.items() %}
+            <tr>
+                <td>{{ var.key }}</td>
+                <td>{{ var.val }}</td>
+                <td class="text-right">
+                  <div id="migrate-button-{{var.key}}"
+                       hx-get="{{ url_for('AstroMigration.button_migrate_variable', deployment=session.selectedAstroDeployment or 'undefined', variable=var.key) }}"
+                       hx-trigger="load delay:100ms"
+                       hx-target="#migrate-button-{{var.key}}"
+                       hx-swap="innerHTML">
+                      <button class="btn btn-default disabled">Migrate</button>
+                  </div>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </form>
+{% else %}
+<h4>No variables found in local metadata database.</h4>
+{% endif %}
+{% endblock %}
