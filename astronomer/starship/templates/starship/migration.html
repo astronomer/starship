@@ -16,7 +16,7 @@
 </div>
 <div id="tabs"
      hx-indicator="#tabs-loading"
-     hx-get="{{ url_for(data.tab) }}"
+     hx-get="{{ url_for(data.tab) if data else url_for('AstroMigration.tabs_conns') }}"
      hx-trigger="load delay:10ms"
      hx-target="#tabs"
      hx-swap="innerHTML">

@@ -57,6 +57,37 @@ run:
 ```shell
 poetry build --publish -r testpypi
 ```
+or
+```shell
+act push -W .github/workflows/test_publish.yml --container-architecture linux/amd64 -s TEST_PYPI_TOKEN=pypi-PYPITOKENTESTPYPITOKENTESTPYPITOKEN
+```
+or hit the "Run Workflow" button in Github Actions
+
+then test, by adding this to a `requirements.txt`
+```shell
+--index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ astronomer-starship
+```
+
+and add this to `airflow_settings.yaml` and then run `astro d object import`
+```shell
+airflow:
+  connections:
+    - conn_id: aws
+      conn_type: aws
+      conn_host:
+      conn_schema:
+      conn_login:
+      conn_password:
+      conn_port:
+      conn_extra:
+  pools:
+    - pool_name: foo
+      pool_slot: 999
+      pool_description:
+  variables:
+    - variable_name: foo
+      variable_value: bar
+```
 
 # Developing CICD
 Use https://github.com/nektos/act to run and test CICD changes locally.
