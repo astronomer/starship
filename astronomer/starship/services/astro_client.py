@@ -10,10 +10,10 @@ from pydash import at
 from python_graphql_client import GraphqlClient
 from deprecated import deprecated
 
-ASTRO_AUTH = "https://auth.astronomer.io"
-ASTROHUB_API = "https://api.astronomer.io/hub/v1"
-ASTROHUB_GRAPHQL_API = "https://api.astronomer.io/hub/graphql"
-ASTRO_ALPHA_API = "https://api.astronomer.io/v1alpha1"
+ASTRO_AUTH = os.environ.get("STARSHIP_ASTRO_AUTH", "https://auth.astronomer.io")
+ASTROHUB_API = os.environ.get("STARSHIP_ASTROHUB_API", "https://api.astronomer.io/hub/v1")
+ASTROHUB_GRAPHQL_API = os.environ.get("STARSHIP_ASTROHUB_GRAPHQL_API", "https://api.astronomer.io/hub/graphql")
+ASTRO_ALPHA_API = os.environ.get("STARSHIP_ASTRO_ALPHA_API", "https://api.astronomer.io/v1alpha1")
 
 
 def get_username(token):
