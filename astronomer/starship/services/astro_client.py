@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Optional, Iterator, Any
+from typing import Optional, Iterator, Any, Dict
 from urllib.parse import urlparse
 
 import jwt
@@ -11,9 +11,15 @@ from python_graphql_client import GraphqlClient
 from deprecated import deprecated
 
 ASTRO_AUTH = os.environ.get("STARSHIP_ASTRO_AUTH", "https://auth.astronomer.io")
-ASTROHUB_API = os.environ.get("STARSHIP_ASTROHUB_API", "https://api.astronomer.io/hub/v1")
-ASTROHUB_GRAPHQL_API = os.environ.get("STARSHIP_ASTROHUB_GRAPHQL_API", "https://api.astronomer.io/hub/graphql")
-ASTRO_ALPHA_API = os.environ.get("STARSHIP_ASTRO_ALPHA_API", "https://api.astronomer.io/v1alpha1")
+ASTROHUB_API = os.environ.get(
+    "STARSHIP_ASTROHUB_API", "https://api.astronomer.io/hub/v1"
+)
+ASTROHUB_GRAPHQL_API = os.environ.get(
+    "STARSHIP_ASTROHUB_GRAPHQL_API", "https://api.astronomer.io/hub/graphql"
+)
+ASTRO_ALPHA_API = os.environ.get(
+    "STARSHIP_ASTRO_ALPHA_API", "https://api.astronomer.io/v1alpha1"
+)
 
 
 def get_username(token):
@@ -90,7 +96,7 @@ def get_deployment_url(deployment, token):
 
 
 def set_environment_variables(
-    deployment: str, token: str, remote_vars: dict[dict[str, Any]]
+    deployment: str, token: str, remote_vars: Dict[Dict[str, Any]]
 ):
     headers = {"Authorization": f"Bearer {token}"}
     client = GraphqlClient(endpoint=ASTROHUB_API, headers=headers)
