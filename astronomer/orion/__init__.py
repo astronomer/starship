@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """A tool to easily migrate Airflow Environments from any Cloud Provider to Astronomer!"""
 import sys
 from abc import abstractmethod
@@ -6,8 +5,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fs import open_fs
-from fs.copy import copy_dir, copy_fs
+import click as click
+from click import ClickException
+
+from astronomer.orion import MAIN_ECHO_COLOR, YES
+from astronomer.orion.__main__ import MAIN_ECHO_COLOR, SKIP_ECHO_COLOR, YES
 
 if sys.version_info >= (3, 8):
     from importlib import metadata as importlib_metadata
@@ -94,3 +96,33 @@ class CloudProvider:
         alert_email: Optional[str],
     ) -> Dict[str, Any]:
         pass
+
+
+def main_echo(msg) -> None:
+    click.echo(click.style(msg, fg=MAIN_ECHO_COLOR, bold=True))
+
+
+def skip_echo(msg) -> None:
+    click.echo(click.style(msg, fg=SKIP_ECHO_COLOR))
+
+
+def confirm_or_exit(msg: str):
+    if not YES:
+        if not click.confirm(
+            click.style(msg + " Continue?", fg=MAIN_ECHO_COLOR, bold=True), default=True
+        ):
+            raise ClickException("Exiting!")
+    else:
+        main_echo(msg)
+
+
+def confirm_or_skip(msg: str) -> bool:
+    if not YES:
+        if not click.confirm(
+            click.style(msg + " Continue?", fg=MAIN_ECHO_COLOR, bold=True), default=True
+        ):
+            skip_echo("Skipping...")
+            return True
+    else:
+        main_echo(msg)
+    return False

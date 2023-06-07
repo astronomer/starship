@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import logging
 import os
 import shelve
@@ -10,10 +9,17 @@ import sh
 from click import echo
 from click.exceptions import ClickException
 
-from orion import airflow_to_runtime_version, is_file_empty
-from orion import version as orion_version
-from orion.astro import DEPLOYMENT_FILE_TEMPLATE, DEPLOYMENT_FILE_TEMPLATE_DEFAULTS
-from orion.aws import AWS
+from . import (
+    version as orion_version,
+    is_file_empty,
+    airflow_to_runtime_version,
+    main_echo,
+    skip_echo,
+    confirm_or_exit,
+    confirm_or_skip,
+)
+from astro import DEPLOYMENT_FILE_TEMPLATE, DEPLOYMENT_FILE_TEMPLATE_DEFAULTS
+from aws import AWS
 
 log = logging.getLogger(__name__)
 log.setLevel(
@@ -26,7 +32,6 @@ SKIP_ECHO_COLOR = "grey"
 YES = False
 
 
-# noinspection PyUnusedLocal
 def version(ctx, self, value):
     if not value or ctx.resilient_parsing:
         return
@@ -36,36 +41,6 @@ def version(ctx, self, value):
 
 d = {"show_default": True, "show_envvar": True}
 sh_args = {"_in": sys.stdin, "_out": sys.stdout, "_err": sys.stderr, "_tee": True}
-
-
-def main_echo(msg) -> None:
-    click.echo(click.style(msg, fg=MAIN_ECHO_COLOR, bold=True))
-
-
-def skip_echo(msg) -> None:
-    click.echo(click.style(msg, fg=SKIP_ECHO_COLOR))
-
-
-def confirm_or_exit(msg: str):
-    if not YES:
-        if not click.confirm(
-            click.style(msg + " Continue?", fg=MAIN_ECHO_COLOR, bold=True), default=True
-        ):
-            raise ClickException("Exiting!")
-    else:
-        main_echo(msg)
-
-
-def confirm_or_skip(msg: str) -> bool:
-    if not YES:
-        if not click.confirm(
-            click.style(msg + " Continue?", fg=MAIN_ECHO_COLOR, bold=True), default=True
-        ):
-            skip_echo("Skipping...")
-            return True
-    else:
-        main_echo(msg)
-    return False
 
 
 def check_workspace(state, workspace):
@@ -106,7 +81,7 @@ def ensure_project_parent_directory(directory):
 
 def astro_deploy(deployment):
     # TODO - check if deployment exists
-    if not confirm_or_skip(f"Deploying project to Astronomer..."):
+    if not confirm_or_skip("Deploying project to Astronomer..."):
         sh.astro("deploy", f"--deployment-name={deployment.name}", **sh_args)
 
 
@@ -395,9 +370,17 @@ def fetch_deployment_info(cloud_client, counter_prefix, deployment_state, instan
     default=False,
     help="Skip confirmation prompts",
 )
-# @click.option('--dry-run', show_envvar=True, is_flag=True, default=False, help="Do not actually deploy or create")
+@click.option(
+    "--dry-run",
+    show_envvar=True,
+    is_flag=True,
+    default=False,
+    help="Do not actually deploy or create",
+)
 @click.version_option()
-def migrate(cloud, workspace, cluster, region, directory, pytest, parse, yes):
+def migrate_all(
+    cloud, workspace, cluster, region, directory, pytest, parse, yes, dry_run
+):
     global YES
     YES = yes
     directory = Path(directory)
@@ -405,11 +388,11 @@ def migrate(cloud, workspace, cluster, region, directory, pytest, parse, yes):
         "AWS": AWS,
         # 'GCP': GCP,
         # 'AZ': AZ
+        # 'Software': Software
     }[cloud](region=region)
 
     # LOAD STATE
     with shelve.open(".orionstate", writeback=True) as state:
-        # noinspection PyTypeChecker
         log.debug(f"State: {dict(state)}")
 
         check_workspace(state, workspace)
@@ -421,82 +404,86 @@ def migrate(cloud, workspace, cluster, region, directory, pytest, parse, yes):
         )
         for i, (instance, deployment_state) in enumerate(instances.items()):
             counter_prefix = f"[{i + 1}/{len(instances)}]"
-            deployment = fetch_deployment_info(
-                cloud_client, counter_prefix, deployment_state, instance
-            )
-            deployment_path = make_project_directory(
-                counter_prefix, deployment_state, directory, instance
-            )
-
-            astro_dev_init(
-                counter_prefix, deployment, deployment_path, deployment_state, instance
-            )
-            git_init(counter_prefix, deployment_path, deployment_state)
-            fill_requirements_txt(
-                cloud_client,
-                counter_prefix,
-                deployment,
-                deployment_path,
-                deployment_state,
-            )
-            if False:
-                fill_packages_txt(
-                    cloud_client,
-                    counter_prefix,
-                    deployment,
-                    deployment_path,
-                    deployment_state,
-                )
-
-            fill_plugins(
-                cloud_client,
-                counter_prefix,
-                deployment,
-                deployment_path,
-                deployment_state,
-            )
-            fill_dags(
-                cloud_client,
-                counter_prefix,
-                deployment,
-                deployment_path,
-                deployment_state,
-            )
-            parse_project(counter_prefix, deployment_path, deployment_state, parse)
-            pytest_project(counter_prefix, deployment_path, deployment_state, pytest)
-            deployment_config_file = create_deployment_config_yaml(
-                cloud_client,
-                cluster,
-                deployment,
-                deployment_path,
-                workspace,
-                deployment_state,
-                counter_prefix,
-            )
-            astro_deploy_create(
-                deployment_config_file, deployment_state, counter_prefix
-            )
-            astro_deploy(deployment)
-
-            # Starship on Source
-            if False:
-                cloud_client.add_starship_to_source(deployment)
-
-            # Trust Policies
-            print("Still to do - Add Trust Policy to MWAA Role")
-
-            # CICD
-            print("Still to do - Add CICD")
-
-            # Secrets Backend
-            print("Still to do - Add Secrets Backend")
-
-            # Airflow Configuration
-            print("Still to do - Get Airflow configuration")
+            migrate(cloud_client, deployment_state, instance, directory, counter_prefix)
 
     logging.debug("Ran successfully, removing .orionstate")
     Path(".orionstate").unlink()
 
 
+def migrate(cloud_client, deployment_state, instance, directory, counter_prefix):
+    deployment = fetch_deployment_info(
+        cloud_client, counter_prefix, deployment_state, instance
+    )
+    deployment_path = make_project_directory(
+        counter_prefix, deployment_state, directory, instance
+    )
+
+    astro_dev_init(
+        counter_prefix, deployment, deployment_path, deployment_state, instance
+    )
+    git_init(counter_prefix, deployment_path, deployment_state)
+    fill_requirements_txt(
+        cloud_client,
+        counter_prefix,
+        deployment,
+        deployment_path,
+        deployment_state,
+    )
+    fill_packages_txt(
+        cloud_client,
+        counter_prefix,
+        deployment,
+        deployment_path,
+        deployment_state,
+    )
+
+    fill_plugins(
+        cloud_client,
+        counter_prefix,
+        deployment,
+        deployment_path,
+        deployment_state,
+    )
+    fill_dags(
+        cloud_client,
+        counter_prefix,
+        deployment,
+        deployment_path,
+        deployment_state,
+    )
+    parse_project(counter_prefix, deployment_path, deployment_state, parse)
+    pytest_project(counter_prefix, deployment_path, deployment_state, pytest)
+    deployment_config_file = create_deployment_config_yaml(
+        cloud_client,
+        cluster,
+        deployment,
+        deployment_path,
+        workspace,
+        deployment_state,
+        counter_prefix,
+    )
+    astro_deploy_create(deployment_config_file, deployment_state, counter_prefix)
+    astro_deploy(deployment)
+
+    # Starship on Source
+    if False:
+        cloud_client.add_starship_to_source(deployment)
+
+    # Trust Policies
+    log.debug("Still to do - Add Trust Policy to MWAA Role")
+    add_permissions()
+
+    # CICD
+    log.debug("Still to do - Add CICD")
+    add_cicd()
+
+    # Secrets Backend
+    log.debug("Still to do - Add Secrets Backend")
+    add_secrets_backend()
+
+    # Airflow Configuration
+    log.debug("Still to do - Get Airflow configuration")
+
+
 if __name__ == "__main__":
-    migrate(auto_envvar_prefix="ORION")
+    migrate_all(auto_envvar_prefix="ORION")

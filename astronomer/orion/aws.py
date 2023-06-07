@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import os
 from io import BytesIO
 from pathlib import Path
@@ -68,8 +67,9 @@ class AWS(CloudProvider):
         # copy_file(s3fs, path, './', str(local_path))
 
     def save_packages(self, deployment: Deployment, local_path: str) -> None:
+        pass
         # copy_fs(deployment., local_path)
-        raise NotImplementedError()
+        # raise NotImplementedError()
 
     def save_dags(self, deployment: Deployment, local_path: str) -> None:
         def download_s3_folder(bucket_name, s3_folder, local_dir=None):

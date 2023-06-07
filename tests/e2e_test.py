@@ -61,10 +61,10 @@ def mwaa_instance(request) -> UpResult:
         f"Update Summary: \n{json.dumps(up_result.summary.resource_changes, indent=4)}"
     )
     yield up_result
-    destroy_result = stack.destroy()
-    print(
-        f"Destroy Summary: \n{json.dumps(destroy_result.summary.resource_changes, indent=4)}"
-    )
+    # destroy_result = stack.destroy()
+    # print(
+    #     f"Destroy Summary: \n{json.dumps(destroy_result.summary.resource_changes, indent=4)}"
+    # )
 
 
 def _create_mwaa():
@@ -98,7 +98,7 @@ def _create_mwaa():
         name,
         bucket=name,
     )
-    s3.BucketAclV2(name, bucket=bucket.id, acl="private")
+    # s3.BucketAclV2(name, bucket=bucket.id, acl="private")
     s3.BucketPublicAccessBlock(
         name,
         bucket=bucket.id,
@@ -378,7 +378,7 @@ def _create_mwaa():
 
 
 @pytest.mark.skipif(
-    condition=not os.getenv("MANUAL_TESTS", False),
+    condition=not os.getenv("E2E_TESTS", False),
     reason="requires a real user, who ran `astro login` recently",
 )
 @pytest.mark.slow_integration_test
