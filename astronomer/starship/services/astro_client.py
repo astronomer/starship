@@ -96,7 +96,7 @@ def get_deployment_url(deployment, token):
 
 
 def set_environment_variables(
-    deployment: str, token: str, remote_vars: Dict[Dict[str, Any]]
+    deployment: str, token: str, remote_vars: Dict[str, Dict[str, Any]]
 ):
     headers = {"Authorization": f"Bearer {token}"}
     client = GraphqlClient(endpoint=ASTROHUB_API, headers=headers)
