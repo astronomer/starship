@@ -6,6 +6,7 @@ import sqlalchemy
 from airflow import DAG, settings
 from airflow.models import DagModel
 from airflow.utils.session import provide_session
+from cachetools.func import ttl_cache
 from deprecated import deprecated
 from sqlalchemy import MetaData, Table
 from sqlalchemy.exc import NoSuchTableError
@@ -42,6 +43,7 @@ def get_variable(variable: str):
     return [v for v in get_variables() if v.key == variable][0]
 
 
+@ttl_cache(ttl=60)
 def get_dags():
     from airflow.models import DagBag
 
@@ -104,7 +106,9 @@ def migrate(session: Session, table_name: str, dag_id: str):
     return rtn
 
 
-def receive_dag(data: list = []):
+def receive_dag(data: list = None):
+    if data is None:
+        data = []
     dest_session = settings.Session()
     dest_engine = dest_session.get_bind()
     dest_metadata_obj = MetaData(bind=dest_engine)
