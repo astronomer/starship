@@ -23,8 +23,13 @@ install: ## install project and all dependency groups via poetry to a local venv
 	poetry install -n
 
 
+.PHONY: install-pre-commit
+install-pre-commit: install
+	poetry run pip install pre-commit
+
 .PHONY: pre-commit-install
 pre-commit-install: install ## Install files required for pre-commit (highly recommended!)
+	poetry run install-pre-commit
 	poetry run pre-commit install
 
 #* Formatters + Linting
