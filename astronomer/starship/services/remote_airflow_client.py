@@ -160,7 +160,6 @@ def _get_remote_dags(deployment_url: str, token: str) -> Response:
         f"{deployment_url}/api/v1/dags/",
         headers={"Authorization": f"Bearer {token}"},
     )
-    r.raise_for_status()
     return r
 
 
@@ -184,8 +183,11 @@ def get_dag(
 
     if dag_fetch_time + ttl < datetime.now():
         r = _get_remote_dags(deployment_url, token)
-        remote_dags = {dag["dag_id"]: dag for dag in r.json()["dags"]}
-        # reset the cache - full reset
+        if not r.ok:
+            remote_dags = {}
+        else:
+            remote_dags = {dag["dag_id"]: dag for dag in r.json().get("dags", [])}
+        # reset the cache - reset the ttl timer
         dag_fetch_time = datetime.now()
         return remote_dags.get(dag_id)
     elif skip_cache:
