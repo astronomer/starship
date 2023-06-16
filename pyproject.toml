@@ -52,6 +52,7 @@ pulumi = "^3.63.0"
 pulumi-aws = "^5.35.0"
 sh = "^2.0.3"
 pytest-mock = "^3.10.0"
+apache-airflow = "^2.6.1"
 
 
 [tool.poetry.group.aws.dependencies]
@@ -100,7 +101,7 @@ report_level = "WARNING"
 [tool.pytest.ini_options]
 # https://docs.pytest.org/en/6.2.x/customize.html#pyproject-toml
 # Directories that are not visited by pytest collector:
-#norecursedirs =["tests/resources/", "hooks", "*.egg", ".eggs", "dist", "build", "docs", ".tox", ".git", "__pycache__"]
+norecursedirs =["tests/resources/", "hooks", "*.egg", ".eggs", "dist", "build", "docs", ".tox", ".git", "__pycache__"]
 doctest_optionflags = ["NUMBER", "NORMALIZE_WHITESPACE", "IGNORE_EXCEPTION_DETAIL"]
 
 # Extra options:
