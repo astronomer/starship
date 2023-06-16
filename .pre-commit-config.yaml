@@ -60,7 +60,7 @@ repos:
     -   id: pyupgrade
 
   - repo: https://github.com/psf/black
-    rev: 22.10.0
+    rev: 23.3.0
     hooks: [ { id: black, args: [--config=pyproject.toml] } ]
 
   - repo: https://github.com/PyCQA/bandit/
