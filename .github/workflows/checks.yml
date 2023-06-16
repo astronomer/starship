@@ -28,7 +28,7 @@ jobs:
         run: |
           make pre-commit-install
           git fetch origin
-          pre-commit run --from-ref origin/${{ github.event.pull_request.base.ref }} --to-ref ${{ github.event.pull_request.head.sha }}
+          poetry run pre-commit run --from-ref origin/${{ github.event.pull_request.base.ref }} --to-ref ${{ github.event.pull_request.head.sha }}
 
   test:
     runs-on: ubuntu-latest
