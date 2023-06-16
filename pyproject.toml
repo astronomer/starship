@@ -51,6 +51,7 @@ python-dotenv = "^1.0.0"
 pulumi = "^3.63.0"
 pulumi-aws = "^5.35.0"
 sh = "^2.0.3"
+pytest-mock = "^3.10.0"
 
 
 [tool.poetry.group.aws.dependencies]
@@ -68,9 +69,13 @@ orion = "orion.__main__:migrate"
 "starship" = "astronomer.starship.main:StarshipPlugin"
 "starship_aeroscope" = "astronomer.aeroscope.plugins:AeroscopePlugin"
 
+# for pip installing this pyproject.toml
+[project.entry-points."airflow.plugins"]
+"starship" = "astronomer.starship.main:StarshipPlugin"
+"starship_aeroscope" = "astronomer.aeroscope.plugins:AeroscopePlugin"
 
 [build-system]
-requires = ["poetry-core"]
+requires = ["poetry-core>=1.0.8"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.black]

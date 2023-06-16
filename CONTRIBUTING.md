@@ -122,3 +122,6 @@ Use https://github.com/nektos/act to run and test CICD changes locally.
     RUN pip install -e ./starship/
     USER astro
     ```
+
+# Alternatively
+you may be able to run flask directly, see [this](https://airflow.apache.org/docs/apache-airflow/stable/authoring-and-scheduling/plugins.html#troubleshooting)
