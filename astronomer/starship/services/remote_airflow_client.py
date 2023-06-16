@@ -185,20 +185,20 @@ def get_dag(
         r = _get_remote_dags(deployment_url, token)
         if not r.ok:
             remote_dags = {}
+            dag_fetch_time = datetime.now()
+            r.raise_for_status()
         else:
+            # reset the cache - reset the ttl timer
             remote_dags = {dag["dag_id"]: dag for dag in r.json().get("dags", [])}
-        # reset the cache - reset the ttl timer
-        dag_fetch_time = datetime.now()
+            dag_fetch_time = datetime.now()
         return remote_dags.get(dag_id)
     elif skip_cache:
         r = _get_remote_dag(dag_id, deployment_url, token)
-        if not r.ok:
-            return None
-        else:
-            dag = r.json()
-            remote_dags[dag_id] = dag
-            # we don't reset the cache time - because all other entries are still on the clock
-            return dag
+        r.raise_for_status()
+        dag = r.json()
+        remote_dags[dag_id] = dag
+        # we don't reset the cache time - because all other entries are still on the clock
+        return dag
     else:
         return remote_dags.get(dag_id)
 
