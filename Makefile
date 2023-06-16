@@ -18,12 +18,13 @@ poetry-remove:  ## Uninstall poetry from system
 
 #* Installation
 .PHONY: install
-install: ## install project via poetry to a local venv
+install: ## install project and all dependency groups via poetry to a local venv
 	poetry lock -n
 	poetry install -n
 
+
 .PHONY: pre-commit-install
-pre-commit-install: ## Install pre-commit (highly recommended!)
+pre-commit-install: install ## Install files required for pre-commit (highly recommended!)
 	poetry run pre-commit install
 
 #* Formatters + Linting
