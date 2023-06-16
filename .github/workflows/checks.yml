@@ -14,3 +14,27 @@ jobs:
         pip install pre-commit
         git fetch origin
         pre-commit run --from-ref origin/${{ github.event.pull_request.base.ref }} --to-ref ${{ github.event.pull_request.head.sha }}
+    - name: Run pre-commit
+      run: |
+        pip install pre-commit
+        git fetch origin
+        pre-commit run --from-ref origin/${{ github.event.pull_request.base.ref }} --to-ref ${{ github.event.pull_request.head.sha }}
+    - name: Test with pytest
+      run: |
+        pytest
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      # https://docs.aws.amazon.com/mwaa/latest/userguide/mwaa-faqs.html#python-version
+      # https://cloud.google.com/composer/docs/concepts/versioning/composer-versions
+      matrix:
+        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10", "3.11"]
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pytest tests
