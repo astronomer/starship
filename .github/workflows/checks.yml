@@ -36,7 +36,7 @@ jobs:
       # https://docs.aws.amazon.com/mwaa/latest/userguide/mwaa-faqs.html#python-version
       # https://cloud.google.com/composer/docs/concepts/versioning/composer-versions
       matrix:
-        python-version: [ "3.6", "3.7", "3.8", "3.9", "3.10", "3.11" ]
+        python-version: [ "3.7", "3.8", "3.9", "3.10", "3.11" ]
 
     steps:
       - uses: actions/checkout@v3
