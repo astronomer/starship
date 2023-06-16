@@ -319,7 +319,9 @@ class AstroMigration(AppBuilderBaseView):
         if dest not in ["local", "astro"]:
             raise RuntimeError("dest must be 'local' or 'astro'")
         if action not in valid_actions:
-            raise Exception(f"action must be in {valid_actions}")
+            raise RuntimeError(
+                f"action({action}) must be in valid_actions({valid_actions})"
+            )
 
         token = session.get("token")
         deployment_url = astro_client.get_deployment_url(deployment, token)
