@@ -15,7 +15,7 @@ jobs:
           virtualenvs-create: true
           virtualenvs-in-project: true
           installer-parallel: true
-          version: 1.2.0
+          version: 1.4.2
 
       - name: Load cached venv
         id: cached-poetry-dependencies
@@ -50,7 +50,7 @@ jobs:
           virtualenvs-create: true
           virtualenvs-in-project: true
           installer-parallel: true
-          version: 1.2.0
+          version: 1.4.2
 
       - name: Load cached venv
         id: cached-poetry-dependencies
