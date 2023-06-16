@@ -1,14 +1,15 @@
-import pytest
+from pathlib import Path
 
 
-@pytest.mark.skip(reason="Need to update to poetry")
-def test_version(package):
-    import configparser
+def test_version():
     import requests
+    import tomllib
 
-    config = configparser.RawConfigParser()
-    config.read_file(open(rf"{package}/setup.cfg"))
-    local_version = config.get("metadata", "version")
+    with open(Path(__file__).parent.parent / "pyproject.toml", "rb") as t:
+        local_version = tomllib.load(t)["tool"]["poetry"]["version"]
+
+    package = "astronomer-starship"
+
     releases = requests.get(f"https://pypi.org/pypi/{package}/json").json()["releases"]
     shipped_versions = []
     [shipped_versions.append(version) for version, details in releases.items()]
