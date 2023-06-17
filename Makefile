@@ -32,14 +32,6 @@ pre-commit-install: install-pre-commit install ## Install files required for pre
 	poetry run pre-commit install
 
 #* Formatters + Linting
-.PHONY: test
-test: ## Run unit tests
-	poetry run pytest -c pyproject.toml
-
-.PHONY: test-with-coverage
-test-with-coverage: ## Run unit tests and emit a coverage report
-	poetry run pytest -c pyproject.toml --cov=./ --cov-report=xml
-
 .PHONY: codestyle
 codestyle: ## Fix config file and code style via plugins defined in .pre-commit-config.yaml and pyproject.toml
 	@echo "Running Black, Blacken-docs, Ruff, etc from Pre-Commit"
@@ -51,7 +43,23 @@ formatting: codestyle ## Alias of codestyle
 .PHONY: lint
 lint: test codestyle ## Run unit tests and check+fix the style of files
 
-#* Cleaning
+.PHONY: test
+test: ## Run unit tests
+	poetry run pytest -c pyproject.toml --without-integration --without-slow-integration
+
+.PHONY: test-with-coverage
+test-with-coverage: ## Run unit tests and emit a coverage report
+	poetry run pytest -c pyproject.toml --without-integration --without-slow-integration --cov=./ --cov-report=xml
+
+.PHONY: integration-test
+integration-test: ## Run unit tests
+	poetry run pytest -c pyproject.toml --with-integration --with-slow-integration
+
+.PHONY: test-with-coverage
+test-with-coverage: ## Run unit tests and emit a coverage report
+	poetry run pytest -c pyproject.toml --with-integration --with-slow-integration --integration-cover --cov=./ --cov-report=xml
+
+
 .PHONY: pycache-remove
 pycache-remove: ## Clean up __pycache__ folders and .pyc files
 	find . | grep -E "(__pycache__|\.pyc|\.pyo$$)" | xargs rm -rf
