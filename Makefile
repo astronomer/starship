@@ -55,8 +55,8 @@ test-with-coverage: ## Run unit tests and emit a coverage report
 integration-test: ## Run unit tests
 	poetry run pytest -c pyproject.toml --with-integration --with-slow-integration
 
-.PHONY: test-with-coverage
-test-with-coverage: ## Run unit tests and emit a coverage report
+.PHONY: integration-test-with-coverage
+integration-test-with-coverage: ## Run unit tests and emit a coverage report
 	poetry run pytest -c pyproject.toml --with-integration --with-slow-integration --integration-cover --cov=./ --cov-report=xml
 
 
