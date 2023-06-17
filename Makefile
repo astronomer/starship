@@ -28,8 +28,7 @@ install-pre-commit: install
 	poetry run pip install pre-commit
 
 .PHONY: pre-commit-install
-pre-commit-install: install ## Install files required for pre-commit (highly recommended!)
-	poetry run install-pre-commit
+pre-commit-install: install-pre-commit install ## Install files required for pre-commit (highly recommended!)
 	poetry run pre-commit install
 
 #* Formatters + Linting

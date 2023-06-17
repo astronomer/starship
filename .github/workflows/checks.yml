@@ -26,7 +26,7 @@ jobs:
 
       - name: Run pre-commit
         run: |
-          make pre-commit-install
+          make install-pre-commit install pre-commit-install
           git fetch origin
           poetry run pre-commit run --from-ref origin/${{ github.event.pull_request.base.ref }} --to-ref ${{ github.event.pull_request.head.sha }}
 
