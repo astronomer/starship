@@ -152,11 +152,8 @@ def test_get_dag(
     assert not actual["is_paused"]
 
 
+# noinspection PyUnresolvedReferences
 def test_get_dag_is_cached_mock(
-    e2e_deployment_url,
-    e2e_deployment_id,
-    e2e_workspace_token,
-    e2e_api_token,
     mocker: MockerFixture,
 ):
     mocker.patch("astronomer.starship.services.remote_airflow_client._get_remote_dags")
@@ -174,7 +171,7 @@ def test_get_dag_is_cached_mock(
     }
     remote_airflow_client._get_remote_dag.return_value = mock_dag_response
 
-    actual = get_dag("astronomer_monitoring_dag", e2e_deployment_url, e2e_api_token)
+    actual = get_dag("astronomer_monitoring_dag", "", "")
     assert actual["dag_id"] == "astronomer_monitoring_dag"
     assert not actual["is_paused"]
     remote_airflow_client._get_remote_dags.assert_called_once()
@@ -182,14 +179,14 @@ def test_get_dag_is_cached_mock(
     mocker.resetall()
 
     # We don't re-fetch the same DAG
-    actual = get_dag("astronomer_monitoring_dag", e2e_deployment_url, e2e_api_token)
+    actual = get_dag("astronomer_monitoring_dag", "", "")
     assert actual is not None
     remote_airflow_client._get_remote_dags.assert_not_called()
     remote_airflow_client._get_remote_dag.assert_not_called()
     mocker.resetall()
 
     # We still don't re-fetch other DAGs either
-    actual = get_dag("other_dag", e2e_deployment_url, e2e_api_token)
+    actual = get_dag("other_dag", "", "")
     remote_airflow_client._get_remote_dags.assert_not_called()
     remote_airflow_client._get_remote_dag.assert_not_called()
     mocker.resetall()
@@ -197,8 +194,8 @@ def test_get_dag_is_cached_mock(
     # We can set a different TTL to force the cache to expire
     actual = get_dag(
         "astronomer_monitoring_dag",
-        e2e_deployment_url,
-        e2e_api_token,
+        "",
+        "",
         ttl=timedelta(seconds=0),
     )
     assert actual["dag_id"] == "astronomer_monitoring_dag"
@@ -208,9 +205,7 @@ def test_get_dag_is_cached_mock(
 
     # We can also directly skip the cache
     # (useful when we _know_ something updated and want the server to give us it's copy)
-    actual = get_dag(
-        "astronomer_monitoring_dag", e2e_deployment_url, e2e_api_token, skip_cache=True
-    )
+    actual = get_dag("astronomer_monitoring_dag", "", "", skip_cache=True)
     assert actual["dag_id"] == "astronomer_monitoring_dag"
     remote_airflow_client._get_remote_dags.assert_not_called()
     remote_airflow_client._get_remote_dag.assert_called_once()

@@ -3,7 +3,11 @@ from pathlib import Path
 
 def test_version():
     import requests
-    import tomllib
+
+    try:
+        import tomllib
+    except ImportError:
+        import toml as tomllib
 
     with open(Path(__file__).parent.parent / "pyproject.toml", "rb") as t:
         local_version = tomllib.load(t)["tool"]["poetry"]["version"]
