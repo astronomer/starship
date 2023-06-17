@@ -6,10 +6,14 @@ def test_version():
 
     try:
         import tomllib
+
+        read_mode = "rb"
     except ImportError:
         import toml as tomllib
 
-    with open(Path(__file__).parent.parent / "pyproject.toml", "rb") as t:
+        read_mode = "r"
+
+    with open(Path(__file__).parent.parent / "pyproject.toml", read_mode) as t:
         local_version = tomllib.load(t)["tool"]["poetry"]["version"]
 
     package = "astronomer-starship"
