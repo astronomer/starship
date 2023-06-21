@@ -1,74 +1,94 @@
 # IDE Setup
+
 Install `ruff` and `black` plugins for your IDE
 
 # Pre-commit
+
 Pre-commit is utilized to run common checks or linting.
 Install it locally to prevent needing to fix things after they fail in CICD
+
 ```shell
-pre-commit install
+make pre-commit-install
 ```
+
 It will run when you commit, or you can run
+
 ```shell
 pre-commit run
 ```
 
-# Tagging A Release
-```
-git tag $(TAG)
-git push origin $(TAG)
-```
+# Other helpful commands
 
-## Deleting a Tag
-```
-git tag -d $(TAG)
-git push origin --delete $(TAG)
-```
+Check out what is in the [Makefile](./Makefile)
+You can run `make help` for an overview
 
-# Building, Releasing
+# Setting a new version
+
 to set the version:
+
 ```
-poetry version
+poetry version x.y.z
 ```
 
-NOTE: This automatically happens when a tag is pushed, you don't need to run this
+or edit it directly in pyproject.toml.
+Always set a new version before merging a PR to `main` and creating a Release
+
+## Build+Release
+
+**NOTE: This automatically happens when a tag is pushed, you don't need to run this**
 For production:
 setup:
+
 ```shell
 poetry config pypi-token.pypi pypi-PYPITOKENPYPITOKENPYPITOKEN
 ```
 
 run:
+
 ```shell
 poetry build
 poetry publish
 ```
+
 or
+
 ```shell
 poetry --build publish
 ```
 
-For dev (test pypi):
-setup:
+## For dev (test pypi):
+
+### Setup:
+
 ```shell
 poetry config repositories.testpypi https://test.pypi.org/legacy/
 poetry config pypi-token.testpypi pypi-PYPITOKENPYPITOKENPYPITOKEN
 ```
-run:
+
+### Run:
+
 ```shell
 poetry build --publish -r testpypi
 ```
+
 or
+
 ```shell
 act push -W .github/workflows/test_publish.yml --container-architecture linux/amd64 -s TEST_PYPI_TOKEN=pypi-PYPITOKENTESTPYPITOKENTESTPYPITOKEN
 ```
+
 or hit the "Run Workflow" button in Github Actions
 
-then test, by adding this to a `requirements.txt`
+### test:
+
+by adding this to a `requirements.txt`
+
 ```shell
 --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ astronomer-starship
 ```
 
 and add this to `airflow_settings.yaml` and then run `astro d object import`
+
 ```shell
 airflow:
   connections:
@@ -90,11 +110,14 @@ airflow:
 ```
 
 # Developing CICD
+
 Use https://github.com/nektos/act to run and test CICD changes locally.
 
 # Easily test the plugin in a local astro project
+
 1. Make a new project `astro dev init`
-2. add the file `docker-compose.override.yml`
+2. Symlink in starship `ln -s /path/to/starship starship`
+3. add the file `docker-compose.override.yml`
     ```yaml
     version: "3.1"
     services:
@@ -109,9 +132,9 @@ Use https://github.com/nektos/act to run and test CICD changes locally.
             { airflow sync-perm || airflow sync_perm ;} &&
             airflow webserver -d' -- -r Admin -u admin -e admin@example.com -f admin -l user -p admin
     ```
-3. Edit the file `Dockerfile`
+4. Edit the file `Dockerfile`
     ```Dockerfile
-    FROM quay.io/astronomer/astro-runtime:7.3.0
+    FROM quay.io/astronomer/astro-runtime:8.4.0
 
     ENV AIRFLOW__WEBSERVER__RELOAD_ON_PLUGIN_CHANGE=true
     ENV FLASK_ENV=development
@@ -119,6 +142,13 @@ Use https://github.com/nektos/act to run and test CICD changes locally.
 
     COPY --chown=astro:astro --chmod=777 starship starship
     USER root
-    RUN pip install -e ./starship/
+    RUN pip install --upgrade pip && pip install ./starship
     USER astro
     ```
+5. Build with your symlink starship `tar -czh . | docker build -t local -`
+6. Start (or restart) the astro project `astro dev <re>start -i local`
+
+# Alternatively
+
+you may be able to run flask directly,
+see [this](https://airflow.apache.org/docs/apache-airflow/stable/authoring-and-scheduling/plugins.html#troubleshooting)

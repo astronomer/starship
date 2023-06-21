@@ -1,5 +1,6 @@
 import json
-from typing import Any, List
+from datetime import datetime, timedelta
+from typing import Any, List, Dict, Optional
 
 import requests
 from airflow.models import Connection, Pool, Variable
@@ -8,6 +9,9 @@ from deprecated import deprecated
 from requests import Response
 
 from astronomer.starship.services import local_airflow_client
+
+remote_dags: Dict[str, Dict[str, Any]] = {}
+dag_fetch_time: datetime = datetime(1970, 1, 1)
 
 
 def conn_to_json(connection: Connection) -> dict:
@@ -151,18 +155,57 @@ def set_dag_is_paused(dag_id, is_paused, deployment_url, token):
     return r
 
 
-def get_dag(dag_id, deployment_url, token) -> Response:
+def _get_remote_dags(deployment_url: str, token: str) -> Response:
+    r = requests.get(
+        f"{deployment_url}/api/v1/dags/",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    return r
+
+
+def _get_remote_dag(dag_id: str, deployment_url: str, token: str) -> Response:
     r = requests.get(
         f"{deployment_url}/api/v1/dags/{dag_id}",
         headers={"Authorization": f"Bearer {token}"},
     )
-    r.raise_for_status()
     return r
+
+
+def get_dag(
+    dag_id: str,
+    deployment_url: str,
+    token: str,
+    ttl: timedelta = timedelta(seconds=60),
+    skip_cache: bool = False,
+) -> Optional[Dict[str, Any]]:
+    global remote_dags
+    global dag_fetch_time
+
+    if dag_fetch_time + ttl < datetime.now():
+        r = _get_remote_dags(deployment_url, token)
+        if not r.ok:
+            remote_dags = {}
+            dag_fetch_time = datetime.now()
+            r.raise_for_status()
+        else:
+            # reset the cache - reset the ttl timer
+            remote_dags = {dag["dag_id"]: dag for dag in r.json().get("dags", [])}
+            dag_fetch_time = datetime.now()
+        return remote_dags.get(dag_id)
+    elif skip_cache:
+        r = _get_remote_dag(dag_id, deployment_url, token)
+        r.raise_for_status()
+        dag = r.json()
+        remote_dags[dag_id] = dag
+        # we don't reset the cache time - because all other entries are still on the clock
+        return dag
+    else:
+        return remote_dags.get(dag_id)
 
 
 def get_dag_runs(dag_id, deployment_url, token) -> Response:
     r = requests.get(
-        f"{deployment_url}/api/v1/dags/{dag_id}/dagRuns",
+        f"{deployment_url}/api/v1/dags/{dag_id}/dagRuns?limit=1",
         headers={"Authorization": f"Bearer {token}"},
     )
     r.raise_for_status()

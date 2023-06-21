@@ -41,9 +41,7 @@ def e2e_api_token() -> str:
 @pytest.fixture
 def e2e_workspace_token() -> str:
     load_dotenv()
-    token = os.getenv("ASTRO_WORKSPACE_TOKEN")
-    if not token:
-        assert False, "ASTRO_WORKSPACE_TOKEN not found in .env or env"
+    token = os.getenv("ASTRO_WORKSPACE_TOKEN", "")
     return token
 
 
@@ -54,15 +52,3 @@ def user_token() -> str:
             "Bearer "
         )
     return token
-
-
-def pytest_addoption(parser):
-    parser.addoption("--package", action="store")
-
-
-@pytest.fixture(scope="session")
-def package(request):
-    package_value = request.config.option.package
-    if package_value is None:
-        pytest.skip()
-    return package_value

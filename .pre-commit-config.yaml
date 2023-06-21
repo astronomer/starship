@@ -20,6 +20,10 @@ repos:
       - id: detect-aws-credentials
         args: ["--allow-missing-credentials"]
 
+  - repo: https://github.com/floatingpurr/sync_with_poetry
+    rev: 1.1.0
+    hooks: [ { id: sync_with_poetry } ]
+
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.4.0
     hooks: [ { id: detect-secrets } ]
@@ -56,8 +60,8 @@ repos:
     -   id: pyupgrade
 
   - repo: https://github.com/psf/black
-    rev: 22.10.0
-    hooks: [ { id: black } ]
+    rev: 23.3.0
+    hooks: [ { id: black, args: [--config=pyproject.toml] } ]
 
   - repo: https://github.com/PyCQA/bandit/
     rev: 1.7.4

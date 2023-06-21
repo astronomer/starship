@@ -315,10 +315,13 @@ class AstroMigration(AppBuilderBaseView):
     def dag_cutover_row(
         self, deployment: str, dag_id: str, dest: str = "local", action: str = "init"
     ):
+        valid_actions = ["pause", "unpause", "migrate", "init"]
         if dest not in ["local", "astro"]:
             raise RuntimeError("dest must be 'local' or 'astro'")
-        if action not in ["pause", "unpause", "migrate", "init"]:
-            raise Exception("action must be 'pause', 'unpause', or 'migrate'")
+        if action not in valid_actions:
+            raise RuntimeError(
+                f"action({action}) must be in valid_actions({valid_actions})"
+            )
 
         token = session.get("token")
         deployment_url = astro_client.get_deployment_url(deployment, token)
@@ -328,6 +331,10 @@ class AstroMigration(AppBuilderBaseView):
                 remote_airflow_client.migrate_dag(
                     dag_id, deployment_url=deployment_url, token=token
                 )
+                # force an update, make sure the change went through
+                remote_airflow_client.get_dag(
+                    dag_id, deployment_url, token, skip_cache=True
+                )
             else:
                 is_paused = "pause" == action
                 if dest == "local":
@@ -336,13 +343,22 @@ class AstroMigration(AppBuilderBaseView):
                     remote_airflow_client.set_dag_is_paused(
                         dag_id, is_paused, deployment_url, token
                     )
+                    # force an update, make sure the change went through
+                    remote_airflow_client.get_dag(
+                        dag_id, deployment_url, token, skip_cache=True
+                    )
 
-        r = remote_airflow_client.get_dag(dag_id, deployment_url, token)
-        dag_runs = remote_airflow_client.get_dag_runs(
+        remote_dag_response = remote_airflow_client.get_dag(
             dag_id, deployment_url, token
-        ).json()
-        is_on_astro = not r.status_code == 404
-        remote_dag = r.json()
+        )
+        is_on_astro = remote_dag_response is not None
+        remote_dag = remote_dag_response or {}
+        remote_dag_runs = (
+            remote_airflow_client.get_dag_runs(dag_id, deployment_url, token).json()
+            if is_on_astro
+            else {}
+        )
+        has_history_on_astro = bool(remote_dag_runs.get("total_entries", 0))
         local_dag = local_airflow_client.get_dag(dag_id)
 
         return self.render_template(
@@ -352,7 +368,7 @@ class AstroMigration(AppBuilderBaseView):
                 "is_on_astro": is_on_astro,
                 "is_paused_here": local_dag.is_paused,
                 "is_paused_on_astro": remote_dag["is_paused"] if is_on_astro else False,
-                "has_history_on_astro": bool(dag_runs["total_entries"]),
+                "has_history_on_astro": has_history_on_astro,
             },
         )
 
