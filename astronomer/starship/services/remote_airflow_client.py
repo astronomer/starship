@@ -157,7 +157,7 @@ def set_dag_is_paused(dag_id, is_paused, deployment_url, token):
 
 def _get_remote_dags(deployment_url: str, token: str) -> Response:
     r = requests.get(
-        f"{deployment_url}/api/v1/dags/",
+        f"{deployment_url}/api/v1/dags",
         headers={"Authorization": f"Bearer {token}"},
     )
     return r
