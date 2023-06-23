@@ -20,7 +20,7 @@
                         {% if deployments %}
                         {% for deploy in deployments.values() %}
                         <option value="{{deploy.id}}" {{'selected' if deploy.id == session.selectedAstroDeployment}}>
-                        {{deploy.label}}
+                        {{ deploy.label if deploy.label else deploy.name }}
                         </option>
                         {% endfor %}
                         {% endif %}
