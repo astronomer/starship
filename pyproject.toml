@@ -25,7 +25,8 @@ python = ">=3.7.2,<4.0"
 pydash = "^7.0.0"
 python-graphql-client = "^0.4.3"
 requests = "^2.28.2"
-cachetools = "^5.3.0"
+cachetools = "^5.3.0,>=4.2.4"
+pyjwt = ">=1.7.1"
 pygithub = "^1.58.1"
 
 [tool.poetry.group.orion.dependencies]
