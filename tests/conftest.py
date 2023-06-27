@@ -9,6 +9,11 @@ from dotenv import load_dotenv
 from astronomer.starship.services.astro_client import ASTRO_AUTH, get_deployment_url
 
 
+manual_tests = pytest.mark.skipif(
+    not bool(os.getenv("MANUAL_TESTS")), reason="requires env setup"
+)
+
+
 @pytest.fixture
 def e2e_deployment_url(e2e_deployment_id, e2e_workspace_token):
     return get_deployment_url(e2e_deployment_id, e2e_workspace_token)

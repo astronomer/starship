@@ -1,5 +1,4 @@
 import json
-import os
 
 import pulumi
 import pytest
@@ -7,6 +6,8 @@ import sh
 from pulumi import FileAsset, Config, ResourceOptions
 from pulumi.automation import create_or_select_stack, ConfigValue, UpResult
 from pulumi_aws import s3, mwaa, ec2, iam, get_caller_identity, get_availability_zones
+
+from tests.conftest import manual_tests
 
 
 @pytest.fixture
@@ -377,10 +378,7 @@ def _create_mwaa():
     pulumi.export("status", airflow.status)
 
 
-@pytest.mark.skipif(
-    condition=not os.getenv("MANUAL_TESTS", False),
-    reason="requires a real user, who ran `astro login` recently",
-)
+@manual_tests  # requires a real user, who ran `astro login` recently",
 @pytest.mark.slow_integration_test
 @pytest.mark.parametrize(
     "mwaa_instance",

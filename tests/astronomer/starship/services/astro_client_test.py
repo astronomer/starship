@@ -1,5 +1,3 @@
-import os
-
 import pytest
 from jwt import PyJWK, PyJWKClientError
 
@@ -12,12 +10,10 @@ from astronomer.starship.services.astro_client import (
     get_username,
     set_changed_environment_variables,
 )
+from tests.conftest import manual_tests
 
 
-@pytest.mark.skipif(
-    condition=not os.getenv("MANUAL_TESTS", False),
-    reason="requires a real user, who ran `astro login` recently",
-)
+@manual_tests  # requires a real user, who ran `astro login` recently",
 @pytest.mark.slow_integration_test
 def test_get_username(user_token):
     actual = get_username(user_token)
@@ -48,10 +44,7 @@ def test_get_organizations(e2e_workspace_token):
     ), "We can get the 'Astronomer' Organization (where our e2e deployment/workspace is)"
 
 
-@pytest.mark.skipif(
-    condition=not os.getenv("MANUAL_TESTS", False),
-    reason="requires a real user, who ran `astro login` recently",
-)
+@manual_tests  # requires a real user, who ran `astro login` recently",
 @pytest.mark.slow_integration_test
 def test_get_jwk(user_token, e2e_workspace_token):
     with pytest.raises(PyJWKClientError, match="Unable to find a signing key"):
