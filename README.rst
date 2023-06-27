@@ -195,6 +195,20 @@ The DAGs Cutover Tab can be utilized to pause DAGs in the source environment and
 3. In the table displaying the DAGs present in both the source and target environments, click the Start ▶️ icon under ``Remote``
 4. After completing this process, you will see the DAG is paused in the ``Local`` environment (a Start ▶️ Icon) and is un-paused in the ``Remote`` environment (a Pause ⏸️ icon)
 
+
+FAQ
+---
+- If you have an error installing Starship via pip and see a message like :code:`ERROR: pip's dependency resolver does not currently take into account all the packages that are installed`, add the dependencies that are listed in the error to your :code:`pip install` or :code:`requirements.txt`, e.g.
+
+.. code-block::
+
+    ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
+    rich 10.9.0 requires typing-extensions<4.0.0,>=3.7.4; python_version < "3.8", but you have typing-extensions 4.6.3 which is incompatible.
+
+.. code-block:: bash
+
+    pip install astronomer-starship rich==10.9.0
+
 License
 -------
 
