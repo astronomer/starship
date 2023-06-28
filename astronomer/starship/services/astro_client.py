@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Optional, Iterator, Any, Dict
+from typing import Iterator, Any, Dict
 from urllib.parse import urlparse
 
 import jwt
@@ -8,7 +8,6 @@ import requests
 from cachetools.func import ttl_cache
 from pydash import at
 from python_graphql_client import GraphqlClient
-from deprecated import deprecated
 
 ASTRO_AUTH = os.environ.get("STARSHIP_ASTRO_AUTH", "https://auth.astronomer.io")
 ASTROHUB_API = os.environ.get(
@@ -205,42 +204,3 @@ def get_environment_variables(deployment: str, token: str):
 
 def is_environment_variable_migrated(deployment: str, token: str, key: str) -> bool:
     return key in get_environment_variables(deployment, token).keys()
-
-
-@deprecated
-class AstroClient:
-    def __init__(self, token: Optional[str] = None, url: str = ASTROHUB_API):
-        self.token = token
-        self.url = url
-
-    def list_deployments(self):
-        headers = {"Authorization": f"Bearer {self.token}"}
-        from python_graphql_client import GraphqlClient
-
-        client = GraphqlClient(endpoint=self.url, headers=headers)
-        query = """
-                    {
-                     deployments
-                     {
-                         id,
-                         label,
-                         releaseName,
-                         workspace
-                         {
-                             id,
-                             label
-                         },
-                         deploymentShortId,
-                         deploymentSpec
-                         {
-                             environmentVariables
-                             webserver {
-                                 ingressHostname,
-                                 url
-                             }
-                         }
-                     }
-                    }
-                    """
-
-        return client.execute(query).get("data")
