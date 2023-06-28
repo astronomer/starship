@@ -16,7 +16,6 @@ from astronomer.starship.services.remote_airflow_client import (
     delete_pool,
     delete_variable,
     do_test_connection,
-    get_config,
     get_connections,
     get_dag,
     get_pools,
@@ -123,14 +122,6 @@ def test_create_and_get_variables(
 
     # CLEANUP
     delete_variable(e2e_deployment_url, e2e_api_token, test_variable)
-
-
-@pytest.mark.integration_test
-def test_get_config(
-    e2e_deployment_url, e2e_deployment_id, e2e_workspace_token, e2e_api_token
-):
-    with pytest.raises(HTTPError):
-        get_config(e2e_deployment_url, e2e_api_token)
 
 
 @pytest.mark.integration_test

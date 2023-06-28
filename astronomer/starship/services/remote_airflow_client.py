@@ -5,7 +5,6 @@ from typing import Any, List, Dict, Optional
 import requests
 from airflow.models import Connection, Pool, Variable
 from cachetools.func import ttl_cache
-from deprecated import deprecated
 from requests import Response
 
 from astronomer.starship.services import local_airflow_client
@@ -133,16 +132,6 @@ def create_variable(deployment_url, token: str, variable: Variable):
     )
     r.raise_for_status()
     return r
-
-
-@deprecated(reason="unused, doesn't work in astro")
-def get_config(deployment_url: str, token: str):
-    r = requests.get(
-        f"{deployment_url}/api/v1/config",
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    r.raise_for_status()
-    return r.json()
 
 
 def set_dag_is_paused(dag_id, is_paused, deployment_url, token):

@@ -7,7 +7,6 @@ from airflow import DAG, settings
 from airflow.models import DagModel
 from airflow.utils.session import provide_session
 from cachetools.func import ttl_cache
-from deprecated import deprecated
 from sqlalchemy import MetaData, Table
 from sqlalchemy.exc import NoSuchTableError
 from sqlalchemy.orm import Session
@@ -57,11 +56,6 @@ def get_dag(dag_id: str) -> DAG:
 
 def set_dag_is_paused(dag_id, is_paused):
     DagModel.get_dagmodel(dag_id).set_is_paused(is_paused=is_paused)
-
-
-@deprecated
-class LocalAirflowClient:
-    pass
 
 
 @provide_session
