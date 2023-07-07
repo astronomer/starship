@@ -3,7 +3,7 @@ from datetime import timedelta
 from unittest.mock import MagicMock
 
 import pytest
-from airflow.models import Pool, Variable
+from airflow.models import Pool, Variable, Connection
 from pytest_mock import MockerFixture
 from requests import HTTPError
 
@@ -30,8 +30,6 @@ from astronomer.starship.services.remote_airflow_client import (
 def test_create_and_get_connections(
     e2e_deployment_url, e2e_deployment_id, e2e_workspace_token, e2e_api_token
 ):
-    from airflow.models import Connection
-
     # GIVEN
     test_conn = Connection(
         conn_id="foo",
@@ -40,6 +38,7 @@ def test_create_and_get_connections(
     )
 
     try:
+        # Try to delete, just incase we didn't cleanup last time
         delete_connection(e2e_deployment_url, e2e_api_token, test_conn)
     except HTTPError as e:
         logging.exception(e)
@@ -47,7 +46,7 @@ def test_create_and_get_connections(
     # WHEN CREATE
     actual = create_connection(e2e_deployment_url, e2e_api_token, test_conn)
     # THEN
-    assert actual.ok, "we created the connection"
+    assert actual, "we created the connection"
 
     # WHEN GET
     actual = get_connections(e2e_deployment_url, e2e_api_token)
@@ -58,7 +57,7 @@ def test_create_and_get_connections(
     # WHEN TEST
     actual = do_test_connection(e2e_deployment_url, e2e_api_token, test_conn)
     # THEN
-    assert actual.ok, "we tested the connection"
+    assert actual, "we tested the connection"
 
     # CLEANUP
     delete_connection(e2e_deployment_url, e2e_api_token, test_conn)
@@ -79,7 +78,7 @@ def test_create_and_get_pools(
 
     # WHEN CREATE
     actual = create_pool(e2e_deployment_url, e2e_api_token, test_pool)
-    assert actual.ok, "we created the pool"
+    assert actual, "we created the pool"
 
     # WHEN GET
     actual = get_pools(e2e_deployment_url, e2e_api_token)
@@ -108,7 +107,7 @@ def test_create_and_get_variables(
 
     # WHEN CREATE
     actual = create_variable(e2e_deployment_url, e2e_api_token, test_variable)
-    assert actual.ok, "we created the variable"
+    assert actual, "we created the variable"
 
     # WHEN GET
     actual = get_variables(e2e_deployment_url, e2e_api_token)
@@ -131,7 +130,7 @@ def test_set_dag_is_paused(
     actual = set_dag_is_paused(
         "astronomer_monitoring_dag", True, e2e_deployment_url, e2e_api_token
     )
-    assert actual.ok
+    assert actual
 
 
 @pytest.mark.integration_test
@@ -177,7 +176,7 @@ def test_get_dag_is_cached_mock(
     mocker.resetall()
 
     # We still don't re-fetch other DAGs either
-    actual = get_dag("other_dag", "", "")
+    get_dag("other_dag", "", "")
     remote_airflow_client._get_remote_dags.assert_not_called()
     remote_airflow_client._get_remote_dag.assert_not_called()
     mocker.resetall()

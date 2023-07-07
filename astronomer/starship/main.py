@@ -90,7 +90,7 @@ class AstroMigration(AppBuilderBaseView):
             jwt.decode(
                 token,
                 audience=["astronomer-ee"],
-                key=astro_client.get_jwk(token).key,
+                key=astro_client.get_jwk(token),
                 algorithms=["RS256"],
             )
         except jwt.exceptions.ExpiredSignatureError:
@@ -190,13 +190,13 @@ class AstroMigration(AppBuilderBaseView):
         local_connection = {
             conn.conn_id: conn for conn in local_airflow_client.get_connections()
         }[conn_id]
-        r = remote_airflow_client.do_test_connection(
+        json = remote_airflow_client.do_test_connection(
             deployment_url, token, local_connection
         )
 
         return self.render_template(
             "starship/components/test_connection_label.html",
-            data=r.json(),
+            data=json,
             conn_id=conn_id,
         )
 
@@ -354,7 +354,7 @@ class AstroMigration(AppBuilderBaseView):
         is_on_astro = remote_dag_response is not None
         remote_dag = remote_dag_response or {}
         remote_dag_runs = (
-            remote_airflow_client.get_dag_runs(dag_id, deployment_url, token).json()
+            remote_airflow_client.get_dag_runs(dag_id, deployment_url, token)
             if is_on_astro
             else {}
         )
