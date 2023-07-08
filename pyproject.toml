@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "astronomer-starship"
-version = "1.0.6"
+version = "1.1.0"
 description = "Migrations to Astro"
 authors = ["ADE Team <ade@astronomer.io>"]
 readme = "README.rst"
