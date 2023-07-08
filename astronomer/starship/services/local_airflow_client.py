@@ -1,17 +1,16 @@
-import datetime
+import itertools
 import logging
-from typing import List
+from typing import List, Dict, Any
 
-import sqlalchemy
-from airflow import DAG, settings
-from airflow.models import DagModel
+from airflow import DAG
+from airflow.models import DagModel, TaskInstance, DagRun
 from airflow.utils.session import provide_session
 from cachetools.func import ttl_cache
-from sqlalchemy import MetaData, Table
-from sqlalchemy.exc import NoSuchTableError
 from sqlalchemy.orm import Session
 from airflow.models import Connection
 from airflow.models import Pool
+from airflow.models import DagBag
+from airflow.models import Variable
 
 
 @provide_session
@@ -32,8 +31,6 @@ def get_pool(pool_name):
 
 @provide_session
 def get_variables(session: Session):
-    from airflow.models import Variable
-
     variables = session.query(Variable).order_by(Variable.key).all()
     return variables
 
@@ -44,8 +41,6 @@ def get_variable(variable: str):
 
 @ttl_cache(ttl=60)
 def get_dags():
-    from airflow.models import DagBag
-
     dags = DagBag().dags
     return dags
 
@@ -59,72 +54,57 @@ def set_dag_is_paused(dag_id, is_paused):
 
 
 @provide_session
-def migrate(session: Session, table_name: str, dag_id: str):
-    logging.info("Creating source SQL Connections ..")
-    source_engine = session.get_bind()
-    source_metadata_obj = MetaData(bind=source_engine)
-    source_table = get_table(source_metadata_obj, source_engine, table_name)
-
-    # noinspection SqlInjection
-    logging.info(f"Fetching data for {table_name} from source...")
-    source_result = source_engine.execution_options(stream_results=True).execute(
-        f"SELECT * FROM {source_table.name} where dag_id='{dag_id}' order by start_date desc limit 5"
-    )
-    rtn = []
-    for result in source_result.fetchall():
-        result = dict(result._asdict())
-        for key, value in result.items():
-            if isinstance(value, memoryview):
-                result[key] = value.tobytes().decode("iso-8859-1")
-            if isinstance(value, datetime.datetime):
-                result[key] = f"{value.strftime('%Y-%m-%d %H:%M:%S.%f+00')}"
-        result["table"] = table_name
-        rtn.append(result)
-        source_table = get_table(source_metadata_obj, source_engine, "task_instance")
-        sub_result = source_engine.execution_options(stream_results=True).execute(
-            f"SELECT * FROM {source_table.name} where dag_id='{dag_id}' and run_id='{result['run_id']}'"
-        )
-        for ti_result in sub_result.fetchall():
-            ti_result_new = dict(ti_result._asdict())
-            ti_result = dict(ti_result._asdict())
-            ti_result["table"] = "task_instance"
-            for ti_key, ti_value in ti_result_new.items():
-                if isinstance(ti_value, memoryview):
-                    del ti_result[ti_key]
-                if isinstance(ti_value, datetime.datetime):
-                    ti_result[
-                        ti_key
-                    ] = f"{ti_value.strftime('%Y-%m-%d %H:%M:%S.%f+00')}"
-            rtn.append(ti_result)
-
-    return rtn
-
-
-def receive_dag(data: list = None):
+def receive_dag(session: Session, data: list = None):
     if data is None:
-        data = []
-    dest_session = settings.Session()
-    dest_engine = dest_session.get_bind()
-    dest_metadata_obj = MetaData(bind=dest_engine)
+        logging.warning(f"Received no data! data {data}")
+        return
+
     for datum in data:
-        try:
-            del datum["conf"]
-            del datum["id"]
-        except Exception:
-            logging.info(
-                'tried to deleting something that doesn"t exist, don"t worry it still doesn"t exist'
-            )
         table_name = datum.pop("table")
-        dest_table = get_table(dest_metadata_obj, dest_engine, table_name)
-        dest_engine.execute(
-            sqlalchemy.dialects.postgresql.insert(dest_table).on_conflict_do_nothing(),
-            [datum],
+        logging.debug("Removing keys that could cause issues...")
+        for k in ["conf", "id"]:
+            if k in datum:
+                del datum[k]
+
+        if table_name == "task_instance":
+            logging.debug(f"Adding TI {datum}")
+            session.add(TaskInstance(**datum))
+        elif table_name == "dag_run":
+            logging.debug(f"Adding DAGRun {datum}")
+            session.add(DagRun(**datum))
+        else:
+            logging.warning(
+                f"Received unexpected record! table_name {table_name}, data {datum}"
+            )
+    session.commit()
+
+
+@provide_session
+def get_dag_runs_and_task_instances(
+    session: Session, dag_id: str
+) -> List[Dict[str, Any]]:
+    def _as_json_with_table(_row):
+        _r = {col.name: getattr(_row, col.name) for col in _row.__table__.columns}
+        _r["table"] = str(_row.__table__)
+        return _r
+
+    dag_runs = (
+        session.query(DagRun)
+        .where(DagRun.dag_id == dag_id)
+        .order_by(DagRun.start_date)
+        .limit(5)
+    )
+    logging.debug(
+        f"Recursing through dag_runs: {dag_runs}, and flattening with task_instance relations"
+    )
+    return list(
+        itertools.chain(
+            *[
+                (
+                    _as_json_with_table(dag_run),
+                    *[_as_json_with_table(ti) for ti in dag_run.task_instances],
+                )
+                for dag_run in dag_runs
+            ]
         )
-        dest_session.commit()
-
-
-def get_table(_metadata_obj, _engine, _table_name):
-    try:
-        return Table(f"airflow.{_table_name}", _metadata_obj, autoload_with=_engine)
-    except NoSuchTableError:
-        return Table(_table_name, _metadata_obj, autoload_with=_engine)
+    )

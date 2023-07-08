@@ -231,11 +231,13 @@ def get_dag_runs(dag_id, deployment_url, token) -> Dict[str, Any]:
     return r.json()
 
 
-def migrate_dag(dag: str, deployment_url: str, token: str):
-    result = local_airflow_client.migrate(table_name="dag_run", dag_id=dag)
+def migrate_dag(dag: str, deployment_url: str, token: str) -> bool:
+    if not deployment_url:
+        return False
+    data = local_airflow_client.get_dag_runs_and_task_instances(dag_id=dag)
     r = requests.post(
         f"{deployment_url}/astromigration/dag_history/receive",
-        data=json.dumps(result),
+        data=json.dumps(data),
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Bearer {token}",
