@@ -72,7 +72,7 @@ def receive_dag(session: Session, data: list = None):
             )
         else:
             logging.debug(f"Adding {datum}")
-            model = {"task_instance": TaskInstance, "dag_run": DagRun}
+            model = {"task_instance": TaskInstance, "dag_run": DagRun}[table_name]
             # Reconstruct DagRun/TaskInstance, skipping __init__
             ti = model.__new__(model, **datum)
             # Call Base as though __init__ had been called
