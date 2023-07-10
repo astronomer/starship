@@ -41,7 +41,7 @@ def get_connections(deployment_url: str, token: str) -> List[Dict[str, Any]]:
 
 def delete_connection(
     deployment_url: str, token: str, connection: Connection
-) -> Dict[str, Any]:
+) -> Optional[Dict[str, Any]]:
     if not deployment_url:
         return {}
     r = requests.delete(
@@ -49,7 +49,7 @@ def delete_connection(
         headers={"Authorization": f"Bearer {token}"},
     )
     r.raise_for_status()
-    return r.json()
+    return r.json() if r.content else None
 
 
 def do_test_connection(
@@ -78,7 +78,7 @@ def create_connection(deployment_url, token, connection) -> Dict[str, Any]:
     return r.json()
 
 
-def delete_pool(deployment_url, token, pool) -> Dict[str, Any]:
+def delete_pool(deployment_url, token, pool) -> Optional[Dict[str, Any]]:
     if not deployment_url:
         return {}
     r = requests.delete(
@@ -86,7 +86,7 @@ def delete_pool(deployment_url, token, pool) -> Dict[str, Any]:
         headers={"Authorization": f"Bearer {token}"},
     )
     r.raise_for_status()
-    return r.json()
+    return r.json() if r.content else None
 
 
 def get_pools(deployment_url: str, token: str) -> List[Dict[str, Any]]:
@@ -130,7 +130,7 @@ def get_variables(deployment_url: str, token: str) -> List[Dict[str, Any]]:
 
 def delete_variable(
     deployment_url: str, token: str, variable: Variable
-) -> Dict[str, Any]:
+) -> Optional[Dict[str, Any]]:
     if not deployment_url:
         return {}
     r = requests.delete(
@@ -138,7 +138,7 @@ def delete_variable(
         headers={"Authorization": f"Bearer {token}"},
     )
     r.raise_for_status()
-    return r.json()
+    return r.json() if r.content else None
 
 
 def is_variable_migrated(deployment_url: str, token: str, variable: str):
@@ -237,7 +237,7 @@ def migrate_dag(dag: str, deployment_url: str, token: str) -> bool:
     data = local_airflow_client.get_dag_runs_and_task_instances(dag_id=dag)
     r = requests.post(
         f"{deployment_url}/astromigration/dag_history/receive",
-        data=json.dumps(data),
+        data=json.dumps(data, default=str),
         headers={
             "Content-Type": "application/json",
             "Authorization": f"Bearer {token}",
