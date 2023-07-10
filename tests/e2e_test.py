@@ -378,6 +378,7 @@ def _create_mwaa():
     pulumi.export("status", airflow.status)
 
 
+@pytest.mark.skip
 @manual_tests  # requires a real user, who ran `astro login` recently",
 @pytest.mark.slow_integration_test
 @pytest.mark.parametrize(

@@ -90,7 +90,7 @@ class AstroMigration(AppBuilderBaseView):
             jwt.decode(
                 token,
                 audience=["astronomer-ee"],
-                key=astro_client.get_jwk(token),
+                key=astro_client.get_jwk_key(token),
                 algorithms=["RS256"],
             )
         except jwt.exceptions.ExpiredSignatureError:

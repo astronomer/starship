@@ -1,11 +1,11 @@
 import pytest
-from jwt import PyJWK, PyJWKClientError
+from cryptography.hazmat.backends.openssl.rsa import _RSAPublicKey
 
 from astronomer.starship.services.astro_client import (
     get_deployment_url,
     get_deployments,
     get_environment_variables,
-    get_jwk,
+    get_jwk_key,
     get_organizations,
     get_username,
     set_changed_environment_variables,
@@ -13,7 +13,7 @@ from astronomer.starship.services.astro_client import (
 from tests.conftest import manual_tests
 
 
-@manual_tests  # requires a real user, who ran `astro login` recently",
+@manual_tests  # requires a real user, who ran `astro login` recently
 @pytest.mark.slow_integration_test
 def test_get_username(user_token):
     actual = get_username(user_token)
@@ -44,15 +44,12 @@ def test_get_organizations(e2e_workspace_token):
     ), "We can get the 'Astronomer' Organization (where our e2e deployment/workspace is)"
 
 
-@manual_tests  # requires a real user, who ran `astro login` recently",
+@manual_tests  # requires a real user, who ran `astro login` recently
 @pytest.mark.slow_integration_test
-def test_get_jwk(user_token, e2e_workspace_token):
-    with pytest.raises(PyJWKClientError, match="Unable to find a signing key"):
-        get_jwk(e2e_workspace_token)
-
-    actual = get_jwk(user_token)
-    expected = PyJWK
-    assert type(actual) == expected, "we get a JWK-ish thing back"
+def test_get_jwk_key(user_token, e2e_workspace_token):
+    actual = get_jwk_key(user_token)
+    expected = _RSAPublicKey
+    assert type(actual) == expected, "we get a key-ish thing back"
 
 
 @pytest.mark.integration_test

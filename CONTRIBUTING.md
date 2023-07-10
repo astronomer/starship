@@ -152,3 +152,7 @@ Use https://github.com/nektos/act to run and test CICD changes locally.
 
 you may be able to run flask directly,
 see [this](https://airflow.apache.org/docs/apache-airflow/stable/authoring-and-scheduling/plugins.html#troubleshooting)
+
+
+# Issues
+- If you see a message like `E   jwt.exceptions.PyJWKClientConnectionError: Fail to fetch data from the url, err: "<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:992)>"`, do this: https://stackoverflow.com/a/58525755

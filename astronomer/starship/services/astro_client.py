@@ -23,7 +23,7 @@ ASTRO_ALPHA_API = os.environ.get(
 
 
 @ttl_cache(ttl=3600)
-def get_jwk(token: str):
+def get_jwk_key(token: str):
     jwks_url = f"{ASTRO_AUTH}/.well-known/jwks.json"
     try:
         return jwt.PyJWKClient(jwks_url).get_signing_key_from_jwt(token).key
