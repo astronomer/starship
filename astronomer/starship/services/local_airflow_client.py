@@ -90,7 +90,7 @@ def get_dag_runs_and_task_instances(
 
     dag_runs = (
         session.query(DagRun)
-        .where(DagRun.dag_id == dag_id)
+        .filter(DagRun.dag_id == dag_id)
         .order_by(DagRun.start_date)
         .limit(5)
     )
