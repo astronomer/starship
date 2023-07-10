@@ -203,7 +203,8 @@ def get_dag(
         if not r or not r.ok:
             remote_dags = {}
             dag_fetch_time = datetime.now()
-            r.raise_for_status()
+            if not r.ok:
+                r.raise_for_status()
         else:
             # reset the cache - reset the ttl timer
             remote_dags = {dag["dag_id"]: dag for dag in r.json().get("dags", [])}

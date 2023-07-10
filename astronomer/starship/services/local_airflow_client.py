@@ -3,7 +3,7 @@ import logging
 from typing import List, Dict, Any
 
 from airflow import DAG
-from airflow.models import DagModel, TaskInstance, DagRun
+from airflow.models import DagModel, TaskInstance, DagRun, Base
 from airflow.utils.session import provide_session
 from cachetools.func import ttl_cache
 from sqlalchemy.orm import Session
@@ -66,16 +66,20 @@ def receive_dag(session: Session, data: list = None):
             if k in datum:
                 del datum[k]
 
-        if table_name == "task_instance":
-            logging.debug(f"Adding TI {datum}")
-            session.add(TaskInstance(**datum))
-        elif table_name == "dag_run":
-            logging.debug(f"Adding DAGRun {datum}")
-            session.add(DagRun(**datum))
-        else:
+        if table_name not in ["task_instance", "dag_run"]:
             logging.warning(
-                f"Received unexpected record! table_name {table_name}, data {datum}"
+                f"Received unexpected record! table_name {table_name}, data {datum} - skipping!"
             )
+        else:
+            logging.debug(f"Adding {datum}")
+            model = {"task_instance": TaskInstance, "dag_run": DagRun}
+            # Reconstruct DagRun/TaskInstance, skipping __init__
+            ti = model.__new__(model, **datum)
+            # Call Base as though __init__ had been called
+            super(Base, ti).__init__()
+            # Add it
+            session.add(ti)
+
     session.commit()
 
 

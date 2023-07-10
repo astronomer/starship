@@ -75,7 +75,7 @@ class AstroMigration(AppBuilderBaseView):
             return Response("OK", 200)
         except Exception as e:
             logging.exception(e)
-            return Response(str(e), 200)
+            return Response(str(e), 400)
 
     @expose("/modal/token")
     def modal_token_entry(self):

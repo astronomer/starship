@@ -155,4 +155,9 @@ see [this](https://airflow.apache.org/docs/apache-airflow/stable/authoring-and-s
 
 
 # Issues
-- If you see a message like `E   jwt.exceptions.PyJWKClientConnectionError: Fail to fetch data from the url, err: "<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:992)>"`, do this: https://stackoverflow.com/a/58525755
+## SSL CERTIFICATE_VERIFY_FAILED
+If you see a message like `E   jwt.exceptions.PyJWKClientConnectionError: Fail to fetch data from the url, err: "<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:992)>"`, do this: https://stackoverflow.com/a/58525755
+
+## Pytest Debugging
+`pytest-xdist` can prevent a debugger from attaching correctly due to it's distributed/non-local behavior
+You can fix this by commenting out `--num-processes=auto` from `pyproject.toml` or running with `--dist no` to return to normal sequential pytest behavior
