@@ -2,10 +2,13 @@ import itertools
 import logging
 from typing import List, Dict, Any
 
+import sqlalchemy
 from airflow import DAG
-from airflow.models import DagModel, TaskInstance, DagRun, Base
+from airflow.models import DagModel, DagRun
 from airflow.utils.session import provide_session
 from cachetools.func import ttl_cache
+from sqlalchemy import MetaData, Table
+from sqlalchemy.exc import NoSuchTableError
 from sqlalchemy.orm import Session
 from airflow.models import Connection
 from airflow.models import Pool
@@ -59,28 +62,76 @@ def receive_dag(session: Session, data: list = None):
         logging.warning(f"Received no data! data {data}")
         return
 
-    for datum in data:
-        table_name = datum.pop("table")
+    # logging.debug(f"Adding {datum}")
+    # model = {"task_instance": TaskInstance, "dag_run": DagRun}[table_name]
+    # # Reconstruct DagRun/TaskInstance, skipping __init__
+    # ti = model.__new__(model, **datum)
+    # # Call Base as though __init__ had been called
+    # super(Base, ti).__init__()
+    # # Add it
+    # session.add(ti)
+    #      ERROR - Class 'airflow.models.dagrun.DagRun' is mapped, but this instance lacks instrumentation.
+    #      This occurs when the instance is created before sqlalchemy.orm.mapper(airflow.models.dagrun.DagRun)
+    #      was called.
+    #  Traceback (most recent call last):
+    #    File "/usr/local/lib/python3.9/site-packages/sqlalchemy/orm/session.py", line 2016, in add
+    #      state = attributes.instance_state(instance)
+    #  AttributeError: 'DagRun' object has no attribute '_sa_instance_state'
+    #
+    #  The above exception was the direct cause of the following exception:
+    #
+    #  Traceback (most recent call last):
+    #    File "/usr/local/airflow/starship/astronomer/starship/main.py", line 74, in receive_dag_history
+    #      local_airflow_client.receive_dag(data=data)
+    #    File "/usr/local/lib/python3.9/site-packages/airflow/utils/session.py", line 70, in wrapper
+    #      return func(*args, session=session, **kwargs)
+    #    File "/usr/local/airflow/starship/astronomer/starship/services/local_airflow_client.py",
+    #    line 81, in receive_dag
+    #      session.add(ti)
+    #    File "/usr/local/lib/python3.9/site-packages/sqlalchemy/orm/session.py", line 2018, in add
+    #      util.raise_(
+    #    File "/usr/local/lib/python3.9/site-packages/sqlalchemy/util/compat.py", line 182, in raise_
+    #      raise exception
+    #  sqlalchemy.orm.exc.UnmappedInstanceError: Class 'airflow.models.dagrun.DagRun' is mapped,
+    #  but this instance lacks instrumentation.  This occurs when the instance is created before
+    #  sqlalchemy.orm.mapper(airflow.models.dagrun.DagRun) was called.
+    #  [2023-07-10 23:37:50,256] {_internal.py:113} INFO - 127.0.0.1 - - [10/Jul/2023 23:37:50]
+    #  "POST /astromigration/dag_history/receive HTTP/1
+
+    engine = session.get_bind()
+    metadata_obj = MetaData(bind=engine)
+
+    task_instances = [datum for datum in data if datum["table"] == "task_instance"]
+    dag_runs = [datum for datum in data if datum["table"] == "dag_run"]
+
+    others = [
+        datum for datum in data if datum["table"] not in ("task_instance", "dag_run")
+    ]
+    if any(others):
+        logging.warning(f"Received unexpected records! {others} - skipping!")
+
+    for data_list, table_name in (
+        (task_instances, "task_instance"),
+        (dag_runs, "dag_run"),
+    ):
+        if not data_list:
+            continue
         logging.debug("Removing keys that could cause issues...")
-        for k in ["conf", "id"]:
-            if k in datum:
-                del datum[k]
+        for datum in data_list:
+            for k in ["conf", "id"]:
+                if k in datum:
+                    del datum[k]
 
-        if table_name not in ["task_instance", "dag_run"]:
-            logging.warning(
-                f"Received unexpected record! table_name {table_name}, data {datum} - skipping!"
-            )
-        else:
-            logging.debug(f"Adding {datum}")
-            model = {"task_instance": TaskInstance, "dag_run": DagRun}[table_name]
-            # Reconstruct DagRun/TaskInstance, skipping __init__
-            ti = model.__new__(model, **datum)
-            # Call Base as though __init__ had been called
-            super(Base, ti).__init__()
-            # Add it
-            session.add(ti)
+        try:
+            table = Table(f"airflow.{table_name}", metadata_obj, autoload_with=engine)
+        except NoSuchTableError:
+            table = Table(table_name, metadata_obj, autoload_with=engine)
 
-    session.commit()
+        engine.execute(
+            sqlalchemy.dialects.postgresql.insert(table).on_conflict_do_nothing(),
+            data_list,
+        )
+        session.commit()
 
 
 @provide_session
@@ -97,6 +148,7 @@ def get_dag_runs_and_task_instances(
         .filter(DagRun.dag_id == dag_id)
         .order_by(DagRun.start_date)
         .limit(5)
+        .all()
     )
     logging.debug(
         f"Recursing through dag_runs: {dag_runs}, and flattening with task_instance relations"
