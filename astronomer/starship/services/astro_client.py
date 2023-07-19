@@ -3,11 +3,12 @@ import os
 from typing import Iterator, Any, Dict
 from urllib.parse import urlparse
 
-import jwt
-import requests
 from cachetools.func import ttl_cache
 from pydash import at
 from python_graphql_client import GraphqlClient
+import json
+import jwt
+import requests
 
 ASTRO_AUTH = os.environ.get("STARSHIP_ASTRO_AUTH", "https://auth.astronomer.io")
 ASTROHUB_API = os.environ.get(
@@ -19,6 +20,27 @@ ASTROHUB_GRAPHQL_API = os.environ.get(
 ASTRO_ALPHA_API = os.environ.get(
     "STARSHIP_ASTRO_ALPHA_API", "https://api.astronomer.io/v1alpha1"
 )
+
+
+@ttl_cache(ttl=3600)
+def get_jwk_key(token: str):
+    jwks_url = f"{ASTRO_AUTH}/.well-known/jwks.json"
+    try:
+        return jwt.PyJWKClient(jwks_url).get_signing_key_from_jwt(token).key
+    except AttributeError:
+        """
+        Older Airflows have older pyjwt, we need to do this more manually
+        https://renzolucioni.com/verifying-jwts-with-jwks-and-pyjwt/
+        """
+        jwks_request = requests.get(jwks_url)
+        jwks_request.raise_for_status()
+        jwks = jwks_request.json()
+        for jwk in jwks["keys"]:
+            if jwk["kid"] == jwt.get_unverified_header(token)["kid"]:
+                return jwt.algorithms.RSAAlgorithm.from_jwk(json.dumps(jwk))
+        raise RuntimeError(
+            f"Unable to get JWK: jwks {jwks}, token headers: {jwt.get_unverified_header(token)}"
+        )
 
 
 def get_username(token):
@@ -77,13 +99,6 @@ def get_organizations(token):
     except Exception as exc:
         print(exc)
         return {}
-
-
-@ttl_cache(ttl=3600)
-def get_jwk(token: str):
-    jwks_url = f"{ASTRO_AUTH}/.well-known/jwks.json"
-    jwks_client = jwt.PyJWKClient(jwks_url)
-    return jwks_client.get_signing_key_from_jwt(token)
 
 
 def get_deployment_url(deployment, token):
