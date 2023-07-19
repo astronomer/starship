@@ -1,8 +1,10 @@
 import itertools
 import logging
+import pickle
 from typing import List, Dict, Any
 
-import sqlalchemy
+from sqlalchemy.dialects.postgresql import insert
+
 from airflow import DAG
 from airflow.models import DagModel, DagRun
 from airflow.utils.session import provide_session
@@ -62,42 +64,6 @@ def receive_dag(session: Session, data: list = None):
         logging.warning(f"Received no data! data {data}")
         return
 
-    # logging.debug(f"Adding {datum}")
-    # model = {"task_instance": TaskInstance, "dag_run": DagRun}[table_name]
-    # # Reconstruct DagRun/TaskInstance, skipping __init__
-    # ti = model.__new__(model, **datum)
-    # # Call Base as though __init__ had been called
-    # super(Base, ti).__init__()
-    # # Add it
-    # session.add(ti)
-    #      ERROR - Class 'airflow.models.dagrun.DagRun' is mapped, but this instance lacks instrumentation.
-    #      This occurs when the instance is created before sqlalchemy.orm.mapper(airflow.models.dagrun.DagRun)
-    #      was called.
-    #  Traceback (most recent call last):
-    #    File "/usr/local/lib/python3.9/site-packages/sqlalchemy/orm/session.py", line 2016, in add
-    #      state = attributes.instance_state(instance)
-    #  AttributeError: 'DagRun' object has no attribute '_sa_instance_state'
-    #
-    #  The above exception was the direct cause of the following exception:
-    #
-    #  Traceback (most recent call last):
-    #    File "/usr/local/airflow/starship/astronomer/starship/main.py", line 74, in receive_dag_history
-    #      local_airflow_client.receive_dag(data=data)
-    #    File "/usr/local/lib/python3.9/site-packages/airflow/utils/session.py", line 70, in wrapper
-    #      return func(*args, session=session, **kwargs)
-    #    File "/usr/local/airflow/starship/astronomer/starship/services/local_airflow_client.py",
-    #    line 81, in receive_dag
-    #      session.add(ti)
-    #    File "/usr/local/lib/python3.9/site-packages/sqlalchemy/orm/session.py", line 2018, in add
-    #      util.raise_(
-    #    File "/usr/local/lib/python3.9/site-packages/sqlalchemy/util/compat.py", line 182, in raise_
-    #      raise exception
-    #  sqlalchemy.orm.exc.UnmappedInstanceError: Class 'airflow.models.dagrun.DagRun' is mapped,
-    #  but this instance lacks instrumentation.  This occurs when the instance is created before
-    #  sqlalchemy.orm.mapper(airflow.models.dagrun.DagRun) was called.
-    #  [2023-07-10 23:37:50,256] {_internal.py:113} INFO - 127.0.0.1 - - [10/Jul/2023 23:37:50]
-    #  "POST /astromigration/dag_history/receive HTTP/1
-
     engine = session.get_bind()
     metadata_obj = MetaData(bind=engine)
 
@@ -107,30 +73,32 @@ def receive_dag(session: Session, data: list = None):
     others = [
         datum for datum in data if datum["table"] not in ("task_instance", "dag_run")
     ]
-    if any(others):
+    if len(others):
         logging.warning(f"Received unexpected records! {others} - skipping!")
 
     for data_list, table_name in (
-        (task_instances, "task_instance"),
         (dag_runs, "dag_run"),
+        (task_instances, "task_instance"),
     ):
         if not data_list:
             continue
         logging.debug("Removing keys that could cause issues...")
         for datum in data_list:
-            for k in ["conf", "id"]:
+            # Dropping conf and executor_config because they are pickle objects
+            # I can't figure out how to send them
+            for k in ["conf", "id", "table", "conf", "executor_config"]:
                 if k in datum:
-                    del datum[k]
+                    if k == "executor_config":
+                        datum[k] = pickle.dumps({})
+                    else:
+                        del datum[k]
 
         try:
             table = Table(f"airflow.{table_name}", metadata_obj, autoload_with=engine)
         except NoSuchTableError:
             table = Table(table_name, metadata_obj, autoload_with=engine)
 
-        engine.execute(
-            sqlalchemy.dialects.postgresql.insert(table).on_conflict_do_nothing(),
-            data_list,
-        )
+        engine.execute(insert(table).on_conflict_do_nothing(), *data_list)
         session.commit()
 
 
@@ -140,7 +108,10 @@ def get_dag_runs_and_task_instances(
 ) -> List[Dict[str, Any]]:
     def _as_json_with_table(_row):
         _r = {col.name: getattr(_row, col.name) for col in _row.__table__.columns}
-        _r["table"] = str(_row.__table__)
+        try:
+            _r["table"] = str(_row.__table__)
+        except AttributeError:
+            _r["table"] = str(_row.__tablename__)
         return _r
 
     dag_runs = (

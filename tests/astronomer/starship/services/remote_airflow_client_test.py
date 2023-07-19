@@ -1,6 +1,5 @@
 import logging
 from datetime import timedelta
-from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
@@ -151,13 +150,13 @@ def test_get_dag_is_cached_mock(
 ):
     mocker.patch("astronomer.starship.services.remote_airflow_client._get_remote_dags")
     mocker.patch("astronomer.starship.services.remote_airflow_client._get_remote_dag")
-    mock_dags_response = MagicMock()
+    mock_dags_response = mocker.MagicMock()
     mock_dags_response.json.return_value = {
         "dags": [{"dag_id": "astronomer_monitoring_dag", "is_paused": False}]
     }
     remote_airflow_client._get_remote_dags.return_value = mock_dags_response
 
-    mock_dag_response = MagicMock()
+    mock_dag_response = mocker.MagicMock()
     mock_dag_response.json.return_value = {
         "dag_id": "astronomer_monitoring_dag",
         "is_paused": False,

@@ -329,7 +329,7 @@ class AstroMigration(AppBuilderBaseView):
         if request.method == "POST":
             if action == "migrate":
                 remote_airflow_client.migrate_dag(
-                    dag_id, deployment_url=deployment_url, token=token
+                    deployment_url=deployment_url, token=token, dag_id=dag_id
                 )
                 # force an update, make sure the change went through
                 remote_airflow_client.get_dag(

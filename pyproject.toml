@@ -56,6 +56,7 @@ sh = {version = "^2.0.4", python = ">=3.8.1"}
 pre-commit = {version = "^3.3.3", python = ">=3.8.1"}
 toml = {version = "^0.10.2", python = "<3.11"}
 docker = "^6.1.3"
+detect-secrets = "^1.4.0"
 
 [tool.poetry.group.aws.dependencies]
 boto3 = "^1.26.81"
