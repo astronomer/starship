@@ -336,7 +336,7 @@ def get_dag(
             token=token,
             ttl=ttl,
             skip_cache=False,
-        )[dag_id]
+        ).get(dag_id)
 
 
 def delete_dag(
