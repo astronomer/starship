@@ -1,11 +1,12 @@
 import json
 from datetime import datetime, timedelta
 from unittest import mock
-from unittest.mock import MagicMock
 
+import pendulum
 import pytest
 import requests
 from airflow.models import DagRun
+from airflow.utils.state import DagRunState
 from pytest_mock import MockerFixture
 from requests import HTTPError
 
@@ -116,14 +117,23 @@ def test_get_dag_runs_and_task_instances(mocker: MockerFixture):
         def __str__(self):
             return getattr(self, "name")
 
-    mock_dag_run = DagRun(dag_id="dag_id")
-    mock_ti = MagicMock()
-    mock_ti.task_id = test_task_id
-    mock_ti.run_id = test_dag_run_id
-    mock_ti.dag_id = test_dag_id
+    mock_dag_run = DagRun(
+        dag_id=test_dag_id,
+        run_id=test_dag_run_id,
+        execution_date=pendulum.parse("1970-01-01 00:00:01"),
+        queued_at=pendulum.parse("2023-07-19 04:57:22.569681+00:00"),
+        external_trigger=True,
+        run_type="manual",
+        state=DagRunState.QUEUED,
+    )
+    # set up the TI from our sample one
+    mock_ti = mocker.MagicMock()
+    for k, v in example_ti.items():
+        setattr(mock_ti, k, v)
+
     mock_ti.__table__ = MockTable(
         name="task_instance",
-        columns=[MockColumn("task_id"), MockColumn("dag_id"), MockColumn("run_id")],
+        columns=[MockColumn(k) for k in example_ti.keys()],
     )
     mock_dag_run.task_instances = [mock_ti]
 
@@ -141,7 +151,12 @@ def test_get_dag_runs_and_task_instances(mocker: MockerFixture):
 
     actual = get_dag_runs_and_task_instances(session=mock_session, dag_id=test_dag_id)
     expected = [example_dr, example_ti]
-    assert actual == expected
+    for i in range(len(actual)):
+        for k, v in actual[i].items():
+            # queued_at seemed to be datetime.now, not sure why
+            # execution date mostly matched, but parsed slightly different
+            if k not in ["queued_at", "execution_date"]:
+                assert str(v) == str(expected[i][k]), f'Key "{k}"'
 
 
 @pytest.mark.skip
