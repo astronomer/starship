@@ -199,6 +199,12 @@ def create_pool(deployment_url, token, pool: Pool) -> Dict[str, Any]:
         **get_extras(deployment_url, token),
         json={"name": pool.pool, "slots": pool.slots, "description": pool.description},
     )
+    if not r.ok and r.status_code == 400 and "Unknown field" in r.text:
+        r = requests.post(
+            f"{deployment_url}/api/v1/pools",
+            **get_extras(deployment_url, token),
+            json={"name": pool.pool, "slots": pool.slots},
+        )
     r.raise_for_status()
     return r.json()
 
