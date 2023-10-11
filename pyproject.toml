@@ -1,13 +1,13 @@
 [tool.poetry]
 name = "astronomer-starship"
-version = "1.1.0"
+version = "1.1.1"
 description = "Migrations to Astro"
 authors = ["ADE Team <ade@astronomer.io>"]
 readme = "README.rst"
 repository = "https://github.com/astronomer/starship"
 homepage = "https://astronomer.io"
 license = "Proprietary"
-packages = [{include = "astronomer"}]  #, from = "." }]
+packages = [{include = "astronomer", from = "." }]
 include = [
   "astronomer/starship/templates/*",
   "astronomer/starship/static/*",
@@ -77,6 +77,10 @@ orion = "orion.__main__:migrate"
 [project.entry-points."airflow.plugins"]
 "starship" = "astronomer.starship.main:StarshipPlugin"
 "starship_aeroscope" = "astronomer.aeroscope.plugins:AeroscopePlugin"
+
+[project.entry-points.apache_airflow_provider]
+provider_info = "astronomer.__init__:get_provider_info"
+
 
 [build-system]
 requires = ["poetry-core>=1.0.8"]

@@ -209,6 +209,13 @@ FAQ
 
     pip install astronomer-starship rich==10.9.0
 
+- If you have an error with Starship coming up and you see a message like :code:`Broken plugin: [astronomer.starship.main] Parameters to Generic[...] must all be type variables`, upgrade :code:`typing-extensions`
+
+.. code-block:: bash
+
+    pip install typing-extensions==3.10.0.2
+
+
 License
 -------
 
