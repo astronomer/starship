@@ -215,6 +215,7 @@ FAQ
 
     pip install typing-extensions==3.10.0.2
 
+- If you are on >=Airflow 2.7 and wish to test connections, you must have `AIRFLOW__CORE__TEST_CONNECTION` Set. See notes `here <https://airflow.apache.org/docs/apache-airflow/stable/release_notes.html#disable-default-allowing-the-testing-of-connections-in-ui-api-and-cli-32052>`_
 
 License
 -------
