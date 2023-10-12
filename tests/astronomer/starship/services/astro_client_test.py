@@ -1,7 +1,7 @@
 import pytest
 from cryptography.hazmat.backends.openssl.rsa import _RSAPublicKey
 
-from astronomer.starship.services.astro_client import (
+from astronomer_starship.starship.services.astro_client import (
     get_deployment_url,
     get_deployments,
     get_environment_variables,

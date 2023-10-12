@@ -4,14 +4,21 @@ from pathlib import Path
 import pytest
 import requests
 import yaml
-from dotenv import load_dotenv
 
-from astronomer.starship.services.astro_client import ASTRO_AUTH, get_deployment_url
+from astronomer_starship.starship.services.astro_client import (
+    ASTRO_AUTH,
+    get_deployment_url,
+)
 
 
 manual_tests = pytest.mark.skipif(
     not bool(os.getenv("MANUAL_TESTS")), reason="requires env setup"
 )
+
+
+@pytest.fixture(scope="session")
+def project_root() -> Path:
+    return Path(__file__).parent.parent
 
 
 @pytest.fixture
@@ -27,6 +34,9 @@ def e2e_deployment_id() -> str:
 
 @pytest.fixture
 def e2e_api_token() -> str:
+    pytest.importorskip("dotenv")
+    from dotenv import load_dotenv
+
     load_dotenv()
     astro_id = os.getenv("ASTRONOMER_KEY_ID")
     astro_key = os.getenv("ASTRONOMER_KEY_SECRET")
@@ -45,6 +55,9 @@ def e2e_api_token() -> str:
 
 @pytest.fixture
 def e2e_workspace_token() -> str:
+    pytest.importorskip("dotenv")
+    from dotenv import load_dotenv
+
     load_dotenv()
     token = os.getenv("ASTRO_WORKSPACE_TOKEN", "")
     return token

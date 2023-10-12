@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 import docker
+import sh
 
 from tests.conftest import manual_tests
 
@@ -35,6 +36,13 @@ def local_branch_or_tag(*args):
 @pytest.fixture
 def docker_client(*args):
     return docker.from_env()
+
+
+def test_is_pip_installable():
+    # noinspection PyUnresolvedReferences
+    actual = sh.pip("install", "-e", ".")
+    expected = "Successfully installed astronomer-starship"
+    assert expected in actual, "we can `pip install -e .` our project"
 
 
 @manual_tests  # requires docker

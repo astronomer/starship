@@ -10,7 +10,7 @@ from typing import Sequence
 from airflow.exceptions import AirflowFailException
 from airflow.models import BaseOperator
 
-from astronomer.aeroscope.util import clean_airflow_report_output
+from astronomer_starship.aeroscope.util import clean_airflow_report_output
 
 
 class AeroscopeOperator(BaseOperator):

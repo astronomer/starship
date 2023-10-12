@@ -2,16 +2,16 @@
 name = "astronomer-starship"
 version = "1.1.1"
 description = "Migrations to Astro"
-authors = ["ADE Team <ade@astronomer.io>"]
+authors = ["CSE Team <cse@astronomer.io>"]
 readme = "README.rst"
 repository = "https://github.com/astronomer/starship"
 homepage = "https://astronomer.io"
 license = "Proprietary"
-#packages = [{include = "astronomer", from = "." }]
+packages = [{include = "astronomer_starship"}]
 include = [
-  "astronomer/starship/templates/*",
-  "astronomer/starship/static/*",
-  "astronomer/aeroscope/plugins/templates/*"
+  "astronomer_starship/starship/templates/*",
+  "astronomer_starship/starship/static/*",
+  "astronomer_starship/starship/aeroscope/plugins/templates/*"
 ]
 
 #[tool.setuptools]
@@ -63,23 +63,23 @@ boto3 = "^1.26.81"
 boto3-stubs = {extras = ["mwaa", "s3"], version = "^1.26.81"}
 fs-s3fs = "^1.1.1"
 
-[tool.poetry.scripts]
+#[tool.poetry.scripts]
 # Entry points for the package https://python-poetry.org/docs/pyproject/#scripts
-orion = "orion.__main__:migrate"
+#orion = "orion.__main__:migrate"
 
 # dynamically add plugin to Airflow Plugins
 [tool.poetry.plugins] # Optional super table
 [tool.poetry.plugins."airflow.plugins"]
-"starship" = "astronomer.starship.main:StarshipPlugin"
-"starship_aeroscope" = "astronomer.aeroscope.plugins:AeroscopePlugin"
+"starship" = "astronomer_starship.starship.main:StarshipPlugin"
+"starship_aeroscope" = "astronomer_starship.aeroscope.plugins:AeroscopePlugin"
 
 # for pip installing this pyproject.toml
 [project.entry-points."airflow.plugins"]
-"starship" = "astronomer.starship.main:StarshipPlugin"
-"starship_aeroscope" = "astronomer.aeroscope.plugins:AeroscopePlugin"
+"starship" = "astronomer_starship.starship.main:StarshipPlugin"
+"starship_aeroscope" = "astronomer_starship.aeroscope.plugins:AeroscopePlugin"
 
 [project.entry-points.apache_airflow_provider]
-provider_info = "astronomer.__init__:get_provider_info"
+provider_info = "astronomer_starship.starship.__init__:get_provider_info"
 
 
 [build-system]

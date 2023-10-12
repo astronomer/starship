@@ -36,7 +36,7 @@ Usage
 
    from airflow import DAG
 
-   from astronomer.starship.operators import AstroMigrationOperator
+   from astronomer_starship.starship.operators import AstroMigrationOperator
    from datetime import datetime
 
    with DAG(

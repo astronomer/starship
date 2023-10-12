@@ -10,14 +10,14 @@ from airflow.utils.state import DagRunState
 from pytest_mock import MockerFixture
 from requests import HTTPError
 
-from astronomer.starship.services import remote_airflow_client
-from astronomer.starship.services.local_airflow_client import (
+from astronomer_starship.starship.services import remote_airflow_client
+from astronomer_starship.starship.services.local_airflow_client import (
     get_dag_runs_and_task_instances,
     receive_dag,
 )
 from mock_alchemy.mocking import UnifiedAlchemyMagicMock
 
-from astronomer.starship.services.remote_airflow_client import get_extras
+from astronomer_starship.starship.services.remote_airflow_client import get_extras
 
 test_dag_id = "dag_0"
 test_dag_run_id = "dag_0_run"

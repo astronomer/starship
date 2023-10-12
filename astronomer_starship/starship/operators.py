@@ -5,7 +5,9 @@ from airflow.models import BaseOperator, Connection
 from airflow.utils.session import provide_session
 from python_graphql_client import GraphqlClient
 
-from astronomer.starship.variables.operators import AstroVariableMigrationOperator
+from astronomer_starship.starship.variables.operators import (
+    AstroVariableMigrationOperator,
+)
 from sqlalchemy.orm import Session
 from typing import Any, Sequence
 
@@ -162,7 +164,9 @@ class AstroEnvMigrationOperator(BaseOperator):
 
         try:
             env_vars = {}
-            deployments = client.execute(query,)[
+            deployments = client.execute(
+                query,
+            )[
                 "data"
             ]["deployments"]
             for deployment in deployments:

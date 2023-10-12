@@ -10,13 +10,15 @@ from flask import Blueprint, Response, redirect, request, session, url_for
 from flask_appbuilder import BaseView as AppBuilderBaseView
 from flask_appbuilder import expose
 
-from astronomer.starship.services import (
+from astronomer_starship.starship.services import (
     astro_client,
     local_airflow_client,
     remote_airflow_client,
 )
-from astronomer.starship.services.astro_client import is_environment_variable_migrated
-from astronomer.starship.services.remote_airflow_client import is_pool_migrated
+from astronomer_starship.starship.services.astro_client import (
+    is_environment_variable_migrated,
+)
+from astronomer_starship.starship.services.remote_airflow_client import is_pool_migrated
 
 bp = Blueprint(
     "starship",

@@ -6,7 +6,7 @@ import requests
 from airflow.models import Connection, Pool, Variable
 from requests import Response
 
-from astronomer.starship.services import local_airflow_client
+from astronomer_starship.starship.services import local_airflow_client
 
 # Caching
 remote_data: Dict[str, Dict[str, Dict[str, Any]]] = {}

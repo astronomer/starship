@@ -5,8 +5,8 @@ import pytest
 from pytest_mock import MockerFixture
 from requests import HTTPError
 
-from astronomer.starship.services import remote_airflow_client
-from astronomer.starship.services.remote_airflow_client import (
+from astronomer_starship.starship.services import remote_airflow_client
+from astronomer_starship.starship.services.remote_airflow_client import (
     create_connection,
     create_pool,
     create_variable,
@@ -148,8 +148,12 @@ def test_get_dag(
 def test_get_dag_is_cached_mock(
     mocker: MockerFixture,
 ):
-    mocker.patch("astronomer.starship.services.remote_airflow_client._get_remote_dags")
-    mocker.patch("astronomer.starship.services.remote_airflow_client._get_remote_dag")
+    mocker.patch(
+        "astronomer_starship.starship.services.remote_airflow_client._get_remote_dags"
+    )
+    mocker.patch(
+        "astronomer_starship.starship.services.remote_airflow_client._get_remote_dag"
+    )
     mock_dags_response = mocker.MagicMock()
     mock_dags_response.json.return_value = {
         "dags": [{"dag_id": "astronomer_monitoring_dag", "is_paused": False}]
