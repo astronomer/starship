@@ -3,7 +3,6 @@ from concurrent import futures
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
-import sh
 
 from tests.conftest import manual_tests
 
@@ -57,6 +56,7 @@ def has_docker():
 
 def test_is_pip_installable(project_root):
     # noinspection PyUnresolvedReferences
+    sh = pytest.importorskip("sh")
     actual = sh.pip("install", "-e", ".", _cwd=project_root)
     expected = "Successfully installed astronomer-starship"
     assert expected in actual, "we can `pip install -e .` our project"
