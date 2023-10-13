@@ -160,21 +160,30 @@ class AstroMigration(AppBuilderBaseView):
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONNECTION)])
     def button_migrate_connection(self, conn_id: str, deployment: str):
         token = session.get("token")
-        deployment_url = astro_client.get_deployment_url(deployment, token)
+        if deployment:
+            deployment_url = astro_client.get_deployment_url(deployment, token)
 
-        if request.method == "POST":
-            local_connections = {
-                conn.conn_id: conn for conn in local_airflow_client.get_connections()
-            }
-            remote_airflow_client.create_connection(
-                deployment_url, token, local_connections[conn_id]
-            )
+            if request.method == "POST":
+                local_connections = {
+                    conn.conn_id: conn
+                    for conn in local_airflow_client.get_connections()
+                }
+                remote_airflow_client.create_connection(
+                    deployment_url, token, local_connections[conn_id]
+                )
+                deployment_conns = remote_airflow_client.get_connections(
+                    deployment_url, token, skip_cache=True
+                )
+            else:
+                deployment_conns = remote_airflow_client.get_connections(
+                    deployment_url, token
+                )
 
-        deployment_conns = remote_airflow_client.get_connections(deployment_url, token)
-
-        is_migrated = conn_id in [
-            remote_conn["connection_id"] for remote_conn in deployment_conns
-        ]
+            is_migrated = conn_id in [
+                remote_conn["connection_id"] for remote_conn in deployment_conns
+            ]
+        else:
+            is_migrated = False
 
         return self.render_template(
             "starship/components/migrate_connection_button.html",
@@ -209,16 +218,22 @@ class AstroMigration(AppBuilderBaseView):
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_VARIABLE)])
     def button_migrate_variable(self, variable: str, deployment: str):
         token = session.get("token")
-        deployment_url = astro_client.get_deployment_url(deployment, token)
+        if deployment:
+            deployment_url = astro_client.get_deployment_url(deployment, token)
 
-        if request.method == "POST":
-            remote_airflow_client.create_variable(
-                deployment_url, token, local_airflow_client.get_variable(variable)
+            if request.method == "POST":
+                remote_airflow_client.create_variable(
+                    deployment_url, token, local_airflow_client.get_variable(variable)
+                )
+                skip_cache = True
+            else:
+                skip_cache = False
+
+            is_migrated = remote_airflow_client.is_variable_migrated(
+                deployment_url, token, variable, skip_cache=skip_cache
             )
-
-        is_migrated = remote_airflow_client.is_variable_migrated(
-            deployment_url, token, variable
-        )
+        else:
+            is_migrated = False
 
         return self.render_template(
             "starship/components/migrate_variable_button.html",
@@ -240,8 +255,13 @@ class AstroMigration(AppBuilderBaseView):
             if request.method == "POST":
                 pool = local_airflow_client.get_pool(pool_name)
                 remote_airflow_client.create_pool(deployment_url, token, pool)
+                skip_cache = True
+            else:
+                skip_cache = False
 
-            is_migrated = is_pool_migrated(deployment_url, token, pool_name)
+            is_migrated = is_pool_migrated(
+                deployment_url, token, pool_name, skip_cache=skip_cache
+            )
         else:
             # Deployment hasn't been selected yet
             is_migrated = False

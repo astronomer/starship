@@ -5,6 +5,7 @@
 {% else %}
 <button
         hx-post="{{ url_for('AstroMigration.button_migrate_pool', deployment=deployment, pool_name=pool) }}"
+        onclick="this.disabled=true;"
         class="btn btn-primary">
     Migrate
 </button>

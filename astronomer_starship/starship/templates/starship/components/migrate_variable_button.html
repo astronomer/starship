@@ -5,6 +5,7 @@
 {% else %}
 <button
         hx-post="{{ url_for('AstroMigration.button_migrate_variable', deployment=deployment, variable=variable) }}"
+        onclick="this.disabled=true;"
         class="btn btn-primary">
     Migrate
 </button>
