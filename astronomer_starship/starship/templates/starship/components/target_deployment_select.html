@@ -7,7 +7,7 @@
                     <label for="currentUser" class="form-label">Current user</label>
                 </div>
                 <div class="col-lg-6">
-                    <label id="currentUser" class="form-label">{{ username }} (<a href="{{ url_for('AstroMigration.logout') }}">Logout</a>)</label>
+                    <label id="currentUser" class="form-label">{{ username }} (<a href="{{ url_for('Starship.logout') }}">Logout</a>)</label>
                 </div>
             </div>
             <div class="row" style="padding-top: 15px;">
@@ -18,7 +18,7 @@
                     <select id="selectedAstroDeployment" class="form-control" name="selectedAstroDeployment">
                         <option value="">Select deployment</option>
                         {% if deployments %}
-                        {% for deploy in deployments.values() %}
+                        {% for deploy in deployments.values() | sort(attribute="name,label") %}
                         <option value="{{deploy.id}}" {{'selected' if deploy.id == session.selectedAstroDeployment}}>
                         {{ deploy.label if deploy.label else deploy.name }}
                         </option>

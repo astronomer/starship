@@ -209,10 +209,12 @@ def create_pool(deployment_url, token, pool: Pool) -> Dict[str, Any]:
     return r.json()
 
 
-def is_pool_migrated(deployment_url: str, token: str, pool_name: str):
+def is_pool_migrated(
+    deployment_url: str, token: str, pool_name: str, skip_cache: bool = False
+):
     return any(
         pool_name == remote_pool.get("name")
-        for remote_pool in get_pools(deployment_url, token)
+        for remote_pool in get_pools(deployment_url, token, skip_cache=skip_cache)
     )
 
 
@@ -259,8 +261,13 @@ def delete_variable(
     return r.json() if r.content else None
 
 
-def is_variable_migrated(deployment_url: str, token: str, variable: str):
-    return any(variable == v["key"] for v in get_variables(deployment_url, token))
+def is_variable_migrated(
+    deployment_url: str, token: str, variable: str, skip_cache: bool = False
+):
+    return any(
+        variable == v["key"]
+        for v in get_variables(deployment_url, token, skip_cache=skip_cache)
+    )
 
 
 def create_variable(deployment_url, token: str, variable: Variable) -> Dict[str, Any]:
@@ -362,7 +369,7 @@ def migrate_dag(deployment_url: str, token: str, dag_id: str) -> bool:
         return False
     data = local_airflow_client.get_dag_runs_and_task_instances(dag_id=dag_id)
     r = requests.post(
-        f"{deployment_url}/astromigration/dag_history/receive",
+        f"{deployment_url}/starship/dag_history/receive",
         data=json.dumps(data, default=str),
         **get_extras(deployment_url, token),
     )
