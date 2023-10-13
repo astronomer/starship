@@ -98,8 +98,9 @@ def receive_dag(session: Session, data: list = None):
         except NoSuchTableError:
             table = Table(table_name, metadata_obj, autoload_with=engine)
 
-        engine.execute(insert(table).on_conflict_do_nothing(), *data_list)
-        session.commit()
+        with engine.connect() as connection:
+            connection.execute(insert(table).on_conflict_do_nothing(), *data_list)
+            connection.commit()
 
 
 @provide_session

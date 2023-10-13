@@ -1,13 +1,21 @@
-from pathlib import Path
+from asyncio import FIRST_EXCEPTION, Future
+from concurrent import futures
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
-import docker
+import sh
 
 from tests.conftest import manual_tests
 
 
+def skip_no_docker(has_docker):
+    """Skips this test if we don't have docker"""
+    if not has_docker:
+        pytest.skip("skipped, no docker")
+
+
 @pytest.fixture
-def local_version(*args):
+def local_version(project_root, *args):
     try:
         import tomllib
 
@@ -18,7 +26,8 @@ def local_version(*args):
 
         read_mode = "r"
 
-    with open(Path(__file__).parent.parent / "pyproject.toml", read_mode) as t:
+    with open(project_root / "pyproject.toml", read_mode) as t:
+        # noinspection PyTypeChecker
         return tomllib.load(t)["tool"]["poetry"]["version"]
 
 
@@ -32,48 +41,74 @@ def local_branch_or_tag(*args):
     ).decode()
 
 
-@pytest.fixture
-def docker_client(*args):
+@pytest.fixture(scope="session")
+def docker_client():
+    import docker
+
     return docker.from_env()
 
 
+@pytest.fixture(scope="session")
+def has_docker():
+    from shutil import which
+
+    return which("docker") is not None
+
+
+def test_is_pip_installable(project_root):
+    # noinspection PyUnresolvedReferences
+    actual = sh.pip("install", "-e", ".", _cwd=project_root)
+    expected = "Successfully installed astronomer-starship"
+    assert expected in actual, "we can `pip install -e .` our project"
+
+
 @manual_tests  # requires docker
-@pytest.mark.parametrize(
-    "image,docker_client,local_branch_or_tag",
-    [
-        ("quay.io/astronomer/ap-airflow:2.0.2-buster-onbuild", None, None),
-        ("quay.io/astronomer/ap-airflow:2.1.4-buster-onbuild", None, None),
-        ("quay.io/astronomer/ap-airflow:2.2.5-onbuild", None, None),
-        ("quay.io/astronomer/ap-airflow:2.3.4-onbuild", None, None),
-        ("quay.io/astronomer/astro-runtime:4.2.8", None, None),
-        ("quay.io/astronomer/ap-airflow:2.4.3-onbuild", None, None),
-        ("quay.io/astronomer/astro-runtime:5.4.0", None, None),
-        ("quay.io/astronomer/astro-runtime:6.6.0", None, None),
-        ("quay.io/astronomer/astro-runtime:7.6.0", None, None),
-        ("quay.io/astronomer/astro-runtime:8.5.0", None, None),
-    ],
-    indirect=["docker_client", "local_branch_or_tag"],
-)
-def test_install(image, docker_client, local_branch_or_tag):
-    logs = docker_client.containers.run(
-        image=image,
-        user="root",
-        entrypoint="/bin/bash",
-        command=[
-            "-euxo",
-            "pipefail",
-            "-c",
-            "python -m pip install /usr/local/airflow/starship"
-            if "2.1.4" not in image
-            else "python -m pip install /usr/local/airflow/starship rich==10.9.0",
-        ],
-        volumes=[f"{Path(__file__).parent.parent}:/usr/local/airflow/starship"],
-        stdout=True,
-        stderr=True,
-        remove=True,
-    )
-    assert b"ERROR" not in logs
-    assert b"Successfully installed" in logs
+def test_install(has_docker, docker_client, local_branch_or_tag, project_root):
+    skip_no_docker(has_docker)
+
+    with ThreadPoolExecutor() as executor:
+
+        def run_test_for_image(image: str):
+            logs = docker_client.containers.run(
+                image=image,
+                user="root",
+                entrypoint="/bin/bash",
+                command=[
+                    "-euxo",
+                    "pipefail",
+                    "-c",
+                    "python -m pip install /usr/local/airflow/starship"
+                    if "2.1.4" not in image
+                    else "python -m pip install /usr/local/airflow/starship rich==10.9.0",
+                ],
+                volumes=[f"{project_root}:/usr/local/airflow/starship"],
+                stdout=True,
+                stderr=True,
+                remove=True,
+            )
+            assert b"ERROR" not in logs
+            assert b"Successfully installed" in logs
+
+        tests = [
+            executor.submit(run_test_for_image, image)
+            for image in [
+                "quay.io/astronomer/ap-airflow:2.0.2-buster-onbuild",
+                "quay.io/astronomer/ap-airflow:2.1.4-buster-onbuild",
+                "quay.io/astronomer/ap-airflow:2.2.5-onbuild",
+                "quay.io/astronomer/ap-airflow:2.3.4-onbuild",
+                "quay.io/astronomer/astro-runtime:4.2.8",
+                "quay.io/astronomer/ap-airflow:2.4.3-onbuild",
+                "quay.io/astronomer/astro-runtime:5.4.0",
+                "quay.io/astronomer/astro-runtime:6.6.0",
+                "quay.io/astronomer/astro-runtime:7.6.0",
+                "quay.io/astronomer/astro-runtime:8.5.0",
+                "quay.io/astronomer/astro-runtime:9.2.0",
+            ]
+        ]
+        for test in futures.wait(tests, return_when=FIRST_EXCEPTION)[0]:
+            test: Future
+            if test.exception():
+                raise test.exception()
 
 
 def test_version(local_version):

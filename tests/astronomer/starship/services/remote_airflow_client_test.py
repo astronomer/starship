@@ -5,8 +5,8 @@ import pytest
 from pytest_mock import MockerFixture
 from requests import HTTPError
 
-from astronomer.starship.services import remote_airflow_client
-from astronomer.starship.services.remote_airflow_client import (
+from astronomer_starship.starship.services import remote_airflow_client
+from astronomer_starship.starship.services.remote_airflow_client import (
     create_connection,
     create_pool,
     create_variable,
@@ -26,8 +26,9 @@ from astronomer.starship.services.remote_airflow_client import (
 
 @pytest.mark.integration_test
 def test_create_and_get_connections(
-    e2e_deployment_url, e2e_deployment_id, e2e_workspace_token, e2e_api_token
+    e2e_deployment_url, e2e_token_deployment_workspace_org
 ):
+    [e2e_api_token, _, _, _, _] = e2e_token_deployment_workspace_org
     from airflow.models import Connection
 
     # GIVEN
@@ -64,9 +65,9 @@ def test_create_and_get_connections(
 
 
 @pytest.mark.integration_test
-def test_create_and_get_pools(
-    e2e_deployment_url, e2e_deployment_id, e2e_workspace_token, e2e_api_token
-):
+def test_create_and_get_pools(e2e_deployment_url, e2e_token_deployment_workspace_org):
+    [e2e_api_token, _, _, _, _] = e2e_token_deployment_workspace_org
+
     # GIVEN
     from airflow.models import Pool
 
@@ -97,8 +98,10 @@ def test_create_and_get_pools(
 
 @pytest.mark.integration_test
 def test_create_and_get_variables(
-    e2e_deployment_url, e2e_deployment_id, e2e_workspace_token, e2e_api_token
+    e2e_deployment_url, e2e_token_deployment_workspace_org
 ):
+    [e2e_api_token, _, _, _, _] = e2e_token_deployment_workspace_org
+
     # GIVEN
     from airflow.models import Variable
 
@@ -126,10 +129,10 @@ def test_create_and_get_variables(
     delete_variable(e2e_deployment_url, e2e_api_token, test_variable)
 
 
+@pytest.mark.skip("Can't pause the monitoring DAG anymore, no other DAGs on e2e")
 @pytest.mark.integration_test
-def test_set_dag_is_paused(
-    e2e_deployment_url, e2e_deployment_id, e2e_workspace_token, e2e_api_token
-):
+def test_set_dag_is_paused(e2e_deployment_url, e2e_token_deployment_workspace_org):
+    [e2e_api_token, _, _, _, _] = e2e_token_deployment_workspace_org
     actual = set_dag_is_paused(
         "astronomer_monitoring_dag", True, e2e_deployment_url, e2e_api_token
     )
@@ -137,9 +140,8 @@ def test_set_dag_is_paused(
 
 
 @pytest.mark.integration_test
-def test_get_dag(
-    e2e_deployment_url, e2e_deployment_id, e2e_workspace_token, e2e_api_token
-):
+def test_get_dag(e2e_deployment_url, e2e_token_deployment_workspace_org):
+    [e2e_api_token, _, _, _, _] = e2e_token_deployment_workspace_org
     actual = get_dag("astronomer_monitoring_dag", e2e_deployment_url, e2e_api_token)
     assert actual["dag_id"] == "astronomer_monitoring_dag"
 
@@ -148,8 +150,12 @@ def test_get_dag(
 def test_get_dag_is_cached_mock(
     mocker: MockerFixture,
 ):
-    mocker.patch("astronomer.starship.services.remote_airflow_client._get_remote_dags")
-    mocker.patch("astronomer.starship.services.remote_airflow_client._get_remote_dag")
+    mocker.patch(
+        "astronomer_starship.starship.services.remote_airflow_client._get_remote_dags"
+    )
+    mocker.patch(
+        "astronomer_starship.starship.services.remote_airflow_client._get_remote_dag"
+    )
     mock_dags_response = mocker.MagicMock()
     mock_dags_response.json.return_value = {
         "dags": [{"dag_id": "astronomer_monitoring_dag", "is_paused": False}]

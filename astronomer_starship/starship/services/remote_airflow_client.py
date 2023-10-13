@@ -6,7 +6,7 @@ import requests
 from airflow.models import Connection, Pool, Variable
 from requests import Response
 
-from astronomer.starship.services import local_airflow_client
+from astronomer_starship.starship.services import local_airflow_client
 
 # Caching
 remote_data: Dict[str, Dict[str, Dict[str, Any]]] = {}
@@ -54,7 +54,7 @@ def get_extras(deployment_url: str, token: str) -> Dict[str, Any]:
     return (
         {
             "headers": {
-                "Content-Type": "application/json",
+                # "Content-Type": "application/json",
                 "Authorization": f"Bearer {token}",
             }
         }
@@ -298,7 +298,6 @@ def _get_remote_dags(deployment_url: str, token: str) -> Optional[Response]:
 
 
 def _get_remote_dag(dag_id: str, deployment_url: str, token: str) -> Response:
-    """DEPRECATED - Generic cache method uses _get_remote_dags instead"""
     r = requests.get(
         f"{deployment_url}/api/v1/dags/{dag_id}", **get_extras(deployment_url, token)
     )

@@ -36,7 +36,7 @@ Usage
 
    from airflow import DAG
 
-   from astronomer.starship.operators import AstroMigrationOperator
+   from astronomer_starship.starship.operators import AstroMigrationOperator
    from datetime import datetime
 
    with DAG(
@@ -208,6 +208,14 @@ FAQ
 .. code-block:: bash
 
     pip install astronomer-starship rich==10.9.0
+
+- If you have an error with Starship coming up and you see a message like :code:`Broken plugin: [astronomer.starship.main] Parameters to Generic[...] must all be type variables`, upgrade :code:`typing-extensions`
+
+.. code-block:: bash
+
+    pip install typing-extensions==3.10.0.2
+
+- If you are on >=Airflow 2.7 and wish to test connections, you must have `AIRFLOW__CORE__TEST_CONNECTION` Set. See notes `here <https://airflow.apache.org/docs/apache-airflow/stable/release_notes.html#disable-default-allowing-the-testing-of-connections-in-ui-api-and-cli-32052>`_
 
 License
 -------

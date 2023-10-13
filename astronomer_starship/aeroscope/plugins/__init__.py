@@ -16,7 +16,7 @@ from flask_appbuilder import BaseView as AppBuilderBaseView
 from flask_appbuilder import expose
 from wtforms import Form, StringField, validators
 
-from astronomer.aeroscope.util import clean_airflow_report_output
+from astronomer_starship.aeroscope.util import clean_airflow_report_output
 
 bp = Blueprint(
     "starship_aeroscope",
