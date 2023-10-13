@@ -298,7 +298,6 @@ def _get_remote_dags(deployment_url: str, token: str) -> Optional[Response]:
 
 
 def _get_remote_dag(dag_id: str, deployment_url: str, token: str) -> Response:
-    """DEPRECATED - Generic cache method uses _get_remote_dags instead"""
     r = requests.get(
         f"{deployment_url}/api/v1/dags/{dag_id}", **get_extras(deployment_url, token)
     )
