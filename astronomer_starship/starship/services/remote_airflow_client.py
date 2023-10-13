@@ -369,7 +369,7 @@ def migrate_dag(deployment_url: str, token: str, dag_id: str) -> bool:
         return False
     data = local_airflow_client.get_dag_runs_and_task_instances(dag_id=dag_id)
     r = requests.post(
-        f"{deployment_url}/astromigration/dag_history/receive",
+        f"{deployment_url}/starship/dag_history/receive",
         data=json.dumps(data, default=str),
         **get_extras(deployment_url, token),
     )

@@ -31,32 +31,32 @@ bp = Blueprint(
 
 def get_page_data(page):
     return {
-        "AstroMigration.tabs_vars": {
+        "Starship.tabs_vars": {
             "component": "variables",
             "vars": {var.key: var for var in local_airflow_client.get_variables()},
         },
-        "AstroMigration.tabs_dags": {
+        "Starship.tabs_dags": {
             "component": "dags",
             "dags": local_airflow_client.get_dags(),
         },
-        "AstroMigration.tabs_pools": {
+        "Starship.tabs_pools": {
             "component": "pools",
             "pools": {pool.pool: pool for pool in local_airflow_client.get_pools()},
         },
-        "AstroMigration.tabs_conns": {
+        "Starship.tabs_conns": {
             "component": "connections",
             "conns": {
                 conn.conn_id: conn for conn in local_airflow_client.get_connections()
             },
         },
-        "AstroMigration.tabs_env": {
+        "Starship.tabs_env": {
             "component": "env",
             "environ": os.environ,
         },
     }[page]
 
 
-class AstroMigration(AppBuilderBaseView):
+class Starship(AppBuilderBaseView):
     default_view = "main"
 
     @expose("/", methods=["GET", "POST"])
@@ -65,7 +65,7 @@ class AstroMigration(AppBuilderBaseView):
         session.update(request.form)
         return self.render_template(
             "starship/main.html",
-            data={"tab": session.get("tab", "AstroMigration.tabs_conns")},
+            data={"tab": session.get("tab", "Starship.tabs_conns")},
         )
 
     @expose("/dag_history/receive", methods=["GET", "POST"])
@@ -110,13 +110,13 @@ class AstroMigration(AppBuilderBaseView):
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
     def button_save_token(self):
         session["token"] = request.form.get("astroUserToken")
-        tab = session.get("tab", "AstroMigration.tabs_conns")
+        tab = session.get("tab", "Starship.tabs_conns")
         return self.render_template("starship/migration.html", data={"tab": tab})
 
     @expose("/tabs/dags")
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG)])
     def tabs_dags(self):
-        session["tab"] = "AstroMigration.tabs_dags"
+        session["tab"] = "Starship.tabs_dags"
         return self.render_template(
             "starship/dags.html", data=get_page_data(session["tab"])
         )
@@ -124,7 +124,7 @@ class AstroMigration(AppBuilderBaseView):
     @expose("/tabs/variables")
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_VARIABLE)])
     def tabs_vars(self):
-        session["tab"] = "AstroMigration.tabs_vars"
+        session["tab"] = "Starship.tabs_vars"
         return self.render_template(
             "starship/variables.html", data=get_page_data(session["tab"])
         )
@@ -132,7 +132,7 @@ class AstroMigration(AppBuilderBaseView):
     @expose("/tabs/pools")
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_VARIABLE)])
     def tabs_pools(self):
-        session["tab"] = "AstroMigration.tabs_pools"
+        session["tab"] = "Starship.tabs_pools"
         return self.render_template(
             "starship/pools.html", data=get_page_data(session["tab"])
         )
@@ -140,7 +140,7 @@ class AstroMigration(AppBuilderBaseView):
     @expose("/tabs/connections")
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONNECTION)])
     def tabs_conns(self):
-        session["tab"] = "AstroMigration.tabs_conns"
+        session["tab"] = "Starship.tabs_conns"
         return self.render_template(
             "starship/connections.html", data=get_page_data(session["tab"])
         )
@@ -148,7 +148,7 @@ class AstroMigration(AppBuilderBaseView):
     @expose("/tabs/env")
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
     def tabs_env(self):
-        session["tab"] = "AstroMigration.tabs_env"
+        session["tab"] = "Starship.tabs_env"
         return self.render_template(
             "starship/env.html", data=get_page_data(session["tab"])
         )
@@ -385,17 +385,17 @@ class AstroMigration(AppBuilderBaseView):
 
         return self.render_template(
             "starship/components/dag_row.html",
-            dag_={
-                "id": local_dag.dag_id,
+            data={
+                "dag": local_dag,
                 "is_on_astro": is_on_astro,
-                "is_paused_here": local_dag.is_paused,
+                "is_paused_here": local_dag.get_is_paused(),
                 "is_paused_on_astro": remote_dag["is_paused"] if is_on_astro else False,
                 "has_history_on_astro": has_history_on_astro,
             },
         )
 
 
-v_appbuilder_view = AstroMigration()
+v_appbuilder_view = Starship()
 
 v_appbuilder_package = {
     "name": "Migration Tool 🚀 Starship",

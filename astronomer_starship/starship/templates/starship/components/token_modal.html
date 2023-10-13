@@ -1,6 +1,6 @@
 {% if not show %}
 <div id="astro-token-entry"
-     hx-get="{{ url_for('AstroMigration.modal_token_entry') }}"
+     hx-get="{{ url_for('Starship.modal_token_entry') }}"
      hx-trigger="load delay:10s"
      hx-target="#astro-token-entry">
 </div>
@@ -45,7 +45,7 @@
                     </a>
                     <button type="button"
                             class="btn btn-primary"
-                            hx-post="{{ url_for('AstroMigration.button_save_token') }}"
+                            hx-post="{{ url_for('Starship.button_save_token') }}"
                             hx-target="#content" hx-swap="outerHTML">
                         Save Token
                     </button>

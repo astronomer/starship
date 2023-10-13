@@ -160,7 +160,7 @@ def test_receive_dag_integration():
 
     # WHEN MIGRATE - Note: this MUST target a locally running webserver
     actual_migrate_dag_result = requests.post(
-        f"{deployment_url}/astromigration/dag_history/receive",
+        f"{deployment_url}/starship/dag_history/receive",
         data=json.dumps([example_dr, example_ti], default=str),
         **get_extras(deployment_url, ""),
     )

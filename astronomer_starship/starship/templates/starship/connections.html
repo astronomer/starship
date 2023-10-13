@@ -30,7 +30,7 @@
             <td style="font-family: monospace; overflow: hidden; text-overflow: ellipsis;">{{ conn.extra }}</td>
             <td class="text-right">
                 <div id="migrate-button-{{conn.conn_id}}"
-                     hx-get="{{ url_for('AstroMigration.button_migrate_connection', deployment=session.selectedAstroDeployment or 'undefined', conn_id=conn.conn_id) }}"
+                     hx-get="{{ url_for('Starship.button_migrate_connection', deployment=session.selectedAstroDeployment or 'undefined', conn_id=conn.conn_id) }}"
                      hx-trigger="load delay:100ms"
                      hx-target="#migrate-button-{{conn.conn_id}}"
                      hx-swap="innerHTML">

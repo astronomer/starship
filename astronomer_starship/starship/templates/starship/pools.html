@@ -22,7 +22,7 @@
                 <td class="text-right">
                     <div id="migrate-button-{{p}}"
                          hx-trigger="load delay:100ms"
-                         hx-get="{{ url_for('AstroMigration.button_migrate_pool', deployment=session.selectedAstroDeployment or 'undefined', pool_name=pool) }}"
+                         hx-get="{{ url_for('Starship.button_migrate_pool', deployment=session.selectedAstroDeployment or 'undefined', pool_name=pool) }}"
                          hx-target="#migrate-button-{{p}}"
                          hx-swap="innerHTML">
                         <button class="btn btn-default disabled">Migrate</button>
