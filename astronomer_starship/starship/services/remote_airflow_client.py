@@ -54,7 +54,7 @@ def get_extras(deployment_url: str, token: str) -> Dict[str, Any]:
     return (
         {
             "headers": {
-                "Content-Type": "application/json",
+                # "Content-Type": "application/json",
                 "Authorization": f"Bearer {token}",
             }
         }

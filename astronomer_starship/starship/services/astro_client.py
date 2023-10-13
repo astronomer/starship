@@ -153,7 +153,7 @@ def set_changed_environment_variables(
                 item,
                 {
                     "key": item,
-                    "value": os.environ[item],
+                    "value": os.getenv(item),
                     "isSecret": False,
                 },
             )

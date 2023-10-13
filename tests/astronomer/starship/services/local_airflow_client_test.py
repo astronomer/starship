@@ -1,7 +1,8 @@
 import json
 from datetime import datetime, timedelta
+from time import sleep
 from unittest import mock
-
+import uuid
 import pendulum
 import pytest
 import requests
@@ -18,9 +19,10 @@ from astronomer_starship.starship.services.local_airflow_client import (
 from mock_alchemy.mocking import UnifiedAlchemyMagicMock
 
 from astronomer_starship.starship.services.remote_airflow_client import get_extras
+from tests.conftest import manual_tests
 
-test_dag_id = "dag_0"
-test_dag_run_id = "dag_0_run"
+test_dag_id = "dag_1"
+test_dag_run_id = f"dag_1_run_{uuid.uuid4()}"
 test_task_id = "operator_0"
 
 example_dr = {
@@ -64,43 +66,6 @@ example_ti = {
     "next_method": None,
     "next_kwargs": None,
 }
-
-
-def example_dag_run(dag_id):
-    return json.loads(
-        """{
-    "table": "dag_run", "id": 1, "dag_id": """
-        + '"'
-        + dag_id
-        + '"'
-        + """, "queued_at": "2023-07-07 18:26:34.500485+00:00",
-    "execution_date": "2023-07-07 18:26:34.483055+00:00", "start_date": "2023-07-07 18:26:35.078907+00:00",
-    "end_date": "2023-07-07 18:26:36.325558+00:00", "state": "success",
-    "run_id": "manual__2023-07-07T18:26:34.483055+00:00", "creating_job_id": null, "external_trigger": true,
-    "run_type": "manual", "conf": {}, "data_interval_start": "2023-07-07 18:26:34.483055+00:00",
-    "data_interval_end": "2023-07-07 18:26:34.483055+00:00",
-    "last_scheduling_decision": "2023-07-07 18:26:36.317202+00:00", "dag_hash": "6cb694964de67c6445230dc9da0f1721"
-    }"""
-    )
-
-
-def example_task_instance(dag_id):
-    return json.loads(
-        """{
-        "table": "task_instance", "task_id": "operator_0", "dag_id": """
-        + '"'
-        + dag_id
-        + '"'
-        + """,
-        "run_id": "manual__2023-07-07T18:26:34.483055+00:00", "start_date": "2023-07-07 18:26:35.367559+00:00",
-        "end_date": "2023-07-07 18:26:35.557389+00:00", "duration": 0.18983, "state": "success", "try_number": 2,
-        "max_tries": 0, "hostname": "0150c3d6f607", "unixname": "astro", "job_id": 25, "pool": "default_pool",
-        "pool_slots": 1, "queue": "default", "priority_weight": 1, "operator": "BashOperator",
-        "queued_dttm": "2023-07-07 18:26:35.160600+00:00", "queued_by_job_id": 24, "pid": 5217, "executor_config": {},
-        "external_executor_id": null, "trigger_id": null, "trigger_timeout": null,
-        "next_method": null, "next_kwargs": null
-        }"""
-    )
 
 
 @pytest.mark.integration_test
@@ -168,12 +133,12 @@ def test_receive_dag():
     session.assert_called()
 
 
-# @manual_tests  # requires a running `astro dev start` with dags
+@manual_tests  # requires a running `astro dev start` with dags
 @pytest.mark.integration_test
 def test_receive_dag_integration():
     deployment_url = "http://localhost:8080"
     deployment_token = ""
-    dag_id = "dag_0"
+    dag_id = test_dag_id
 
     # GIVEN
     # DAG History, and a blank target slate
@@ -188,7 +153,7 @@ def test_receive_dag_integration():
             )
             keep_going = False
         except HTTPError:
-            pass
+            sleep(1)
     assert (
         actual_deleted_dag is not None
     ), "we deleted the DAG and are starting with a fresh slate"
@@ -211,12 +176,17 @@ def test_receive_dag_integration():
         "dag_runs": [
             {
                 "conf": {},
-                "dag_id": "dag_0",
-                "dag_run_id": "dag_0_run",
+                "dag_id": test_dag_id,
+                "dag_run_id": test_dag_run_id,
+                "data_interval_end": None,
+                "data_interval_start": None,
                 "end_date": None,
                 "execution_date": "1970-01-01T00:00:01+00:00",
                 "external_trigger": True,
+                "last_scheduling_decision": None,
                 "logical_date": "1970-01-01T00:00:01+00:00",
+                "note": None,
+                "run_type": "manual",
                 "start_date": None,
                 "state": "queued",
             }
@@ -230,13 +200,16 @@ def test_receive_dag_integration():
     )
     assert actual_task_instances == [
         {
-            "dag_id": "dag_0",
+            "dag_id": test_dag_id,
+            "dag_run_id": test_dag_run_id,
             "duration": None,
             "end_date": None,
             "execution_date": "1970-01-01T00:00:01+00:00",
             "executor_config": "{}",
             "hostname": "0150c3d6f607",
+            "map_index": -1,
             "max_tries": 0,
+            "note": None,
             "operator": "BashOperator",
             "pid": None,
             "pool": "default_pool",
@@ -244,10 +217,13 @@ def test_receive_dag_integration():
             "priority_weight": 1,
             "queue": "default",
             "queued_when": None,
+            "rendered_fields": {},
             "sla_miss": None,
             "start_date": None,
             "state": None,
             "task_id": "operator_0",
+            "trigger": None,
+            "triggerer_job": None,
             "try_number": 1,
             "unixname": "astro",
         }
