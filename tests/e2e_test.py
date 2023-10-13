@@ -2,7 +2,6 @@ import json
 
 import pulumi
 import pytest
-import sh
 from pulumi import FileAsset, Config, ResourceOptions
 from pulumi.automation import create_or_select_stack, ConfigValue, UpResult
 from pulumi_aws import s3, mwaa, ec2, iam, get_caller_identity, get_availability_zones
@@ -17,6 +16,7 @@ def astro_deployment(
 ):
     # TODO
     # sh_args = {"_in": sys.stdin, "_out": sys.stdout, "_err": sys.stderr, "_tee": True}
+    sh = pytest.importorskip("sh")
     sh.astro("deployment", "create")
 
 

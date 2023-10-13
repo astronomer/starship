@@ -22,35 +22,41 @@ def test_get_username(user_token):
 
 
 @pytest.mark.integration_test
-def test_get_deployments(e2e_token_deployment_workspace_org):
+def test_get_deployments(e2e_token_deployment_workspace_org_url):
     [
         e2e_workspace_token,
         e2e_deployment_id,
         _,
         _,
         _,
-    ] = e2e_token_deployment_workspace_org
+    ] = e2e_token_deployment_workspace_org_url
     actual = get_deployments(e2e_workspace_token)
     expected = e2e_deployment_id
     assert expected in actual, "our e2e deployment is able to be listed"
 
 
 @pytest.mark.integration_test
-def test_get_deployment_url(e2e_token_deployment_workspace_org):
+def test_get_deployment_url(e2e_token_deployment_workspace_org_url):
     [
         e2e_workspace_token,
         e2e_deployment_id,
         _,
         _,
         expected,
-    ] = e2e_token_deployment_workspace_org
+    ] = e2e_token_deployment_workspace_org_url
     actual = get_deployment_url(e2e_deployment_id, e2e_workspace_token)
     assert actual == expected, "we get our deployment url back"
 
 
 @pytest.mark.integration_test
-def test_get_organizations(e2e_token_deployment_workspace_org):
-    [e2e_workspace_token, _, _, expected_org_id, _] = e2e_token_deployment_workspace_org
+def test_get_organizations(e2e_token_deployment_workspace_org_url):
+    [
+        e2e_workspace_token,
+        _,
+        _,
+        expected_org_id,
+        _,
+    ] = e2e_token_deployment_workspace_org_url
     actual = get_organizations(e2e_workspace_token)
     assert (
         expected_org_id in actual
@@ -59,39 +65,41 @@ def test_get_organizations(e2e_token_deployment_workspace_org):
 
 @manual_tests  # requires a real user, who ran `astro login` recently
 @pytest.mark.slow_integration_test
-def test_get_jwk_key(user_token, e2e_token_deployment_workspace_org):
+def test_get_jwk_key(user_token, e2e_token_deployment_workspace_org_url):
     [
         e2e_workspace_token,
         e2e_deployment_id,
         _,
         _,
         _,
-    ] = e2e_token_deployment_workspace_org
+    ] = e2e_token_deployment_workspace_org_url
     actual = get_jwk_key(user_token)
     expected = _RSAPublicKey
     assert type(actual) == expected, "we get a key-ish thing back"
 
 
 @pytest.mark.integration_test
-def test_set_and_get_environment_variables(mocker, e2e_token_deployment_workspace_org):
+def test_set_and_get_environment_variables(
+    mocker, e2e_token_deployment_workspace_org_url
+):
     [
         e2e_workspace_token,
         e2e_deployment_id,
         _,
         _,
         _,
-    ] = e2e_token_deployment_workspace_org
-    test_variables = {"key": {"key": "key", "value": "value", "isSecret": False}}
+    ] = e2e_token_deployment_workspace_org_url
+    test_variables = {"KEY": {"key": "KEY", "value": "value", "isSecret": False}}
 
     mocker.patch.dict(
-        "os.environ", {test_variables["key"]["key"]: test_variables["key"]["value"]}
+        "os.environ", {test_variables["KEY"]["key"]: test_variables["KEY"]["value"]}
     )
 
     set_changed_environment_variables(
         e2e_deployment_id,
         e2e_workspace_token,
         iter(
-            test_variables["key"]["key"],
+            test_variables["KEY"]["key"],
         ),
     )
     assert True, "we can set variables"
