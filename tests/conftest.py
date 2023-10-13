@@ -2,14 +2,11 @@ import os
 from pathlib import Path
 
 import pytest
-import requests
 import yaml
 
 from astronomer_starship.starship.services.astro_client import (
-    ASTRO_AUTH,
     get_deployment_url,
 )
-
 
 manual_tests = pytest.mark.skipif(
     not bool(os.getenv("MANUAL_TESTS")), reason="requires env setup"
@@ -22,45 +19,50 @@ def project_root() -> Path:
 
 
 @pytest.fixture
-def e2e_deployment_url(e2e_deployment_id, e2e_workspace_token):
+def e2e_deployment_url(e2e_token_deployment_workspace_org):
+    [
+        e2e_workspace_token,
+        e2e_deployment_id,
+        _,
+        _,
+        _,
+    ] = e2e_token_deployment_workspace_org
     return get_deployment_url(e2e_deployment_id, e2e_workspace_token)
 
 
-@pytest.fixture
-def e2e_deployment_id() -> str:
-    """The 'e2e' deployment in the 'e2e' workspace in the 'Astronomer' org"""
-    return "clfvnxzq9812004i1e3fjimis4"
-
-
-@pytest.fixture
-def e2e_api_token() -> str:
+@pytest.fixture(
+    params=[
+        (
+            "HOSTED_WORKSPACE_TOKEN",
+            "clnnlkp231365078bcy6h44b7i9u",
+            "clnnlio6d000l01nxfj0ezh45",
+            "clkvh3b46003m01kbalgwwdcy",
+            "https://clkvh3b46003m01kbalgwwdcy.astronomer.run/d44b7i9u",
+        ),
+        (
+            "HYBRID_WORKSPACE_TOKEN",
+            "clnnlk3w71321430awzwdxgsumio",  # e2e
+            "cl656scdl140281h0j3qvfs4e8",  # customer success engineering
+            "cknaqyipv05731evsry6cj4n0",
+            "https://astronomer.astronomer.run/dxgsumio",
+        ),
+    ],
+    ids=["hosted", "hybrid"],
+)
+def e2e_token_deployment_workspace_org(request):
+    (
+        workspace_token_env_key,
+        deployment_id,
+        workspace_id,
+        organization_id,
+        url,
+    ) = request.param
     pytest.importorskip("dotenv")
     from dotenv import load_dotenv
 
     load_dotenv()
-    astro_id = os.getenv("ASTRONOMER_KEY_ID")
-    astro_key = os.getenv("ASTRONOMER_KEY_SECRET")
-    r = requests.post(
-        f"{ASTRO_AUTH}/oauth/token",
-        json={
-            "client_id": astro_id,
-            "client_secret": astro_key,
-            "audience": "astronomer-ee",
-            "grant_type": "client_credentials",
-        },
-    )
-    r.raise_for_status()
-    return r.json()["access_token"]
-
-
-@pytest.fixture
-def e2e_workspace_token() -> str:
-    pytest.importorskip("dotenv")
-    from dotenv import load_dotenv
-
-    load_dotenv()
-    token = os.getenv("ASTRO_WORKSPACE_TOKEN", "")
-    return token
+    workspace_token = os.getenv(workspace_token_env_key)
+    return workspace_token, deployment_id, workspace_id, organization_id, url
 
 
 @pytest.fixture
