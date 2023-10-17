@@ -73,12 +73,12 @@ clean-all: pycache-remove dist-remove ## Clean various temp files from the repo
 
 .PHONY: publish_test
 publish_test: clean-all  ## Push current Starship Version to Test PyPi (You can also do this via a GHA Button)
-	poetry publish --repository testpypi --skip-existing -n || echo " Note: you first need to run `poetry config repositories.testpypi https://test.pypi.org/legacy/` and `poetry config pypi-token.pypi pypi-A.............` with a token"
+	poetry publish --build --repository testpypi --skip-existing -n || echo " Note: you first need to run 'poetry config repositories.testpypi https://test.pypi.org/legacy/' and 'poetry config pypi-token.pypi pypi-A.............' with a token"
 
 
 .PHONY: publish
 publish:  ## Push current Starship Version to PyPi (Don't do this, GHA does!)
-	poetry publish --build --skip-existing -n || echo " Note: you first need to run `poetry config pypi-token.pypi pypi-A.............` with a token"
+	poetry publish --build --skip-existing -n || echo " Note: you first need to run 'poetry config pypi-token.pypi pypi-A.............' with a token"
 
 .PHONY: delete-tag
 delete-tag: ## Delete the current Starship version as a tag from Github (Don't do this, affects GHA and PyPi!)
