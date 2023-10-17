@@ -99,7 +99,7 @@ def receive_dag(session: Session, data: list = None):
             table = Table(table_name, metadata_obj, autoload_with=engine)
 
         with engine.connect() as connection:
-            connection.execute(insert(table).on_conflict_do_nothing(), *data_list)
+            connection.execute(insert(table).on_conflict_do_nothing(), data_list)
             connection.commit()
 
 
