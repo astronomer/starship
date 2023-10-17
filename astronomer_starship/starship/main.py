@@ -1,5 +1,4 @@
 import os
-import logging
 from typing import Optional
 import jwt
 from airflow.plugins_manager import AirflowPlugin
@@ -71,13 +70,9 @@ class Starship(AppBuilderBaseView):
     @expose("/dag_history/receive", methods=["GET", "POST"])
     @csrf.exempt
     def receive_dag_history(self):
-        data = request.json
-        try:
-            local_airflow_client.receive_dag(data=data)
-            return Response("OK", 200)
-        except Exception as e:
-            logging.exception(e)
-            return Response(str(e), 400)
+        data = request.get_json(force=True)
+        local_airflow_client.receive_dag(data=data)
+        return Response("OK", 200)
 
     @expose("/modal/token")
     def modal_token_entry(self):
