@@ -7,6 +7,8 @@ from sqlalchemy.dialects.postgresql import insert
 
 from airflow import DAG
 from airflow.models import DagModel, DagRun
+from airflow.models.serialized_dag import SerializedDagModel
+from airflow.serialization.serialized_objects import SerializedDAG
 from airflow.utils.session import provide_session
 from cachetools.func import ttl_cache
 from sqlalchemy import MetaData, Table
@@ -14,7 +16,6 @@ from sqlalchemy.exc import NoSuchTableError
 from sqlalchemy.orm import Session
 from airflow.models import Connection
 from airflow.models import Pool
-from airflow.models import DagBag
 from airflow.models import Variable
 
 
@@ -45,8 +46,8 @@ def get_variable(variable: str):
 
 
 @ttl_cache(ttl=60)
-def get_dags():
-    dags = DagBag().dags
+def get_dags() -> dict[str, SerializedDAG]:
+    dags = SerializedDagModel.read_all_dags()
     return dags
 
 
