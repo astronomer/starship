@@ -46,10 +46,7 @@ def get_variable(variable: str):
 
 @ttl_cache(ttl=60)
 def get_dags():
-    dags = DagBag().dags
-    if not dags:
-        dags = DagBag(read_dags_from_db=True).dags
-    return dags
+    return DagBag(read_dags_from_db=True).dags
 
 
 def get_dag(dag_id: str) -> DAG:
