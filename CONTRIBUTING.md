@@ -145,7 +145,7 @@ Use https://github.com/nektos/act to run and test CICD changes locally.
     RUN pip install --upgrade pip && pip install ./starship
     USER astro
     ```
-5. Build with your symlink starship `tar -czh . | docker build -t local -`
+5. Build with your symlink starship `tar -czh . | DOCKER_BUILDKIT=1 docker build -t local -`
 6. Start (or restart) the astro project `astro dev <re>start -i local`
 
 # Alternatively
