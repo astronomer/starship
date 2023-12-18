@@ -4,6 +4,7 @@ import pickle
 from typing import List, Dict, Any
 
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy import desc
 
 from airflow import DAG
 from airflow.models import DagModel, DagRun
@@ -117,7 +118,7 @@ def get_dag_runs_and_task_instances(
     dag_runs = (
         session.query(DagRun)
         .filter(DagRun.dag_id == dag_id)
-        .order_by(DagRun.start_date)
+        .order_by(desc(DagRun.start_date))
         .limit(5)
         .all()
     )
