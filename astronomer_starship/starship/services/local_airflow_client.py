@@ -4,6 +4,7 @@ import pickle
 from typing import List, Dict, Any
 
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy import desc
 
 from airflow import DAG
 from airflow.models import DagModel, DagRun
@@ -103,7 +104,7 @@ def receive_dag(session: Session, data: list = None):
 
 @provide_session
 def get_dag_runs_and_task_instances(
-    session: Session, dag_id: str
+    session: Session, dag_id: str, limit: int = 5
 ) -> List[Dict[str, Any]]:
     def _as_json_with_table(_row):
         _r = {col.name: getattr(_row, col.name) for col in _row.__table__.columns}
@@ -116,8 +117,8 @@ def get_dag_runs_and_task_instances(
     dag_runs = (
         session.query(DagRun)
         .filter(DagRun.dag_id == dag_id)
-        .order_by(DagRun.start_date)
-        .limit(5)
+        .order_by(desc(DagRun.start_date))
+        .limit(limit)
         .all()
     )
     logging.debug(
