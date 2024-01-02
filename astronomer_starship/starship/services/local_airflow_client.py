@@ -47,18 +47,7 @@ def get_variable(variable: str):
 
 @ttl_cache(ttl=60)
 def get_dags():
-    dags = {}
-    try:
-        dags = DagBag(read_dags_from_db=True).dags
-    except Exception as e:
-        logging.exception(e)
-        print(e)
-    if not len(dags):
-        try:
-            dags = DagBag().dags
-        except Exception as e:
-            logging.exception(e)
-            print(e)
+    dags = DagBag().dags
     return dags
 
 
