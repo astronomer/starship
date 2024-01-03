@@ -217,6 +217,13 @@ FAQ
 
 - If you are on >=Airflow 2.7 and wish to test connections, you must have `AIRFLOW__CORE__TEST_CONNECTION` Set. See notes `here <https://airflow.apache.org/docs/apache-airflow/stable/release_notes.html#disable-default-allowing-the-testing-of-connections-in-ui-api-and-cli-32052>`_
 
+- If you (1) are using Google Cloud Composer as a source Airflow, (2) are using Cloud Composer 2.x and Airflow 2.x, (3) do not see the `Astronomer` menu and/or the Starship Airflow Plugin, run the following to ensure you are a priviledged user.
+
+.. code-block:: bash
+
+    gcloud config set project <PROJECT_NAME>
+    gcloud composer environments run <ENVIRONMENT_NAME> --location <LOCATION> users add-role -- -e <USER_EMAIL> -r Admin
+
 License
 -------
 
