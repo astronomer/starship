@@ -1,0 +1,11 @@
+#is-astro:not(:checked) + .chakra-switch__track {
+    background-color: teal;
+}
+
+#is-astro:checked + .chakra-switch__track {
+    background-color: mediumpurple;
+}
+
+#is-astro + .chakra-switch__track {
+    border-radius: 0;
+}

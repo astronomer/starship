@@ -6,8 +6,6 @@ from pulumi import FileAsset, Config, ResourceOptions
 from pulumi.automation import create_or_select_stack, ConfigValue, UpResult
 from pulumi_aws import s3, mwaa, ec2, iam, get_caller_identity, get_availability_zones
 
-from tests.conftest import manual_tests
-
 
 @pytest.fixture
 def astro_deployment(

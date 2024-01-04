@@ -11,3 +11,6 @@ dist/
 .pytest_cache/
 lib/
 .ruff_cache
+dist
+node_modules
+static
