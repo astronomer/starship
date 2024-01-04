@@ -1,3 +1,25 @@
+This project welcomes contributions. All Pull Requests should include proper testing, documentation, and follow all existing checks and practices.
+
+<!--TOC-->
+
+- [IDE Setup](#ide-setup)
+- [Pre-commit](#pre-commit)
+- [Other helpful commands](#other-helpful-commands)
+- [Setting a new version](#setting-a-new-version)
+  - [Build+Release](#buildrelease)
+  - [For dev (test pypi):](#for-dev-test-pypi)
+    - [Setup:](#setup)
+    - [Run:](#run)
+    - [test:](#test)
+- [Developing CICD](#developing-cicd)
+- [Easily test the plugin in a local astro project](#easily-test-the-plugin-in-a-local-astro-project)
+- [Alternatively](#alternatively)
+- [Issues](#issues)
+  - [SSL CERTIFICATE_VERIFY_FAILED](#ssl-certificate_verify_failed)
+  - [Pytest Debugging](#pytest-debugging)
+
+<!--TOC-->
+
 # IDE Setup
 
 Install `ruff` and `black` plugins for your IDE
@@ -19,8 +41,8 @@ pre-commit run
 
 # Other helpful commands
 
-Check out what is in the [Makefile](./Makefile)
-You can run `make help` for an overview
+Check out what is in the [Justfile](./justfile)
+You can run `just help` for an overview
 
 # Setting a new version
 
