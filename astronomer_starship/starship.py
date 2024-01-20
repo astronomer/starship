@@ -1,21 +1,73 @@
+import requests
 from airflow.plugins_manager import AirflowPlugin
-from flask import Blueprint
+from airflow.www.app import csrf
+from flask import Blueprint, request, Response
 from flask_appbuilder import BaseView
 from flask_appbuilder import expose
 
 from airflow.security import permissions
 from airflow.www import auth
 
+ALLOWED_PROXY_METHODS = ["GET", "POST", "PATCH"]
+
 
 class Starship(BaseView):
     default_view = "main"
 
     @expose("/")
-    @expose("/<string:path>")
     @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
-    def main(self, path=""):
+    def main(self):
         """Main view - just bootstraps the React app."""
         return self.render_template("index.html")
+
+    @expose("/proxy", methods=ALLOWED_PROXY_METHODS)
+    @csrf.exempt
+    @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
+    def proxy(self):
+        """Proxy for the React app to use to access the Airflow API."""
+        request_method = request.method
+        if request_method not in ALLOWED_PROXY_METHODS:
+            return Response(
+                "Method not in " + ", ".join(ALLOWED_PROXY_METHODS), status=405
+            )
+
+        request_headers = dict(request.headers)
+        token = request_headers["Starship-Proxy-Token"]
+        if not token:
+            return Response("No Token Provided", status=400)
+        request_headers = dict(
+            Authorization=f"Bearer {token}",
+            **({"Content-type": "application/json"} if request.data else {}),
+        )
+
+        url = request.args.get("url")
+        if not url:
+            return Response("No URL Provided", status=400)
+
+        response = requests.request(
+            request_method,
+            url,
+            headers=request_headers,
+            **({"data": request.data} if request.data else {}),
+        )
+        response_headers = dict(response.headers)
+        if not response.ok:
+            print(response.content)
+
+        print(
+            f"{url=}\n"
+            f"{request_method=}\n"
+            f"{request_headers=}\n"
+            f"{request.data=}\n"
+            "==========="
+            f"{response_headers=}\n"
+            f"{response.status_code=}\n"
+            f"{response.content=}\n"
+        )
+        response_headers["Starship-Proxy-Status"] = "OK"
+        return Response(
+            response.content, status=response.status_code, headers=response_headers
+        )
 
 
 starship_view = Starship()

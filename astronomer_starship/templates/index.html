@@ -2,34 +2,16 @@
 
 {% block head_js %}
 {{ super() }}
-<script>const airflow_version = "{{ airflow_version }}"</script>
+{#<script>#}
+{#  const airflow_version = "{{ airflow_version }}"#}
+{#  const airflow_base_url = "{{ airflow_base_url }}"#}
+{#</script>#}
+<script type="module" crossorigin src="static/assets/index.js"></script>
 {% endblock %}
 
 {% block head_css %}
 {{ super() }}
-<style>
-    html, body {
-        height: 100%;
-    }
-
-    .container:has(.row > #starship-main) {
-        height: 100%;
-    }
-
-    .row:has(#starship-main) {
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-    }
-
-    #starship-main {
-        flex-grow: 1;
-        margin: 0;
-        padding: 0;
-        border: 0;
-        overflow: hidden;
-    }
-</style>
+<link rel="stylesheet" crossorigin href="static/assets/index.css">
 {% endblock %}
 
 {% block page_title %}
@@ -37,5 +19,6 @@ Starship Migration Plugin
 {% endblock %}
 
 {% block content %}
-<iframe id="starship-main" src="{{ url_for('starship.static', filename='index.html') }}"></iframe>
+<div id="root" class="starship-main"></div>
+{#<iframe id="starship-main" src="{{ url_for('starship.static', filename='index.html') }}"></iframe>#}
 {% endblock %}

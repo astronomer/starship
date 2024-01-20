@@ -8,11 +8,21 @@ export default defineConfig({
   build: {
     outDir: 'static',
     emptyOutDir: true,
+    // Write all the files without a hash, which prevents cache-busting,
+    // but means we don't need to modify the template index.html
+    rollupOptions: {
+      output: {
+        entryFileNames: 'assets/[name].js',
+        chunkFileNames: 'assets/[name].js',
+        assetFileNames: 'assets/[name].[ext]',
+      },
+    },
   },
   server: {
     proxy: {
       // string shorthand: http://localhost:5173/foo -> http://localhost:4567/foo
       '/api': 'http://localhost:8080',
+      '/starship/proxy': 'http://localhost:8080',
     },
   },
 });

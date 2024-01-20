@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
-import axios from 'axios';
 import { Text } from '@chakra-ui/react';
-import constants from '../constants';
+import PropTypes from 'prop-types';
 import MigrateButton from '../component/MigrateButton';
 import StarshipPage from '../component/StarshipPage';
+import { fetchData, proxyHeaders, proxyUrl } from '../util';
+import constants from '../constants';
 
 const description = (
   <Text fontSize="xl">
@@ -14,46 +15,71 @@ const description = (
   </Text>
 );
 const columnHelper = createColumnHelper();
-const buttonColumn = columnHelper.display({
-  id: 'migrate',
-  header: 'Migrate',
-  cell: (props) => (
-    <MigrateButton
-      route={constants.VARIABLES_ROUTE}
-      data={{ key: props.row.getValue('key'), val: props.row.getValue('val') }}
-    />
-  ),
-});
 
-export default function VariablesPage() {
-  const [data, setData] = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState(null);
-  React.useEffect(() => {
-    axios.get(constants.VARIABLES_ROUTE)
-      .then((res) => {
-        setData(res.data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err);
-        setLoading(false);
-      });
+function setVariablesData(localData, remoteData) {
+  return localData.map(
+    (d) => ({
+      ...d,
+      exists: remoteData.map(
+        ({ key }) => key,
+      ).includes(d.key),
+    }),
+  );
+}
+
+export default function VariablesPage({ state, dispatch }) {
+  const [data, setData] = useState(
+    setVariablesData(state.variablesLocalData, state.variablesRemoteData),
+  );
+  useEffect(() => {
+    fetchData(
+      constants.VARIABLES_ROUTE,
+      state.targetUrl + constants.VARIABLES_ROUTE,
+      state.token,
+      () => dispatch({ type: 'set-variables-loading' }),
+      (res, rRes) => dispatch({
+        type: 'set-variables-data', variablesLocalData: res.data, variablesRemoteData: rRes.data,
+      }),
+      (err) => dispatch({ type: 'set-variables-error', error: err }),
+      dispatch,
+    );
   }, []);
+  useEffect(
+    () => setData(setVariablesData(state.variablesLocalData, state.variablesRemoteData)),
+    [state.variablesLocalData, state.variablesRemoteData],
+  );
 
   // noinspection JSCheckFunctionSignatures
   const columns = [
     columnHelper.accessor('key'),
     columnHelper.accessor('val'),
-    buttonColumn,
+    // columnHelper.accessor('exists'),
+    columnHelper.display({
+      id: 'migrate',
+      header: 'Migrate',
+      // eslint-disable-next-line react/no-unstable-nested-components
+      cell: (info) => (
+        <MigrateButton
+          route={proxyUrl(state.targetUrl + constants.VARIABLES_ROUTE)}
+          headers={proxyHeaders(state.token)}
+          existsInRemote={info.row.original.exists}
+          sendData={{ key: info.row.getValue('key'), val: info.row.getValue('val') }}
+        />
+      ),
+    }),
   ];
   return (
     <StarshipPage
       description={description}
-      loading={loading}
+      loading={state.variablesLoading}
       data={data}
       columns={columns}
-      error={error}
+      error={state.error}
     />
   );
 }
+VariablesPage.propTypes = {
+  // eslint-disable-next-line react/forbid-prop-types
+  state: PropTypes.object.isRequired,
+  dispatch: PropTypes.func.isRequired,
+};

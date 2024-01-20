@@ -1,9 +1,13 @@
+/* eslint-disable no-nested-ternary */
 import React, { useEffect, useReducer } from 'react';
 import {
-  Box, Flex, Heading, Icon, Tab, TabIndicator, TabList, TabPanel, TabPanels, Tabs,
+  Box, Button, Divider, Flex, Heading, Icon,
 } from '@chakra-ui/react';
 import { GoRocket } from 'react-icons/go';
-import { createBrowserHistory } from 'history';
+import {
+  Outlet, NavLink, Route, Navigate, createHashRouter, createRoutesFromElements,
+} from 'react-router-dom';
+import { RouterProvider } from 'react-router';
 import VariablesPage from './pages/VariablesPage';
 import ConnectionsPage from './pages/ConnectionsPage';
 import PoolsPage from './pages/PoolsPage';
@@ -11,78 +15,114 @@ import EnvVarsPage from './pages/EnvVarsPage';
 import DAGHistoryPage from './pages/DAGHistoryPage';
 import SetupPage from './pages/SetupPage';
 import {
-  getInitialStateFromUrl, initialState, reducer, setHashState,
+  getInitialState, initialState, reducer,
 } from './State';
 import './index.css';
+import AppLoading from './component/AppLoading';
 
 export default function App() {
-  const history = createBrowserHistory({
-    window: window.parent,
-  });
-  const [state, dispatch] = useReducer(reducer, initialState, getInitialStateFromUrl);
-  useEffect(() => setHashState(state, history), [state]);
-
-  // noinspection JSCheckFunctionSignatures
-  const handleTabsChange = (index) => dispatch({ type: 'set-tab', tab: index });
-
+  // const history = createBrowserHistory();
+  const [state, dispatch] = useReducer(reducer, initialState, getInitialState);
+  useEffect(() => {
+    // setHashState(state, history);
+    localStorage.setItem('state', JSON.stringify(state));
+  }, [state]);
+  const router = createHashRouter(
+    createRoutesFromElements(
+      <Route
+        path="/"
+        element={(
+          <>
+            <Flex
+              as="nav"
+              id="starship-navbar"
+            >
+              <Button
+                className={({ isActive, isPending }) => (isPending ? 'pending' : isActive ? 'active' : '')}
+                w="100%"
+                as={NavLink}
+                to="/setup"
+              >
+                Setup
+              </Button>
+              <Button
+                className={({ isActive, isPending }) => (isPending ? 'pending' : isActive ? 'active' : '')}
+                w="100%"
+                isDisabled={!state.isSetupComplete}
+                as={NavLink}
+                style={!state.isSetupComplete ? { pointerEvents: 'none' } : {}}
+                to="/variables"
+              >
+                Variables
+              </Button>
+              <Button
+                className={({ isActive, isPending }) => (isPending ? 'pending' : isActive ? 'active' : '')}
+                w="100%"
+                isDisabled={!state.isSetupComplete}
+                style={!state.isSetupComplete ? { pointerEvents: 'none' } : {}}
+                as={NavLink}
+                to="/connections"
+              >
+                Connections
+              </Button>
+              <Button
+                className={({ isActive, isPending }) => (isPending ? 'pending' : isActive ? 'active' : '')}
+                w="100%"
+                isDisabled={!state.isSetupComplete}
+                style={!state.isSetupComplete ? { pointerEvents: 'none' } : {}}
+                as={NavLink}
+                to="/pools"
+              >
+                Pools
+              </Button>
+              <Button
+                className={({ isActive, isPending }) => (isPending ? 'pending' : isActive ? 'active' : '')}
+                w="100%"
+                isDisabled={!state.isSetupComplete}
+                style={!state.isSetupComplete ? { pointerEvents: 'none' } : {}}
+                as={NavLink}
+                to="/env"
+              >
+                Environment Variables
+              </Button>
+              <Button
+                className={({ isActive, isPending }) => (isPending ? 'pending' : isActive ? 'active' : '')}
+                w="100%"
+                isDisabled={!state.isSetupComplete}
+                style={!state.isSetupComplete ? { pointerEvents: 'none' } : {}}
+                as={NavLink}
+                to="/dags"
+              >
+                DAG History
+              </Button>
+            </Flex>
+            <Box as="main" className="starship-page">
+              <Box as="header" className="starship-logo">
+                <Heading id="logo" as="h1" size="2xl" noOfLines={1}>
+                  Starship
+                  {' '}
+                  <Icon as={GoRocket} />
+                </Heading>
+                <Heading id="logo-subtitle" size="sm" noOfLines={1}>By Astronomer</Heading>
+              </Box>
+              <Divider />
+              <AppLoading />
+              <Outlet />
+            </Box>
+          </>
+        )}
+      >
+        <Route index element={<Navigate to="/setup" replace />} />
+        <Route path="setup" element={<SetupPage state={state} dispatch={dispatch} />} />
+        <Route path="variables" element={<VariablesPage state={state} dispatch={dispatch} />} />
+        <Route path="connections" element={<ConnectionsPage state={state} dispatch={dispatch} />} />
+        <Route path="pools" element={<PoolsPage state={state} dispatch={dispatch} />} />
+        <Route path="env" element={<EnvVarsPage state={state} dispatch={dispatch} />} />
+        <Route path="dags" element={<DAGHistoryPage state={state} dispatch={dispatch} />} />
+      </Route>,
+    ),
+  );
   return (
-    <Flex
-      direction="column"
-      w="100%"
-    >
-      <Box as="header" padding="30px">
-        <Heading color="#51504f" as="h1" size="2xl" noOfLines={1}>
-          Starship
-          {' '}
-          <Icon as={GoRocket} />
-        </Heading>
-        <Heading size="sm" color="dimgrey" noOfLines={1}>By Astronomer</Heading>
-      </Box>
-
-      <Box as="nav" w="100%">
-        <Tabs
-          isLazy
-          isFitted
-          size="lg"
-          colorScheme="dark"
-          variant="unstyled"
-          index={state.tab}
-          onChange={handleTabsChange}
-        >
-          <TabList boxShadow="0 1px 0 0 #e2e8f0">
-            <Tab>Setup</Tab>
-            <Tab isDisabled={!state.isSetupComplete}>Variables</Tab>
-            <Tab isDisabled={!state.isSetupComplete}>Connections</Tab>
-            <Tab isDisabled={!state.isSetupComplete}>Pools</Tab>
-            <Tab isDisabled={!state.isSetupComplete}>Environment Variables</Tab>
-            <Tab isDisabled={!state.isSetupComplete}>DAG History</Tab>
-          </TabList>
-          <TabIndicator mt="-1.5px" height="2px" bg="blue.500" borderRadius="1px" />
-          <TabPanels as="article">
-            <TabPanel>
-              <SetupPage
-                state={state}
-                dispatch={dispatch}
-              />
-            </TabPanel>
-            <TabPanel>
-              <VariablesPage />
-            </TabPanel>
-            <TabPanel>
-              <ConnectionsPage />
-            </TabPanel>
-            <TabPanel>
-              <PoolsPage />
-            </TabPanel>
-            <TabPanel>
-              <EnvVarsPage />
-            </TabPanel>
-            <TabPanel>
-              <DAGHistoryPage />
-            </TabPanel>
-          </TabPanels>
-        </Tabs>
-      </Box>
-    </Flex>
+    <RouterProvider router={router} />
   );
 }

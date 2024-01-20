@@ -21,18 +21,26 @@ import {
 } from '@chakra-ui/react';
 import React from 'react';
 import PropTypes from 'prop-types';
-import { CheckIcon, ExternalLinkIcon, SpinnerIcon } from '@chakra-ui/icons';
+import {
+  CheckIcon, ExternalLinkIcon, RepeatIcon,
+} from '@chakra-ui/icons';
 import { getTargetUrlFromParts, tokenUrlFromAirflowUrl } from '../util';
+import ValidatedUrlCheckbox from '../component/ValidatedUrlCheckbox';
 
 export default function SetupPage({ state, dispatch }) {
   return (
-    <>
-      <Box width="100%" margin="30px">
-        <Text fontSize="xl">Starship is a utility to migrate Airflow metadata between instances</Text>
-      </Box>
+    <Box>
+      <Text fontSize="xl">Starship is a utility to migrate Airflow metadata between instances</Text>
+      <Button
+        size="sm"
+        leftIcon={<RepeatIcon />}
+        onClick={() => dispatch({ type: 'reset' })}
+      >
+        Reset
+      </Button>
       <Divider />
       <VStack width="60%" display="flex" alignItems="center">
-        <Box id="setup-form" width="100%" margin="30px" alignItems="left">
+        <Box id="setup-form" width="100%" margin="0 30px" alignItems="left">
 
           {/* ==== PRODUCT SELECTOR ==== */}
           <VStack spacing="30px">
@@ -65,14 +73,13 @@ export default function SetupPage({ state, dispatch }) {
                 The Astronomer Product you are
                 <Text as="i"> migrating to.</Text>
               </FormHelperText>
-
             </FormControl>
 
             {/* ==== URL INPUT ==== */}
             <FormControl className="setup-form-field" isInvalid={state.isTouched && !state.isValidUrl} isRequired>
               <SlideFade in={state.isProductSelected}>
                 <FormLabel>Airflow URL</FormLabel>
-                { state.isAstro ? (
+                {state.isAstro ? (
                 // Astro URL Template: https://claaabbbcccddd.astronomer.run/aabbccdd/
                   <InputGroup size="sm">
                     <InputLeftAddon>https://</InputLeftAddon>
@@ -169,7 +176,7 @@ export default function SetupPage({ state, dispatch }) {
                 <FormLabel>Token</FormLabel>
                 <InputGroup>
                   <Input
-                    value={state.token}
+                    value={state.token || ''}
                     isInvalid={state.isTokenTouched && !state.token}
                     placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMj..."
                     onChange={(e) => dispatch({ type: 'set-token', token: e.target.value })}
@@ -184,28 +191,65 @@ export default function SetupPage({ state, dispatch }) {
                   <FormHelperText>
                     Provide a token:
                     {' '}
-                    <Link href="https://docs.astronomer.io/astro/organization-api-tokens#create-an-organization-api-token">Organization</Link>
+                    <Link
+                      isExternal
+                      href="https://docs.astronomer.io/astro/organization-api-tokens#create-an-organization-api-token"
+                    >
+                      Organization
+                      <ExternalLinkIcon mx="2px" />
+                    </Link>
                     ,
                     {' '}
-                    <Link href="https://docs.astronomer.io/astro/workspace-api-tokens#create-a-workspace-api-token">Workspace</Link>
+                    <Link
+                      isExternal
+                      href="https://docs.astronomer.io/astro/workspace-api-tokens#create-a-workspace-api-token"
+                    >
+                      Workspace
+                      <ExternalLinkIcon mx="2px" />
+                    </Link>
                     ,
                     {' '}
-                    <Link href={tokenUrlFromAirflowUrl(state.targetUrl)}>Personal</Link>
+                    <Link
+                      isExternal
+                      href={tokenUrlFromAirflowUrl(state.targetUrl)}
+                    >
+                      Personal
+                      <ExternalLinkIcon mx="2px" />
+                    </Link>
                     .
                   </FormHelperText>
                 ) : (
                   <FormHelperText>
                     Provide a token:
                     {' '}
-                    <Link href="https://docs.astronomer.io/software/manage-workspaces#service-accounts">Workspace</Link>
+                    <Link
+                      isExternal
+                      href="https://docs.astronomer.io/software/manage-workspaces#service-accounts"
+                    >
+                      Workspace
+                      <ExternalLinkIcon mx="2px" />
+                    </Link>
                     ,
                     {' '}
-                    <Link href="https://docs.astronomer.io/software/ci-cd#step-1-create-a-service-account">Deployment</Link>
+                    <Link
+                      isExternal
+                      href="https://docs.astronomer.io/software/ci-cd#step-1-create-a-service-account"
+                    >
+                      Deployment
+                      <ExternalLinkIcon mx="2px" />
+                    </Link>
                     {state.targetUrl.startsWith('https://') && state.isValidUrl ? (
                       <>
                         ,
                         {' '}
-                        <Link href={tokenUrlFromAirflowUrl(state.targetUrl)}>Personal</Link>
+                        <Link
+                          isExternal
+                          href={tokenUrlFromAirflowUrl(state.targetUrl)}
+                        >
+                          Personal
+                          <ExternalLinkIcon mx="2px" />
+
+                        </Link>
                       </>
                     ) : null}
                     .
@@ -218,33 +262,39 @@ export default function SetupPage({ state, dispatch }) {
             {/* ==== CHECK AIRFLOW AND STARSHIP ==== */}
             <FormControl className="setup-form-field">
               <SlideFade in={state.targetUrl.startsWith('http') && state.isValidUrl && state.isProductSelected}>
-                <FormLabel>
-                  Target Airflow Link:
-                </FormLabel>
-                <HStack spacing="30px">
-                  <Link href={state.targetUrl}>
-                    {state.targetUrl}
-                    <ExternalLinkIcon mx="2px" />
-                  </Link>
-                  <Text>
-                    Is Airflow?
-                  </Text>
-                  {/* TODO - SHOW IF AIRFLOW IS FOUND */}
-                  <SpinnerIcon margin="0 20px" />
-
-                  {/* TODO - SHOW IF STARSHIP IS FOUND */}
-                  <Text>
-                    Has Starship?
-                  </Text>
-                  <SpinnerIcon />
-
-                </HStack>
+                <Link isExternal href={state.targetUrl}>
+                  Target Airflow
+                  <ExternalLinkIcon mx="2px" />
+                </Link>
+                {state.targetUrl.startsWith('http') && state.token && state.isValidUrl && state.isProductSelected
+                  ? (
+                    <HStack>
+                      <ValidatedUrlCheckbox
+                        colorScheme="green"
+                          // size="lg"
+                        text="Airflow"
+                        valid={state.isAirflow}
+                        setValid={(value) => dispatch({ type: 'set-is-airflow', isAirflow: value })}
+                        url={`${state.targetUrl}/api/v1/health`}
+                        token={state.token}
+                      />
+                      <ValidatedUrlCheckbox
+                        colorScheme="green"
+                          // size="lg"
+                        text="Starship"
+                        valid={state.isStarship}
+                        setValid={(value) => dispatch({ type: 'set-is-starship', isStarship: value })}
+                        url={`${state.targetUrl}/api/starship/health`}
+                        token={state.token}
+                      />
+                    </HStack>
+                  ) : null}
               </SlideFade>
             </FormControl>
           </VStack>
         </Box>
       </VStack>
-    </>
+    </Box>
   );
 }
 // eslint-disable-next-line react/forbid-prop-types

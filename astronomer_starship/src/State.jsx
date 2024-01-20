@@ -12,8 +12,8 @@ export function setHashState(state, history) {
   history.push(`?${qs.stringify(o)}`);
 }
 
-export function getInitialStateFromUrl(initial) {
-  return { ...initial, ...getHashState() };
+export function getInitialState(initial) {
+  return { ...initial, ...JSON.parse(localStorage.getItem('state')), ...getHashState() };
 }
 
 /** Initial state of the application
@@ -21,7 +21,8 @@ export function getInitialStateFromUrl(initial) {
  * @type {{targetUrl: null}}
  */
 export const initialState = {
-  tab: 0,
+  DEBUG: false,
+  // ### SETUP PAGE ####
   targetUrl: '',
   isSetupComplete: false,
   isTouched: false,
@@ -29,9 +30,36 @@ export const initialState = {
   urlDeploymentPart: '',
   urlOrgPart: '',
   isAstro: true,
+  isStarship: false,
+  isAirflow: false,
   isProductSelected: false,
   isTokenTouched: false,
   token: null,
+  // ### VARIABLES PAGE ####
+  variablesLocalData: [],
+  variablesRemoteData: [],
+  variablesLoading: false,
+  variablesError: null,
+  // ### CONNECTIONS PAGE ####
+  connectionsLocalData: [],
+  connectionsRemoteData: [],
+  connectionsLoading: false,
+  connectionsError: null,
+  // ### POOLS PAGE ####
+  poolsLocalData: [],
+  poolsRemoteData: [],
+  poolsLoading: false,
+  poolsError: null,
+  // ### ENV PAGE ####
+  envLocalData: [],
+  envRemoteData: [],
+  envLoading: false,
+  envError: null,
+  // ### DAGS PAGE ####
+  dagsLocalData: [],
+  dagsRemoteData: [],
+  dagsLoading: false,
+  dagsError: null,
 };
 
 /**
@@ -41,9 +69,11 @@ export const initialState = {
  * @returns State
  */
 export const reducer = (state, action) => {
-  // console.log(`Reducing state for action ${action}:`);
-  // console.log(state);
+  if (state.DEBUG) {
+    console.log(`Received action=${JSON.stringify(action)}`);
+  }
   switch (action.type) {
+    // ### SETUP PAGE ####
     case 'set-url': {
       // TODO - check https://clkvh3b46003m01kbalgwwdcy.astronomer.run/dus78e67/api/v1/health
       return {
@@ -76,14 +106,160 @@ export const reducer = (state, action) => {
     case 'set-is-product-selected': {
       return { ...state, isProductSelected: true };
     }
-    case 'set-tab': {
-      return { ...state, tab: action.tab };
+    case 'set-is-starship': {
+      return { ...state, isStarship: action.isStarship };
     }
+    case 'set-is-airflow': {
+      return { ...state, isAirflow: action.isAirflow };
+    }
+
+    // ### VARIABLES PAGE ####
+    case 'set-variables-loading': {
+      return {
+        ...state,
+        variablesLocalData: [],
+        variablesRemoteData: [],
+        variablesLoading: true,
+        variablesError: null,
+      };
+    }
+    case 'set-variables-data': {
+      return {
+        ...state,
+        variablesLocalData: action.variablesLocalData,
+        variablesRemoteData: action.variablesRemoteData,
+        variablesLoading: false,
+      };
+    }
+    case 'set-variables-error': {
+      return action.error.response.status === 401 ? {
+        ...state,
+        variablesError: action.error,
+        isSetupComplete: false,
+        isTokenTouched: false,
+        token: null,
+      } : { ...state, variablesError: action.error };
+    }
+
+    // ### CONNECTIONS PAGE ####
+    case 'set-connections-loading': {
+      return {
+        ...state,
+        connectionsLocalData: [],
+        connectionsRemoteData: [],
+        connectionsError: null,
+        connectionsLoading: true,
+      };
+    }
+    case 'set-connections-data': {
+      return {
+        ...state,
+        connectionsLocalData: action.connectionsLocalData,
+        connectionsRemoteData: action.connectionsRemoteData,
+        connectionsLoading: false,
+      };
+    }
+    case 'set-connections-error': {
+      return action.error.response.status === 401 ? {
+        ...state,
+        connectionsError: action.error,
+        isSetupComplete: false,
+        isTokenTouched: false,
+        token: null,
+      } : { ...state, connectionsError: action.error };
+    }
+
+    // ### POOLS PAGE ####
+    case 'set-pools-loading': {
+      return {
+        ...state,
+        poolsLocalData: [],
+        poolsRemoteData: [],
+        poolsLoading: true,
+        poolsError: null,
+      };
+    }
+    case 'set-pools-data': {
+      return {
+        ...state,
+        poolsLocalData: action.poolsLocalData,
+        poolsRemoteData: action.poolsRemoteData,
+        poolsLoading: false,
+      };
+    }
+    case 'set-pools-error': {
+      return action.error.response.status === 401 ? {
+        ...state,
+        poolsError: action.error,
+        isSetupComplete: false,
+        isTokenTouched: false,
+        token: null,
+      } : { ...state, poolsError: action.error };
+    }
+
+    // ### ENV PAGE ####
+    case 'set-env-loading': {
+      return {
+        ...state,
+        envLocalData: [],
+        envRemoteData: [],
+        envLoading: true,
+        envError: null,
+      };
+    }
+    case 'set-env-data': {
+      return {
+        ...state,
+        envLocalData: action.envLocalData,
+        envRemoteData: action.envRemoteData,
+        envLoading: false,
+      };
+    }
+    case 'set-env-error': {
+      return action.error.response.status === 401 ? {
+        ...state,
+        envError: action.error,
+        isSetupComplete: false,
+        isTokenTouched: false,
+        token: null,
+      } : { ...state, envError: action.error };
+    }
+
+    // ### DAG PAGE ####
+    case 'set-dags-loading': {
+      return {
+        ...state,
+        dagsLocalData: [],
+        dagsRemoteData: [],
+        dagsLoading: true,
+        dagsError: null,
+      };
+    }
+    case 'set-dags-data': {
+      return {
+        ...state,
+        dagsLocalData: action.dagsLocalData,
+        dagsRemoteData: action.dagsRemoteData,
+        dagsLoading: false,
+      };
+    }
+    case 'set-dags-error': {
+      return action.error.response.status === 401 ? {
+        ...state,
+        dagsError: action.error,
+        isSetupComplete: false,
+        isTokenTouched: false,
+        token: null,
+      } : { ...state, dagsError: action.error };
+    }
+
+    // ### GENERAL ####
     case 'reset': {
       return initialState;
     }
     default: {
-      return initialState;
+      console.log(`Received unknown action.type=${action.type}`);
+      return state;
     }
   }
 };

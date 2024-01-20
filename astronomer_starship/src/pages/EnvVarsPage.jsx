@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
 import { Text } from '@chakra-ui/react';
-import axios from 'axios';
-import constants from '../constants';
+import PropTypes from 'prop-types';
 import StarshipPage from '../component/StarshipPage';
 import MigrateButton from '../component/MigrateButton';
+import { fetchData, proxyHeaders, proxyUrl } from '../util';
+import constants from '../constants';
 
 const description = (
   <Text fontSize="xl">
@@ -13,43 +14,75 @@ const description = (
   </Text>
 );
 const columnHelper = createColumnHelper();
-const buttonColumn = columnHelper.display({
-  id: 'migrate',
-  header: 'Migrate',
-  cell: (props) => (
-    <MigrateButton
-      route={constants.ENV_VAR_ROUTE}
-      data={{
-        key: props.row.getValue('key'), value: props.row.getValue('value'),
-      }}
-    />
-  ),
-});
 
-export default function EnvVarsPage() {
-  const [data, setData] = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
-  const [error, setError] = React.useState(null);
-  React.useEffect(() => {
-    axios.get(constants.ENV_VAR_ROUTE)
-      .then((res) => {
-        setData(Object.entries(res.data).map(([k, v]) => ({ key: k, value: v })));
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err);
-        setLoading(false);
-      });
+function setEnvData(localData, remoteData) {
+  return Object.entries(localData).map(
+    ([key, value]) => ({ key, value }),
+  ).map(
+    (d) => ({
+      ...d,
+      exists: Object.entries(remoteData).map(
+        // eslint-disable-next-line camelcase
+        ({ key }) => key,
+      ).includes(d.key),
+    }),
+  );
+}
+
+export default function EnvVarsPage({ state, dispatch }) {
+  const [data, setData] = useState(setEnvData(state.envLocalData, state.envRemoteData));
+  useEffect(() => {
+    fetchData(
+      constants.ENV_VAR_ROUTE,
+      state.targetUrl + constants.ENV_VAR_ROUTE,
+      state.token,
+      () => dispatch({ type: 'set-env-loading' }),
+      (res, rRes) => dispatch({
+        type: 'set-env-data', envLocalData: res.data, envRemoteData: rRes.data,
+      }),
+      (err) => dispatch({ type: 'set-env-error', error: err }),
+      dispatch,
+    );
   }, []);
+  useEffect(
+    () => setData(setEnvData(state.envLocalData, state.envRemoteData)),
+    [state.envLocalData, state.envRemoteData],
+  );
 
-  const columns = [columnHelper.accessor('key'), columnHelper.accessor('value'), buttonColumn];
+  // noinspection JSCheckFunctionSignatures
+  const columns = [
+    columnHelper.accessor('key'),
+    columnHelper.accessor('value'),
+    columnHelper.display({
+      id: 'migrate',
+      header: 'Migrate',
+      // eslint-disable-next-line react/no-unstable-nested-components
+      cell: (info) => (
+        <MigrateButton
+          route={proxyUrl(state.targetUrl + constants.ENV_VAR_ROUTE)}
+          headers={proxyHeaders(state.token)}
+          existsInRemote={info.row.original.exists}
+          sendData={{
+            key: info.row.getValue('key'),
+            value: info.row.getValue('value'),
+          }}
+        />
+      ),
+    }),
+  ];
+
   return (
     <StarshipPage
       description={description}
-      loading={loading}
+      loading={state.envLoading}
       data={data}
       columns={columns}
-      error={error}
+      error={state.envError}
     />
   );
 }
+EnvVarsPage.propTypes = {
+  // eslint-disable-next-line react/forbid-prop-types
+  state: PropTypes.object.isRequired,
+  dispatch: PropTypes.func.isRequired,
+};

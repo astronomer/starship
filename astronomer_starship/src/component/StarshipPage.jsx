@@ -1,30 +1,27 @@
 import {
-  Box, Divider, VStack,
+  Box, Divider,
 } from '@chakra-ui/react';
 import React from 'react';
 import PropTypes from 'prop-types';
 import PageLoading from './PageLoading';
-import ErrorMessage from './ErrorMessage';
 import DataTable from './DataTable';
 
 export default function StarshipPage({
   description, loading, error, data, columns,
 }) {
   return (
-    <VStack>
-      <Box width="100%" margin="30px">
-        {description}
-      </Box>
+    <Box>
+      {description}
       <Divider />
-      {loading ? <PageLoading loading={loading} /> : null}
-      {error ? <ErrorMessage error={error} /> : null}
-      {!error && !loading ? (
+      {loading || error ? (
+        <PageLoading loading={loading} error={error} />
+      ) : (
         <DataTable
           data={data}
           columns={columns}
         />
-      ) : null}
-    </VStack>
+      )}
+    </Box>
   );
 }
 StarshipPage.propTypes = {
