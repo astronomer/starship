@@ -7,8 +7,8 @@ import { FaCheck } from 'react-icons/fa';
 import { GoUpload } from 'react-icons/go';
 import PropTypes from 'prop-types';
 
-export default function MigrateButton({
-  route, headers, existsInRemote, sendData,
+export default function MigrateEnvButton({
+  isAstro, route, headers, existsInRemote, sendData,
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -51,14 +51,14 @@ export default function MigrateButton({
   );
 }
 
-MigrateButton.propTypes = {
+MigrateEnvButton.propTypes = {
   route: PropTypes.string.isRequired,
   headers: PropTypes.objectOf(PropTypes.string),
   existsInRemote: PropTypes.bool,
   // eslint-disable-next-line react/forbid-prop-types
   sendData: PropTypes.object.isRequired,
 };
-MigrateButton.defaultProps = {
+MigrateEnvButton.defaultProps = {
   headers: {},
   existsInRemote: false,
 };

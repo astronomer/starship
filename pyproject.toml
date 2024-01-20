@@ -1,16 +1,43 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "astronomer-starship"
-version = "1.2.1"
+dynamic = ["version"]
 description = "Migrations to Astro"
-authors = ["CSE Team <cse@astronomer.io>"]
+authors = [
+    { name = "Fritz Davenport", email = "fritz@astronomer.io" },
+    { name = "CETA Team", email = "ceta@astronomer.io" },
+    { name = "Astronomer", email = "humans@astronomer.io" }
+]
 readme = "README.md"
-repository = "https://github.com/astronomer/starship"
-homepage = "https://astronomer.io"
-license = "Proprietary"
-packages = [{include = "astronomer_starship"}]
-include = [
-  "astronomer_starship/templates/*",
-  "astronomer_starship/static/*",
+license = { text = "PROPRIETARY" }
+requires-python = ">=3.7.2"
+
+[project.urls]
+Homepage = "https://astronomer.io"
+Source = "https://github.com/astronomer/starship/"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+"astronomer_starship" = ["*.js", "*.html", "*.css"]
+"astronomer_starship.static" = ["*.js", "*.html", "*.css"]
+"astronomer_starship.static.assets" = ["*.js", "*.html", "*.css"]
+"astronomer_starship.templates" = ["*.js", "*.html", "*.css"]
+
+[tool.setuptools.dynamic]
+version = { attr = "astronomer_starship.__version__" }
+
+[tool.setuptools.packages.find]
+exclude = [
+    "*venv", "*venv.*",
+    "*tests.*", "*tests",
+    "*build", "*build.*",
+    "*dist", "*dist.*",
+    "*node_modules", "*node_modules.*",
 ]
 
 #[tool.setuptools]
@@ -19,40 +46,42 @@ include = [
 #[tool.setuptools.packages.find]
 #where = ["astronomer"]
 
-[project.dependencies]
-python = ">=3.7.2,<4.0"
+[project.optional-dependencies]
+dev = [
+    "build",
+    "pytest>=7.2.1",
+    "pytest-cov>=4.0.0",
+    "pytest-integration>=0.2.3",
+    "pytest-mock>=3.10.0",
+    "mock-alchemy>=0",
+    "black>=23.1.0",
+    "requests>=2.28.2",
+    "twine>=4.0.2",
+    "ruff>=0.0.261",
+    "pyupgrade>=3.3.1",
+    "pyyaml>=6.0",
+    "pulumi>=3.63.0",
+    "pulumi-aws>=5.35.0",
+    "apache-airflow<3",
+    "docker>=6.1.3",
+    "detect-secrets>=1.4.0",
+    "pytest-sugar>=0.9.7",
+    "isort>=5.12.0",
+    "python-dotenv>=1.0.0",
+    "sh>=2.0.4",
+    "pre-commit>=3.3.3",
+    "toml>=0.10.2",
+    "pylint>=2.17.2",
+]
 
-[project.optional-dependencies.dev]
-pytest = "^7.2.1"
-pytest-cov = "^4.0.0"
-pytest-integration = "^0.2.3"
-pytest-mock = "^3.10.0"
-mock-alchemy = "^0"
-black = "^23.1.0"
-requests = "^2.28.2"
-twine = "^4.0.2"
-ruff = "^0.0.261"
-pylint = {version = "^2.17.2", python = ">=3.8.1"}
-pyupgrade = "^3.3.1"
-pyyaml = "^6.0"
-pulumi = "^3.63.0"
-pulumi-aws = "^5.35.0"
-apache-airflow = "<3"
-isort = {version = "^5.12.0", python = ">=3.8.1"}
-python-dotenv = {version = "^1.0.0", python = ">=3.8.1"}
-sh = {version = "^2.0.4", python = ">=3.8.1"}
-pre-commit = {version = "^3.3.3", python = ">=3.8.1"}
-toml = {version = "^0.10.2", python = "<3.11"}
-docker = "^6.1.3"
-detect-secrets = "^1.4.0"
-pytest-sugar = "^0.9.7"
 
 # for pip installing this pyproject.toml
 [project.entry-points."airflow.plugins"]
-"starship" = "astronomer_starship.starship.main:StarshipPlugin"
+"starship" = "astronomer_starship.starship:StarshipPlugin"
+"starship_api" = "astronomer_starship.starship_api:StarshipAPIPlugin"
 
 [project.entry-points.apache_airflow_provider]
-provider_info = "astronomer_starship.starship.__init__:get_provider_info"
+provider_info = "astronomer_starship.__init__:get_provider_info"
 
 [tool.black]
 # https://github.com/psf/black
@@ -61,10 +90,10 @@ color = true
 [tool.bandit]
 exclude_dirs = ["tests"]
 skips = [
-  "B301",
-  "B403",
-  "B310",  # urlopen in Aeroscope
-  "B608"  # SQL Injection in DAG History Migration
+    "B301",
+    "B403",
+    "B310", # urlopen in Aeroscope
+    "B608"  # SQL Injection in DAG History Migration
 ]
 
 [tool.ruff]
@@ -73,17 +102,17 @@ line-length = 120
 [tool.pytest.ini_options]
 # https://docs.pytest.org/en/6.2.x/customize.html#pyproject-toml
 # Directories that are not visited by pytest collector:
-norecursedirs =["tests/resources/", "hooks", "*.egg", ".eggs", "dist", "build", "docs", ".tox", ".git", "__pycache__"]
+norecursedirs = ["tests/resources/", "hooks", "*.egg", ".eggs", "dist", "build", "docs", ".tox", ".git", "__pycache__"]
 doctest_optionflags = ["NUMBER", "NORMALIZE_WHITESPACE", "IGNORE_EXCEPTION_DETAIL"]
 
 # Extra options:
 addopts = [
-#  "--ignore=tests/resources/example-dag.py",
-#  "--ignore=resources/fix.py",
-  "--strict-markers",
-  "--tb=short",
-  "--disable-warnings",
-  "--no-header",
-  "--doctest-modules",
-  "--doctest-continue-on-failure",
+    #  "--ignore=tests/resources/example-dag.py",
+    #  "--ignore=resources/fix.py",
+    "--strict-markers",
+    "--tb=short",
+    "--disable-warnings",
+    "--no-header",
+    "--doctest-modules",
+    "--doctest-continue-on-failure",
 ]

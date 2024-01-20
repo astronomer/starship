@@ -1,14 +1,21 @@
+
 # Astronomer Starship
+Starship is a utility to migrate Airflow metadata between two Airflow instances
 
+<!--TOC-->
 
+- [Astronomer Starship](#astronomer-starship)
+- [WIP](#wip)
+  - [Deps](#deps)
+  - [Reference](#reference)
+  - [Notes](#notes)
+
+<!--TOC-->
 
 
 
 
 # WIP
-## Structure
-- `plugins/index.html` is primarily used for development, and `vite build` uses it to compile everything
-
 ## Deps
 https://github.com/apache/airflow/blob/0c10ddb3c6e9d8cbc1592d1e0bf5532c5ed4dfa9/airflow/www/package.json#L102C1-L147
 

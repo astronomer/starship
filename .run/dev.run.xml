@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="dev" type="js.build_tools.npm" nameIsGenerated="true">
-    <package-json value="$PROJECT_DIR$/../starship_scratch/plugins/package.json" />
+    <package-json value="$PROJECT_DIR$/astronomer_starship/package.json" />
     <command value="run" />
     <scripts>
       <script value="dev" />

@@ -1,3 +1,38 @@
+/*html, body {*/
+/*    height: 100%;*/
+/*}*/
+/**/
+.container:has(.row > .starship-main) {
+    padding: 0;
+    width: 100%;
+    height: 100%;
+}
+
+/*.row:has(.starship-main) {*/
+/*    display: flex;*/
+/*    flex-direction: column;*/
+/*    height: 100%;*/
+/*}*/
+
+.starship-main {
+    /*background-color: #867cb6;*/
+    flex-grow: 1;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+}
+
+.starship-page {
+    padding: 15px;
+    border-radius: 1px;
+    /*background-color: whitesmoke;*/
+    /*box-shadow: dimgray 2px 2px 5px 2px;*/
+    /*border: 1px dimgray solid;*/
+    width: 95%;
+    margin: 30px;
+}
+
 #is-astro:not(:checked) + .chakra-switch__track {
     background-color: teal;
 }
@@ -8,4 +43,27 @@
 
 #is-astro + .chakra-switch__track {
     border-radius: 0;
+}
+
+#starship-navbar {
+    box-shadow: 0 1px 0 0 #e2e8f0;
+}
+
+#logo {
+    color: #51504f;
+}
+
+#logo-subtitle {
+     color: dimgrey;
+}
+
+#starship-navbar a {
+    /*background-color: #a5a5a8;*/
+    /*color: #e2e0df;*/
+    margin: 0 1px;
+    border-radius: 0;
+}
+
+#starship-navbar .active {
+    box-shadow: mediumpurple 0 5px 0 0;
 }
