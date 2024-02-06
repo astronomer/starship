@@ -8,7 +8,7 @@ import { GoUpload } from 'react-icons/go';
 import PropTypes from 'prop-types';
 
 export default function MigrateButton({
-  route, headers, existsInRemote, sendData,
+  route, headers, existsInRemote, sendData, isDisabled,
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -34,7 +34,7 @@ export default function MigrateButton({
   }
   return (
     <Button
-      isDisabled={loading || exists}
+      isDisabled={loading || isDisabled || exists}
       isLoading={loading}
       loadingText="Loading"
       variant="solid"
@@ -57,8 +57,10 @@ MigrateButton.propTypes = {
   existsInRemote: PropTypes.bool,
   // eslint-disable-next-line react/forbid-prop-types
   sendData: PropTypes.object.isRequired,
+  isDisabled: PropTypes.bool,
 };
 MigrateButton.defaultProps = {
   headers: {},
   existsInRemote: false,
+  isDisabled: false,
 };

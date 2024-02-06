@@ -56,7 +56,7 @@ export function proxyHeaders(token) {
   };
 }
 
-/**
+/** TODO - Deprecated
  * From https://stackoverflow.com/a/62017005
  * Usage:
  *   useEffect(useThrottle(() => console.log(value), 1000), [value]);
@@ -92,7 +92,6 @@ export function fetchData(
   loadingDispatch,
   dataDispatch,
   errorDispatch,
-  dispatch,
 ) {
   if (loadingDispatch) {
     loadingDispatch();
@@ -102,8 +101,8 @@ export function fetchData(
     .then((res) => {
       axios
         .get(proxyUrl(remoteRoute), { headers: proxyHeaders(token) })
-        .then((rRes) => dataDispatch(res, rRes, dispatch))
-        .catch((err) => errorDispatch(err, dispatch));
+        .then((rRes) => dataDispatch(res, rRes)) // , dispatch))
+        .catch((err) => errorDispatch(err)); // , dispatch));
     })
-    .catch((err) => errorDispatch(err, dispatch));
+    .catch((err) => errorDispatch(err)); // , dispatch));
 }

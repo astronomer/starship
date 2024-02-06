@@ -1,0 +1,72 @@
+site_name: Starship
+repo_url: https://github.com/astronomer/starship/
+edit_uri: edit/main/docs/
+site_url: https://astronomer.github.io/starship/
+
+theme:
+    name: material
+
+    palette:
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: black
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+    font:
+      text: Roboto
+      code: Roboto Mono
+
+    features:
+      - navigation.path
+      - navigation.sections
+      - navigation.tabs
+      - navigation.tabs.sticky
+      - navigation.top
+      - navigation.instant
+      - navigation.instant.progress
+      - toc.follow
+      - toc.integrate
+      - content.tabs.link
+      - content.action.edit
+      - content.code.copy
+      - search.share
+      - search.highlight
+      - search.suggest
+
+markdown_extensions:
+- pymdownx.superfences
+- pymdownx.highlight:
+    use_pygments: true
+    anchor_linenums: true
+
+plugins:
+- search
+- mkdocstrings:
+    handlers:
+      python:
+        options:
+          docstring_style: sphinx
+          show_source: true
+          show_root_heading: true
+          separate_signature: true
+          show_signature_annotations: true
+          signature_crossrefs: true
+          unwrap_annotated: true
+          show_bases: false
+          show_object_full_path: false
+          show_symbol_type_toc: true
+          merge_init_into_class: true
+          parameter_headings: true
+          summary: true
+          group_by_category: true

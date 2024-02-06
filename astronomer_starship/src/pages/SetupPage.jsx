@@ -17,28 +17,40 @@ import {
   Fade,
   FormErrorMessage,
   FormHelperText,
-  InputRightElement,
+  InputRightElement, useColorMode, Spacer,
 } from '@chakra-ui/react';
 import React from 'react';
 import PropTypes from 'prop-types';
 import {
   CheckIcon, ExternalLinkIcon, RepeatIcon,
 } from '@chakra-ui/icons';
+import { MdNightlight } from 'react-icons/md';
+import { NavLink } from 'react-router-dom';
+import { IoTelescopeOutline } from 'react-icons/io5';
 import { getTargetUrlFromParts, tokenUrlFromAirflowUrl } from '../util';
 import ValidatedUrlCheckbox from '../component/ValidatedUrlCheckbox';
 
 export default function SetupPage({ state, dispatch }) {
+  const { colorMode, toggleColorMode } = useColorMode();
   return (
     <Box>
-      <Text fontSize="xl">Starship is a utility to migrate Airflow metadata between instances</Text>
-      <Button
-        size="sm"
-        leftIcon={<RepeatIcon />}
-        onClick={() => dispatch({ type: 'reset' })}
-      >
-        Reset
-      </Button>
-      <Divider />
+      <HStack>
+        <Text fontSize="xl">Starship is a utility to migrate Airflow metadata between instances</Text>
+        <Spacer />
+        <Button size="sm" leftIcon={<MdNightlight />} onClick={toggleColorMode}>
+          {colorMode === 'light' ? 'Dark' : 'Light'}
+          {' '}
+          Mode
+        </Button>
+        <Button
+          size="sm"
+          leftIcon={<RepeatIcon />}
+          onClick={() => dispatch({ type: 'reset' })}
+        >
+          Reset
+        </Button>
+      </HStack>
+      <Divider marginY="5px" />
       <VStack width="60%" display="flex" alignItems="center">
         <Box id="setup-form" width="100%" margin="0 30px" alignItems="left">
 
@@ -58,7 +70,7 @@ export default function SetupPage({ state, dispatch }) {
                     isChecked={state.isAstro}
                     onChange={() => dispatch({ type: 'toggle-is-astro' })}
                   />
-                  <Text>Hosted</Text>
+                  <Text>Astro</Text>
                 </HStack>
                 <Fade in={!state.isProductSelected}>
                   <Button
@@ -80,7 +92,7 @@ export default function SetupPage({ state, dispatch }) {
               <SlideFade in={state.isProductSelected}>
                 <FormLabel>Airflow URL</FormLabel>
                 {state.isAstro ? (
-                // Astro URL Template: https://claaabbbcccddd.astronomer.run/aabbccdd/
+                  // Astro URL Template: https://claaabbbcccddd.astronomer.run/aabbccdd/
                   <InputGroup size="sm">
                     <InputLeftAddon>https://</InputLeftAddon>
                     <Input
@@ -122,7 +134,7 @@ export default function SetupPage({ state, dispatch }) {
                     <InputRightAddon>/home</InputRightAddon>
                   </InputGroup>
                 ) : (
-                // Software URL Template: https://astro.basedomain.com/space-name-1234/airflow/
+                  // Software URL Template: https://astro.basedomain.com/space-name-1234/airflow/
                   <InputGroup size="sm">
                     <InputLeftAddon>https://</InputLeftAddon>
                     <Input
@@ -271,7 +283,7 @@ export default function SetupPage({ state, dispatch }) {
                     <HStack>
                       <ValidatedUrlCheckbox
                         colorScheme="green"
-                          // size="lg"
+                        // size="lg"
                         text="Airflow"
                         valid={state.isAirflow}
                         setValid={(value) => dispatch({ type: 'set-is-airflow', isAirflow: value })}
@@ -280,7 +292,7 @@ export default function SetupPage({ state, dispatch }) {
                       />
                       <ValidatedUrlCheckbox
                         colorScheme="green"
-                          // size="lg"
+                        // size="lg"
                         text="Starship"
                         valid={state.isStarship}
                         setValid={(value) => dispatch({ type: 'set-is-starship', isStarship: value })}

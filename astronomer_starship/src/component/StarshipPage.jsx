@@ -12,7 +12,7 @@ export default function StarshipPage({
   return (
     <Box>
       {description}
-      <Divider />
+      <Divider marginY="5px" />
       {loading || error ? (
         <PageLoading loading={loading} error={error} />
       ) : (

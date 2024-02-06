@@ -1,21 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
-import { Text } from '@chakra-ui/react';
+import {
+  Button, HStack, Spacer, Text,
+} from '@chakra-ui/react';
 import PropTypes from 'prop-types';
+import { RepeatIcon } from '@chakra-ui/icons';
 import StarshipPage from '../component/StarshipPage';
 import MigrateButton from '../component/MigrateButton';
 import HiddenValue from '../component/HiddenValue';
 import { fetchData, proxyHeaders, proxyUrl } from '../util';
 import constants from '../constants';
 
-const description = (
-  <Text fontSize="xl">
-    Airflow Connection objects are used for storing credentials and other information
-    necessary for connecting to external services.
-    Connections can be defined via multiple mechanisms,
-    Starship only migrates values stored via the Airflow UI.
-  </Text>
-);
 const columnHelper = createColumnHelper();
 const passwordColumn = columnHelper.accessor('password', {
   id: 'password', cell: (props) => <HiddenValue value={props.getValue()} />,
@@ -37,25 +32,21 @@ function setConnectionsData(localData, remoteData) {
 }
 
 export default function ConnectionsPage({ state, dispatch }) {
-  const [data, setData] = useState(
-    setConnectionsData(state.connectionsLocalData, state.connectionsRemoteData),
+  const [data, setData] = useState(setConnectionsData(state.connectionsLocalData, state.connectionsRemoteData));
+  const fetchPageData = () => fetchData(
+    constants.CONNECTIONS_ROUTE,
+    state.targetUrl + constants.CONNECTIONS_ROUTE,
+    state.token,
+    () => dispatch({ type: 'set-connections-loading' }),
+    (res, rRes) => dispatch({
+      type: 'set-connections-data', connectionsLocalData: res.data, connectionsRemoteData: rRes.data,
+    }),
+    (err) => dispatch({ type: 'set-connections-error', error: err }),
   );
-  useEffect(() => {
-    fetchData(
-      constants.CONNECTIONS_ROUTE,
-      state.targetUrl + constants.CONNECTIONS_ROUTE,
-      state.token,
-      () => dispatch({ type: 'set-connections-loading' }),
-      (res, rRes) => dispatch({
-        type: 'set-connections-data', connectionsLocalData: res.data, connectionsRemoteData: rRes.data,
-      }),
-      (err) => dispatch({ type: 'set-connections-error', error: err }),
-      dispatch,
-    );
-  }, []);
+  useEffect(() => fetchPageData(), []);
   useEffect(
     () => setData(setConnectionsData(state.connectionsLocalData, state.connectionsRemoteData)),
-    [state.connectionsLocalData, state.connectionsRemoteData],
+    [state],
   );
 
   // noinspection JSCheckFunctionSignatures
@@ -93,7 +84,18 @@ export default function ConnectionsPage({ state, dispatch }) {
   ];
   return (
     <StarshipPage
-      description={description}
+      description={(
+        <HStack>
+          <Text fontSize="xl">
+            Airflow Connection objects are used for storing credentials and other information
+            necessary for connecting to external services.
+            Connections can be defined via multiple mechanisms,
+            Starship only migrates values stored via the Airflow UI.
+          </Text>
+          <Spacer />
+          <Button size="sm" leftIcon={<RepeatIcon />} onClick={() => fetchPageData()}>Reset</Button>
+        </HStack>
+      )}
       loading={state.connectionsLoading}
       data={data}
       columns={columns}

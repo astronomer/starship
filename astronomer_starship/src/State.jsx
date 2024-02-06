@@ -1,15 +1,11 @@
 import qs from 'qs';
+// eslint-disable-next-line import/no-extraneous-dependencies
+import merge from 'lodash.merge';
 import { getTargetUrlFromParts } from './util';
 
 export function getHashState() {
   const o = qs.parse(window.parent.location.search.substring(1));
   return o?.s ? JSON.parse(atob(o.s)) : {};
-}
-
-export function setHashState(state, history) {
-  const o = qs.parse(window.parent.location.search.substring(1));
-  o.s = btoa(JSON.stringify(state));
-  history.push(`?${qs.stringify(o)}`);
 }
 
 export function getInitialState(initial) {
@@ -56,10 +52,10 @@ export const initialState = {
   envLoading: false,
   envError: null,
   // ### DAGS PAGE ####
-  dagsLocalData: [],
-  dagsRemoteData: [],
+  dagsData: {},
   dagsLoading: false,
   dagsError: null,
+  limit: 10,
 };
 
 /**
@@ -70,12 +66,12 @@ export const initialState = {
  */
 export const reducer = (state, action) => {
   if (state.DEBUG) {
+    // eslint-disable-next-line no-console
     console.log(`Received action=${JSON.stringify(action)}`);
   }
   switch (action.type) {
     // ### SETUP PAGE ####
     case 'set-url': {
-      // TODO - check https://clkvh3b46003m01kbalgwwdcy.astronomer.run/dus78e67/api/v1/health
       return {
         ...state,
         isTouched: true,
@@ -229,8 +225,7 @@ export const reducer = (state, action) => {
     case 'set-dags-loading': {
       return {
         ...state,
-        dagsLocalData: [],
-        dagsRemoteData: [],
+        dagsData: {},
         dagsLoading: true,
         dagsError: null,
       };
@@ -238,8 +233,7 @@ export const reducer = (state, action) => {
     case 'set-dags-data': {
       return {
         ...state,
-        dagsLocalData: action.dagsLocalData,
-        dagsRemoteData: action.dagsRemoteData,
+        dagsData: merge(state.dagsData, action.dagsData),
         dagsLoading: false,
       };
     }
@@ -252,12 +246,19 @@ export const reducer = (state, action) => {
         token: null,
       } : { ...state, dagsError: action.error };
     }
+    case 'set-limit': {
+      return {
+        ...state,
+        limit: action.limit,
+      };
+    }
 
     // ### GENERAL ####
     case 'reset': {
       return initialState;
     }
     default: {
+      // eslint-disable-next-line no-console
       console.log(`Received unknown action.type=${action.type}`);
       return state;
     }

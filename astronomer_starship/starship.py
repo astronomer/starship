@@ -1,3 +1,5 @@
+import os
+
 import requests
 from airflow.plugins_manager import AirflowPlugin
 from airflow.www.app import csrf
@@ -54,16 +56,17 @@ class Starship(BaseView):
         if not response.ok:
             print(response.content)
 
-        print(
-            f"{url=}\n"
-            f"{request_method=}\n"
-            f"{request_headers=}\n"
-            f"{request.data=}\n"
-            "==========="
-            f"{response_headers=}\n"
-            f"{response.status_code=}\n"
-            f"{response.content=}\n"
-        )
+        if os.getenv("DEBUG", False):
+            print(
+                f"{url=}\n"
+                f"{request_method=}\n"
+                f"{request_headers=}\n"
+                f"{request.data=}\n"
+                "==========="
+                f"{response_headers=}\n"
+                f"{response.status_code=}\n"
+                f"{response.content=}\n"
+            )
         response_headers["Starship-Proxy-Status"] = "OK"
         return Response(
             response.content, status=response.status_code, headers=response_headers

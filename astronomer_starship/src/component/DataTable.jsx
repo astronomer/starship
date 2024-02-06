@@ -25,7 +25,7 @@ export default function DataTable({
   });
 
   return (
-    <Table>
+    <Table className="data-table">
       <Thead>
         {table.getHeaderGroups().map((headerGroup) => (
           <Tr key={headerGroup.id}>

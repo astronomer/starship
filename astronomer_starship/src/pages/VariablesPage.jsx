@@ -1,19 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
-import { Text } from '@chakra-ui/react';
+import {
+  Button, HStack, Spacer, Text,
+} from '@chakra-ui/react';
 import PropTypes from 'prop-types';
+import { RepeatIcon } from '@chakra-ui/icons';
 import MigrateButton from '../component/MigrateButton';
 import StarshipPage from '../component/StarshipPage';
 import { fetchData, proxyHeaders, proxyUrl } from '../util';
 import constants from '../constants';
 
-const description = (
-  <Text fontSize="xl">
-    Variables are a generic way to store and retrieve arbitrary content or settings
-    as a simple key value store within Airflow. Variables can be defined via multiple mechanisms,
-    Starship only migrates values stored via the Airflow UI.
-  </Text>
-);
 const columnHelper = createColumnHelper();
 
 function setVariablesData(localData, remoteData) {
@@ -31,22 +27,20 @@ export default function VariablesPage({ state, dispatch }) {
   const [data, setData] = useState(
     setVariablesData(state.variablesLocalData, state.variablesRemoteData),
   );
-  useEffect(() => {
-    fetchData(
-      constants.VARIABLES_ROUTE,
-      state.targetUrl + constants.VARIABLES_ROUTE,
-      state.token,
-      () => dispatch({ type: 'set-variables-loading' }),
-      (res, rRes) => dispatch({
-        type: 'set-variables-data', variablesLocalData: res.data, variablesRemoteData: rRes.data,
-      }),
-      (err) => dispatch({ type: 'set-variables-error', error: err }),
-      dispatch,
-    );
-  }, []);
+  const fetchPageData = () => fetchData(
+    constants.VARIABLES_ROUTE,
+    state.targetUrl + constants.VARIABLES_ROUTE,
+    state.token,
+    () => dispatch({ type: 'set-variables-loading' }),
+    (res, rRes) => dispatch({
+      type: 'set-variables-data', variablesLocalData: res.data, variablesRemoteData: rRes.data,
+    }),
+    (err) => dispatch({ type: 'set-variables-error', error: err }),
+  );
+  useEffect(() => fetchPageData(), []);
   useEffect(
     () => setData(setVariablesData(state.variablesLocalData, state.variablesRemoteData)),
-    [state.variablesLocalData, state.variablesRemoteData],
+    [state],
   );
 
   // noinspection JSCheckFunctionSignatures
@@ -70,11 +64,23 @@ export default function VariablesPage({ state, dispatch }) {
   ];
   return (
     <StarshipPage
-      description={description}
+      description={(
+        <HStack>
+          <Text fontSize="xl">
+            Variables are a generic way to store and retrieve arbitrary content or settings
+            as a simple key value store within Airflow.
+            Variables can be defined via multiple mechanisms,
+            Starship only migrates values stored via the Airflow UI.
+          </Text>
+          <Spacer />
+          <Button size="sm" leftIcon={<RepeatIcon />} onClick={() => fetchPageData()}>Reset</Button>
+        </HStack>
+      )}
       loading={state.variablesLoading}
       data={data}
       columns={columns}
       error={state.error}
+      resetFn={fetchPageData}
     />
   );
 }

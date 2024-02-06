@@ -21,10 +21,8 @@ import './index.css';
 import AppLoading from './component/AppLoading';
 
 export default function App() {
-  // const history = createBrowserHistory();
   const [state, dispatch] = useReducer(reducer, initialState, getInitialState);
   useEffect(() => {
-    // setHashState(state, history);
     localStorage.setItem('state', JSON.stringify(state));
   }, [state]);
   const router = createHashRouter(
@@ -35,6 +33,7 @@ export default function App() {
           <>
             <Flex
               as="nav"
+              boxShadow="0 1px 0 0 #e2e8f0"
               id="starship-navbar"
             >
               <Button
@@ -98,14 +97,14 @@ export default function App() {
             </Flex>
             <Box as="main" className="starship-page">
               <Box as="header" className="starship-logo">
-                <Heading id="logo" as="h1" size="2xl" noOfLines={1}>
+                <Heading color="Gray.600" as="h1" size="2xl" noOfLines={1}>
                   Starship
                   {' '}
                   <Icon as={GoRocket} />
                 </Heading>
-                <Heading id="logo-subtitle" size="sm" noOfLines={1}>By Astronomer</Heading>
+                <Heading color="Gray.400" size="sm" noOfLines={1}>By Astronomer</Heading>
               </Box>
-              <Divider />
+              <Divider marginY="5px" />
               <AppLoading />
               <Outlet />
             </Box>
@@ -113,12 +112,12 @@ export default function App() {
         )}
       >
         <Route index element={<Navigate to="/setup" replace />} />
-        <Route path="setup" element={<SetupPage state={state} dispatch={dispatch} />} />
-        <Route path="variables" element={<VariablesPage state={state} dispatch={dispatch} />} />
-        <Route path="connections" element={<ConnectionsPage state={state} dispatch={dispatch} />} />
-        <Route path="pools" element={<PoolsPage state={state} dispatch={dispatch} />} />
-        <Route path="env" element={<EnvVarsPage state={state} dispatch={dispatch} />} />
-        <Route path="dags" element={<DAGHistoryPage state={state} dispatch={dispatch} />} />
+        <Route path="setup" element={<SetupPage key="setup" state={state} dispatch={dispatch} />} />
+        <Route path="variables" element={<VariablesPage key="variables" state={state} dispatch={dispatch} />} />
+        <Route path="connections" element={<ConnectionsPage key="connections" state={state} dispatch={dispatch} />} />
+        <Route path="pools" element={<PoolsPage key="pools" state={state} dispatch={dispatch} />} />
+        <Route path="env" element={<EnvVarsPage key="env-vars" state={state} dispatch={dispatch} />} />
+        <Route path="dags" element={<DAGHistoryPage key="dag-history" state={state} dispatch={dispatch} />} />
       </Route>,
     ),
   );

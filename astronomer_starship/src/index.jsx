@@ -5,6 +5,8 @@ import App from './App';
 
 const theme = extendTheme({
   colors: {},
+  initialColorMode: 'system',
+  useSystemColorMode: true,
 });
 
 ReactDOM.createRoot(document.getElementById('root')).render(

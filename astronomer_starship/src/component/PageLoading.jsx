@@ -7,7 +7,7 @@ import PropTypes from 'prop-types';
 export default function PageLoading({ loading, error }) {
   // eslint-disable-next-line no-nested-ternary
   return loading ? (
-    <Center>
+    <Center margin="0 auto" height="75%">
       <Spinner
         thickness="6px"
         speed="0.5s"

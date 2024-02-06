@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import os
-from abc import ABC
-from airflow.models import DagRun
+from abc import ABC, abstractmethod
 from airflow.plugins_manager import AirflowPlugin
 from airflow.security import permissions
 from airflow.version import version
@@ -10,7 +9,6 @@ from airflow.www import auth
 from airflow.www.app import csrf
 from flask import Blueprint, request, jsonify
 from flask_appbuilder import expose, BaseView
-from sqlalchemy import distinct
 
 
 def starship_route(
@@ -158,43 +156,108 @@ class StarshipApi(BaseView):
             else {},
         )
 
+    @expose("/dag_runs", methods=["GET", "POST"])
+    @csrf.exempt
+    @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG_RUN)])
+    def dag_runs(self):
+        kwargs = {}
+        if request.method == "GET":
+            kwargs["dag_id"] = request.args["dag_id"]
+            if "limit" in request.args:
+                """Limit is the number of rows to return."""
+                kwargs["limit"] = request.args.get("limit")
+            if "offset" in request.args:
+                """Offset is the number of rows in the result set to skip before beginning to return rows."""
+                kwargs["offset"] = request.args.get("offset")
+        if request.method == "POST":
+            kwargs["dag_runs"] = request.json["dag_runs"]
+        return starship_route(
+            get=starship_compat.get_dag_runs,
+            post=starship_compat.set_dag_runs,
+            **kwargs,
+        )
+
+    @expose("/task_instances", methods=["GET", "POST"])
+    @csrf.exempt
+    @auth.has_access(
+        [(permissions.ACTION_CAN_READ, permissions.RESOURCE_TASK_INSTANCE)]
+    )
+    def task_instances(self):
+        kwargs = {}
+        if request.method == "GET":
+            kwargs["dag_id"] = request.args["dag_id"]
+            if "limit" in request.args:
+                """Limit is the number of rows to return."""
+                kwargs["limit"] = request.args.get("limit")
+            if "offset" in request.args:
+                """Offset is the number of rows in the result set to skip before beginning to return rows."""
+                kwargs["offset"] = request.args.get("offset")
+        if request.method == "POST":
+            kwargs["task_instances"] = request.json["task_instances"]
+        return starship_route(
+            get=starship_compat.get_task_instances,
+            post=starship_compat.set_task_instances,
+            **kwargs,
+        )
+
 
 class StarshipAirflowSpec(ABC):
+    @abstractmethod
     def get_airflow_version(self):
         raise NotImplementedError()
 
+    @abstractmethod
     def get_env_vars(self):
         raise NotImplementedError()
 
     def set_env_vars(self):
+        """This is set directly at the Astro API, so return an error"""
+        res = jsonify({"error": "Set via the Astro/Houston API"})
+        res.status_code = 409
         raise NotImplementedError()
 
+    @abstractmethod
     def get_pools(self):
         raise NotImplementedError()
 
-    def set_pools(self):
+    @abstractmethod
+    def set_pool(self, name: str, slots: int, description=""):
         raise NotImplementedError()
 
+    @abstractmethod
     def get_variables(self):
         raise NotImplementedError()
 
-    def set_variable(self):
+    @abstractmethod
+    def set_variable(self, key, val, description):
         raise NotImplementedError()
 
+    @abstractmethod
     def get_dags(self):
         raise NotImplementedError()
 
-    def set_dag_is_paused(self):
+    @abstractmethod
+    def set_dag_is_paused(self, dag_id: str, is_paused: bool):
         raise NotImplementedError()
 
-    def get_dag_runs(self):
+    @abstractmethod
+    def get_dag_runs(self, dag_id: str, limit: int = 10):
         raise NotImplementedError()
 
-    def set_dag_run(self):
+    @abstractmethod
+    def set_dag_runs(self, dag_runs: list):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def get_task_instances(self, dag_id: str, limit: int = 10):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def set_task_instances(self, task_instances: list):
         raise NotImplementedError()
 
 
-class StarshipAirflow:
+class StarshipAirflow(StarshipAirflowSpec):
     """Base Class
     Contains methods that are expected to work across all Airflow versions
     When older versions require different behavior, they'll override this class
@@ -209,12 +272,6 @@ class StarshipAirflow:
     # noinspection PyMethodMayBeStatic
     def get_env_vars(self):
         return dict(os.environ)
-
-    def set_env_vars(self):
-        """This is set directly at the Astro API, so return an error"""
-        res = jsonify({"error": "Set via the Astro/Houston API"})
-        res.status_code = 409
-        raise NotImplementedError()
 
     # noinspection PyMethodMayBeStatic
     def get_airflow_version(self):
@@ -361,6 +418,7 @@ class StarshipAirflow:
         """Get all DAGs"""
         from airflow.models import DagModel, TaskInstance, DagRun
         from sqlalchemy.sql.functions import count
+        from sqlalchemy import distinct
 
         try:
             dags = (
@@ -369,6 +427,10 @@ class StarshipAirflow:
                     count(distinct(TaskInstance.task_id)).label("task_count"),
                     count(DagRun.run_id).label("dag_run_count"),
                 )
+                .join(
+                    TaskInstance, TaskInstance.dag_id == DagModel.dag_id, isouter=True
+                )
+                .join(DagRun, DagRun.dag_id == DagModel.dag_id, isouter=True)
                 .group_by(DagModel)
                 .all()
             )
@@ -402,141 +464,157 @@ class StarshipAirflow:
                 .values(is_paused=is_paused)
             )
             self.session.commit()
+            return {
+                "dag_id": dag_id,
+                "is_paused": is_paused,
+            }
         except Exception as e:
             self.session.rollback()
             raise e
 
-    def get_dag_runs(self, dag_id: str, limit: int = 10):
+    def _get_stats(self, dag_id: str):
+        from airflow.models import DagRun
+        from sqlalchemy.sql.functions import count
+        from sqlalchemy import distinct
+
+        try:
+            return {
+                "dag_run_count": self.session.query(
+                    count(distinct(DagRun.run_id)).label("dag_run_count")
+                )
+                .where(DagRun.dag_id == dag_id)
+                .one()["dag_run_count"],
+            }
+        except Exception as e:
+            self.session.rollback()
+            raise e
+
+    def _get_dag_runs(self, dag_id: str, offset: int = 0, limit: int = 10):
+        from sqlalchemy import desc
         from airflow.models import DagRun
 
         try:
-            dag_runs = self.session.query(DagRun).limit(limit).all()
-            return [
+            query = (
+                self.session.query(DagRun)
+                .filter(DagRun.dag_id == dag_id)
+                .order_by(desc(DagRun.start_date))
+            )
+            if offset:
+                query.offset(offset)
+            return query.limit(limit).all()
+        except Exception as e:
+            self.session.rollback()
+            raise e
+
+    def get_dag_runs(self, dag_id: str, offset: int = 0, limit: int = 10):
+        dag_runs = self._get_dag_runs(dag_id, offset, limit)
+        dag_run_count = self._get_stats(dag_id)
+        return {
+            "dag_runs": [
                 {
-                    "dag_id": dag_id,
-                    "run_id": dag_run["run_id"],
-                    "queued_at": dag_run["queued_at"],
-                    "execution_date": dag_run["execution_date"],
-                    "start_date": dag_run["start_date"],
-                    "external_trigger": dag_run["external_trigger"],
-                    "conf": dag_run["conf"],
-                    "state": dag_run["state"],
-                    "run_type": dag_run["run_type"],
-                    "dag_hash": dag_run["dag_hash"],
-                    "creating_job_id": dag_run["creating_job_id"],
-                    "data_interval": dag_run["data_interval"],
+                    "dag_id": dag_run.dag_id,
+                    "queued_at": dag_run.queued_at,
+                    "execution_date": dag_run.execution_date,
+                    "start_date": dag_run.start_date,
+                    "end_date": dag_run.end_date,
+                    "state": dag_run.state,
+                    "run_id": dag_run.run_id,
+                    "creating_job_id": dag_run.creating_job_id,
+                    "external_trigger": dag_run.external_trigger,
+                    "run_type": dag_run.run_type,
+                    "conf": dag_run.conf,
+                    "data_interval_start": dag_run.data_interval_start,
+                    "data_interval_end": dag_run.data_interval_end,
+                    "last_scheduling_decision": dag_run.last_scheduling_decision,
+                    "dag_hash": dag_run.dag_hash,
                 }
                 for dag_run in dag_runs
-            ]
-        except Exception as e:
-            self.session.rollback()
-            raise e
+            ],
+            "dag_run_count": dag_run_count,
+        }
 
-    def set_dag_runs(self, dag_id: str, dag_runs: list):
+    def set_dag_runs(self, dag_runs: list):
+        dag_runs = self.insert_directly("dag_run", dag_runs)
+        stats = self._get_stats(dag_runs[0]["dag_id"])
+        return {"dag_runs": dag_runs, "dag_run_count": stats["dag_run_count"]}
+
+    def get_task_instances(self, dag_id: str, offset: int = 0, limit: int = 10):
+        dag_runs = self._get_dag_runs(dag_id, offset, limit)
+        dag_run_count = self._get_stats(dag_id)
+        return {
+            "task_instances": [
+                {
+                    "dag_id": task_instance.dag_id,
+                    "run_id": task_instance.run_id,
+                    "task_id": task_instance.task_id,
+                    "start_date": task_instance.start_date,
+                    "end_date": task_instance.end_date,
+                    "duration": task_instance.duration,
+                    "state": task_instance.state,
+                    "max_tries": task_instance.max_tries,
+                    "hostname": task_instance.hostname,
+                    "unixname": task_instance.unixname,
+                    "job_id": task_instance.job_id,
+                    "pool": task_instance.pool,
+                    "pool_slots": task_instance.pool_slots,
+                    "queue": task_instance.queue,
+                    "priority_weight": task_instance.priority_weight,
+                    "operator": task_instance.operator,
+                    "queued_dttm": task_instance.queued_dttm,
+                    "queued_by_job_id": task_instance.queued_by_job_id,
+                    "pid": task_instance.pid,
+                    "executor_config": task_instance.executor_config,
+                    "external_executor_id": task_instance.external_executor_id,
+                    "trigger_id": task_instance.trigger_id,
+                    "trigger_timeout": task_instance.trigger_timeout,
+                    "next_method": task_instance.next_method,
+                    "next_kwargs": task_instance.next_kwargs,
+                }
+                for dag_run in dag_runs
+                for task_instance in dag_run.task_instances
+            ],
+            "dag_run_count": dag_run_count,
+        }
+
+    def set_task_instances(self, task_instances: list):
+        """These need to be inserted directly to skip TaskInstance.__init__"""
+        task_instances = self.insert_directly("task_instance", task_instances)
+        return {"task_instances": task_instances}
+
+    def insert_directly(self, table_name, items):
+        from sqlalchemy.exc import NoSuchTableError
+        from sqlalchemy import Table, MetaData
+        from sqlalchemy.dialects.postgresql import insert
+        import pickle
+
+        engine = self.session.get_bind()
+        metadata_obj = MetaData(bind=engine)
         try:
-            self.session.bulk_save_objects(
-                [
-                    DagRun(
-                        dag_id=dag_id,
-                        run_id=dag_run["run_id"],
-                        queued_at=dag_run["queued_at"],
-                        execution_date=dag_run["execution_date"],
-                        start_date=dag_run["start_date"],
-                        external_trigger=dag_run["external_trigger"],
-                        conf=dag_run["conf"],
-                        state=dag_run["state"],
-                        run_type=dag_run["run_type"],
-                        dag_hash=dag_run["dag_hash"],
-                        creating_job_id=dag_run["creating_job_id"],
-                        data_interval=dag_run["data_interval"],
-                    )
-                    for dag_run in dag_runs
-                ]
-            )
+            # noinspection DuplicatedCode
+            try:
+                table = Table(
+                    f"airflow.{table_name}", metadata_obj, autoload_with=engine
+                )
+            except NoSuchTableError:
+                table = Table(table_name, metadata_obj, autoload_with=engine)
+            if not items:
+                return []
+
+            for item in items:
+                # Dropping conf and executor_config because they are pickle objects
+                # I can't figure out how to send them
+                for k in ["conf", "id", "conf", "executor_config"]:
+                    if k in item:
+                        if k == "executor_config":
+                            item[k] = pickle.dumps({})
+                        else:
+                            del item[k]
+
+            with engine.begin() as txn:
+                txn.execute(insert(table).on_conflict_do_nothing(), items)
+            # Unneeded?
             self.session.commit()
-        except Exception as e:
-            self.session.rollback()
-            raise e
-
-    def get_task_instances(self, dag_id: str, dag_run_ids: list):
-        pass
-
-    def set_task_instances(self, dag_id: str, task_instances: list):
-        try:
-            pass
-            # from airflow.models import TaskInstance
-            # self.session.bulk_save_objects([
-            #     TaskInstance(
-            #         dag_id=dag_id,
-            #         run_id=task_instance["run_id"],
-            #         task_id=task_instance["task_id"],
-            #         start_date=task_instance["start_date"],
-            #         end_date=task_instance["end_date"],
-            #         duration=task_instance["duration"],
-            #         state=task_instance["state"],
-            #         max_tries=task_instance["max_tries"],
-            #         hostname=task_instance["hostname"],
-            #         unixname=task_instance["unixname"],
-            #         job_id=task_instance["job_id"],
-            #         pool=task_instance["pool"],
-            #         pool_slots=task_instance["pool_slots"],
-            #         queue=task_instance["queue"],
-            #         priority_weight=task_instance["priority_weight"],
-            #         operator=task_instance["operator"],
-            #         queued_dttm=task_instance["queued_dttm"],
-            #         queued_by_job_id=task_instance["queued_by_job_id"],
-            #         pid=task_instance["pid"],
-            #         executor_config=task_instance["executor_config"],
-            #         external_executor_id=task_instance["external_executor_id"],
-            #         trigger_id=task_instance["trigger_id"],
-            #         trigger_timeout=task_instance["trigger_timeout"],
-            #         next_method=task_instance["next_method"],
-            #         next_kwargs=task_instance["next_kwargs"],
-            #     ) for task_instance in task_instances
-            # ])
-            # self.session.commit()
-
-            # if data is None:
-            #     logging.warning(f"Received no data! data {data}")
-            #     return
-            #
-            # engine = session.get_bind()
-            # metadata_obj = MetaData(bind=engine)
-            #
-            # task_instances = [datum for datum in data if datum["table"] == "task_instance"]
-            # dag_runs = [datum for datum in data if datum["table"] == "dag_run"]
-            #
-            # others = [
-            #     datum for datum in data if datum["table"] not in ("task_instance", "dag_run")
-            # ]
-            # if len(others):
-            #     logging.warning(f"Received unexpected records! {others} - skipping!")
-            #
-            # for data_list, table_name in (
-            #         (dag_runs, "dag_run"),
-            #         (task_instances, "task_instance"),
-            # ):
-            #     if not data_list:
-            #         continue
-            #     logging.debug("Removing keys that could cause issues...")
-            #     for datum in data_list:
-            #         # Dropping conf and executor_config because they are pickle objects
-            #         # I can't figure out how to send them
-            #         for k in ["conf", "id", "table", "conf", "executor_config"]:
-            #             if k in datum:
-            #                 if k == "executor_config":
-            #                     datum[k] = pickle.dumps({})
-            #                 else:
-            #                     del datum[k]
-            #
-            #     try:
-            #         table = Table(f"airflow.{table_name}", metadata_obj, autoload_with=engine)
-            #     except NoSuchTableError:
-            #         table = Table(table_name, metadata_obj, autoload_with=engine)
-            #
-            #     with engine.begin() as txn:
-            #         txn.execute(insert(table).on_conflict_do_nothing(), data_list)
-
+            return items
         except Exception as e:
             self.session.rollback()
             raise e

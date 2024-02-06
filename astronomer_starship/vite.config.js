@@ -1,4 +1,5 @@
 /* eslint-disable import/no-extraneous-dependencies */
+/// <reference types="vitest" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
@@ -18,6 +19,15 @@ export default defineConfig({
       },
     },
   },
+  // for vitest
+  test: {
+    includeSource: ['src/**/*.{js,ts}'],
+  },
+  // for inline module vitests - didn't get this working
+  define: {
+    'import.meta.vitest': 'undefined',
+  },
+  // proxies calls to a running `astro dev` project
   server: {
     proxy: {
       // string shorthand: http://localhost:5173/foo -> http://localhost:4567/foo
