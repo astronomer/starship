@@ -24,6 +24,8 @@ import PropTypes from 'prop-types';
 import {
   CheckIcon, ExternalLinkIcon, RepeatIcon,
 } from '@chakra-ui/icons';
+import { IoTelescopeOutline } from 'react-icons/io5';
+import { NavLink } from 'react-router-dom';
 import { getTargetUrlFromParts, tokenUrlFromAirflowUrl } from '../util';
 import ValidatedUrlCheckbox from '../component/ValidatedUrlCheckbox';
 
@@ -31,6 +33,14 @@ export default function SetupPage({ state, dispatch }) {
   return (
     <Box>
       <Text fontSize="xl">Starship is a utility to migrate Airflow metadata between instances</Text>
+      <Button
+        size="sm"
+        leftIcon={<IoTelescopeOutline />}
+        as={NavLink}
+        to="/telescope"
+      >
+        Telescope
+      </Button>
       <Button
         size="sm"
         leftIcon={<RepeatIcon />}
@@ -80,7 +90,7 @@ export default function SetupPage({ state, dispatch }) {
               <SlideFade in={state.isProductSelected}>
                 <FormLabel>Airflow URL</FormLabel>
                 {state.isAstro ? (
-                // Astro URL Template: https://claaabbbcccddd.astronomer.run/aabbccdd/
+                  // Astro URL Template: https://claaabbbcccddd.astronomer.run/aabbccdd/
                   <InputGroup size="sm">
                     <InputLeftAddon>https://</InputLeftAddon>
                     <Input
@@ -122,7 +132,7 @@ export default function SetupPage({ state, dispatch }) {
                     <InputRightAddon>/home</InputRightAddon>
                   </InputGroup>
                 ) : (
-                // Software URL Template: https://astro.basedomain.com/space-name-1234/airflow/
+                  // Software URL Template: https://astro.basedomain.com/space-name-1234/airflow/
                   <InputGroup size="sm">
                     <InputLeftAddon>https://</InputLeftAddon>
                     <Input
@@ -271,7 +281,7 @@ export default function SetupPage({ state, dispatch }) {
                     <HStack>
                       <ValidatedUrlCheckbox
                         colorScheme="green"
-                          // size="lg"
+                        // size="lg"
                         text="Airflow"
                         valid={state.isAirflow}
                         setValid={(value) => dispatch({ type: 'set-is-airflow', isAirflow: value })}
@@ -280,7 +290,7 @@ export default function SetupPage({ state, dispatch }) {
                       />
                       <ValidatedUrlCheckbox
                         colorScheme="green"
-                          // size="lg"
+                        // size="lg"
                         text="Starship"
                         valid={state.isStarship}
                         setValid={(value) => dispatch({ type: 'set-is-starship', isStarship: value })}
