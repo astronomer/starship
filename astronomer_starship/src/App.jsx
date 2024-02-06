@@ -8,7 +8,6 @@ import {
   Outlet, NavLink, Route, Navigate, createHashRouter, createRoutesFromElements,
 } from 'react-router-dom';
 import { RouterProvider } from 'react-router';
-import { IoTelescopeOutline } from 'react-icons/io5';
 import VariablesPage from './pages/VariablesPage';
 import ConnectionsPage from './pages/ConnectionsPage';
 import PoolsPage from './pages/PoolsPage';
@@ -20,6 +19,7 @@ import {
 } from './State';
 import './index.css';
 import AppLoading from './component/AppLoading';
+import TelescopePage from './pages/TelescopePage';
 
 export default function App() {
   // const history = createBrowserHistory();
