@@ -8,6 +8,7 @@ import {
   Outlet, NavLink, Route, Navigate, createHashRouter, createRoutesFromElements,
 } from 'react-router-dom';
 import { RouterProvider } from 'react-router';
+import { IoTelescopeOutline } from 'react-icons/io5';
 import VariablesPage from './pages/VariablesPage';
 import ConnectionsPage from './pages/ConnectionsPage';
 import PoolsPage from './pages/PoolsPage';
@@ -119,6 +120,7 @@ export default function App() {
         <Route path="pools" element={<PoolsPage state={state} dispatch={dispatch} />} />
         <Route path="env" element={<EnvVarsPage state={state} dispatch={dispatch} />} />
         <Route path="dags" element={<DAGHistoryPage state={state} dispatch={dispatch} />} />
+        <Route path="telescope" element={<TelescopePage key="telescope" state={state} dispatch={dispatch} />} />
       </Route>,
     ),
   );
