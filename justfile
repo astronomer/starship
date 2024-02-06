@@ -56,6 +56,13 @@ clean:
     rm -rf astronomer_starship/static
     rm -rf astronomer_starship/node_modules
 
+# Tag as v$(<src>.__version__) and push to GH
+tag: clean
+    # Delete tag if it already exists
+    git tag -d v{{VERSION}} || true
+    # Tag and push
+    git tag v{{VERSION}}
+
 deploy-tag: tag
     git push origin v{{VERSION}}
 
