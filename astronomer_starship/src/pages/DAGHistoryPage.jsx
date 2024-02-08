@@ -70,8 +70,8 @@ function DAGHistoryMigrateButton({
     setLoadPerc(percent * 0.05);
     Promise.all([
       // Get both DAG Runs and Task Instances locally
-      axios.get(constants.DAG_RUNS_ROUTE, { params: { dag_id: dagId, limit } }),
-      axios.get(constants.TASK_INSTANCE_ROUTE, { params: { dag_id: dagId, limit } }),
+      axios.get(localRoute(constants.DAG_RUNS_ROUTE), { params: { dag_id: dagId, limit } }),
+      axios.get(localRoute(constants.TASK_INSTANCE_ROUTE), { params: { dag_id: dagId, limit } }),
     ]).then(
       axios.spread((dagRunsRes, taskInstanceRes) => {
         setLoadPerc(percent * 0.5);
@@ -299,7 +299,7 @@ export default function DAGHistoryPage({ state, dispatch }) {
             disabled={info.row.original.local.is_paused_loading || false}
             // eslint-disable-next-line no-unused-vars
             onChange={(e) => handlePausedClick(
-              constants.DAGS_ROUTE,
+              localRoute(constants.DAGS_ROUTE),
               state.token,
               info.row.original.local.dag_id,
               !info.row.original.local.is_paused,
