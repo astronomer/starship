@@ -8,7 +8,9 @@ import { RepeatIcon } from '@chakra-ui/icons';
 import StarshipPage from '../component/StarshipPage';
 import MigrateButton from '../component/MigrateButton';
 import HiddenValue from '../component/HiddenValue';
-import { fetchData, proxyHeaders, proxyUrl } from '../util';
+import {
+  fetchData, localRoute, proxyHeaders, proxyUrl, remoteRoute,
+} from '../util';
 import constants from '../constants';
 
 const columnHelper = createColumnHelper();
@@ -32,10 +34,12 @@ function setConnectionsData(localData, remoteData) {
 }
 
 export default function ConnectionsPage({ state, dispatch }) {
-  const [data, setData] = useState(setConnectionsData(state.connectionsLocalData, state.connectionsRemoteData));
+  const [data, setData] = useState(
+    setConnectionsData(state.connectionsLocalData, state.connectionsRemoteData),
+  );
   const fetchPageData = () => fetchData(
-    constants.CONNECTIONS_ROUTE,
-    state.targetUrl + constants.CONNECTIONS_ROUTE,
+    localRoute(constants.CONNECTIONS_ROUTE),
+    remoteRoute(state.targetUrl, constants.CONNECTIONS_ROUTE),
     state.token,
     () => dispatch({ type: 'set-connections-loading' }),
     (res, rRes) => dispatch({

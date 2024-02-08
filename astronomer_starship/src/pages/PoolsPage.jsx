@@ -7,7 +7,9 @@ import PropTypes from 'prop-types';
 import { RepeatIcon } from '@chakra-ui/icons';
 import MigrateButton from '../component/MigrateButton';
 import StarshipPage from '../component/StarshipPage';
-import { fetchData, proxyHeaders, proxyUrl } from '../util';
+import {
+  fetchData, localRoute, proxyHeaders, proxyUrl, remoteRoute,
+} from '../util';
 import constants from '../constants';
 
 const columnHelper = createColumnHelper();
@@ -27,8 +29,8 @@ function setPoolsData(localData, remoteData) {
 export default function PoolsPage({ state, dispatch }) {
   const [data, setData] = useState(setPoolsData(state.poolsLocalData, state.poolsRemoteData));
   const fetchPageData = () => fetchData(
-    constants.POOL_ROUTE,
-    state.targetUrl + constants.POOL_ROUTE,
+    localRoute(constants.POOL_ROUTE),
+    remoteRoute(state.targetUrl, constants.POOL_ROUTE),
     state.token,
     () => dispatch({ type: 'set-pools-loading' }),
     (res, rRes) => dispatch({

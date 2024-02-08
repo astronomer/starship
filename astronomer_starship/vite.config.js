@@ -19,14 +19,6 @@ export default defineConfig({
       },
     },
   },
-  // for vitest
-  test: {
-    includeSource: ['src/**/*.{js,ts}'],
-  },
-  // for inline module vitests - didn't get this working
-  define: {
-    'import.meta.vitest': 'undefined',
-  },
   // proxies calls to a running `astro dev` project
   server: {
     proxy: {

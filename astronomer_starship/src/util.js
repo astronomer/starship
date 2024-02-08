@@ -37,14 +37,33 @@ export function getTargetUrlFromParts(urlOrgPart, urlDeploymentPart, isAstro) {
 }
 
 /**
- * Returns the proxy URL for a given URL (to avoid CORS issues)
+ * Returns the local URL for a given route by splitting at 'starship
+ * @param route
+ @returns {string}
+ */
+export function localRoute(route) {
+  const localUrl = window.location.href.split('/starship', 1)[0];
+  return localUrl + route;
+}
+
+/**
+ * Returns the remote URL for a given route by combining the target URL and route
+ * @param targetUrl
+ * @param route
+ @returns {string}
+ */
+export function remoteRoute(targetUrl, route) {
+  return targetUrl + route;
+}
+
+/**
+ * Returns the local proxy URL for a given URL (to avoid CORS issues)
  * @param url
  * @returns {string}
  */
 export function proxyUrl(url) {
-  return `proxy?url=${encodeURIComponent(url)}`;
+  return localRoute(`/starship/proxy?url=${encodeURIComponent(url)}`);
 }
-
 /**
  * Returns the headers for the proxy (to avoid CORS issues)
  * @param token
@@ -77,17 +96,16 @@ export function useThrottle(cb, delay) {
 
 /**
  * Fetches data from both the local and remote endpoints
- * @param localRoute
- * @param remoteRoute
+ * @param localRouteUrl
+ * @param remoteRouteUrl
  * @param token
  * @param loadingDispatch - a dispatch route to call to set the loading variable
  * @param dataDispatch - dispatch route to call to set the data variables
  * @param errorDispatch - dispatch route to call to set the error variable
- * @param dispatch - global dispatch
  */
 export function fetchData(
-  localRoute,
-  remoteRoute,
+  localRouteUrl,
+  remoteRouteUrl,
   token,
   loadingDispatch,
   dataDispatch,
@@ -97,10 +115,10 @@ export function fetchData(
     loadingDispatch();
   }
   axios
-    .get(localRoute)
+    .get(localRouteUrl)
     .then((res) => {
       axios
-        .get(proxyUrl(remoteRoute), { headers: proxyHeaders(token) })
+        .get(proxyUrl(remoteRouteUrl), { headers: proxyHeaders(token) })
         .then((rRes) => dataDispatch(res, rRes)) // , dispatch))
         .catch((err) => errorDispatch(err)); // , dispatch));
     })

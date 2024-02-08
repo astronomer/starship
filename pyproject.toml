@@ -20,7 +20,7 @@ Homepage = "https://astronomer.io"
 Source = "https://github.com/astronomer/starship/"
 
 [tool.setuptools]
-include-package-data = true
+include-package-data = false
 
 [tool.setuptools.package-data]
 "astronomer_starship" = ["*.js", "*.html", "*.css"]

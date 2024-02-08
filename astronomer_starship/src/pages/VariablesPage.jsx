@@ -7,7 +7,9 @@ import PropTypes from 'prop-types';
 import { RepeatIcon } from '@chakra-ui/icons';
 import MigrateButton from '../component/MigrateButton';
 import StarshipPage from '../component/StarshipPage';
-import { fetchData, proxyHeaders, proxyUrl } from '../util';
+import {
+  fetchData, localRoute, proxyHeaders, proxyUrl, remoteRoute,
+} from '../util';
 import constants from '../constants';
 
 const columnHelper = createColumnHelper();
@@ -28,8 +30,8 @@ export default function VariablesPage({ state, dispatch }) {
     setVariablesData(state.variablesLocalData, state.variablesRemoteData),
   );
   const fetchPageData = () => fetchData(
-    constants.VARIABLES_ROUTE,
-    state.targetUrl + constants.VARIABLES_ROUTE,
+    localRoute(constants.VARIABLES_ROUTE),
+    remoteRoute(state.targetUrl, constants.VARIABLES_ROUTE),
     state.token,
     () => dispatch({ type: 'set-variables-loading' }),
     (res, rRes) => dispatch({

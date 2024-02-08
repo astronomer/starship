@@ -12,7 +12,9 @@ import { GoUpload } from 'react-icons/go';
 import { RepeatIcon } from '@chakra-ui/icons';
 import StarshipPage from '../component/StarshipPage';
 import MigrateButton from '../component/MigrateButton';
-import { fetchData, proxyHeaders, proxyUrl } from '../util';
+import {
+  fetchData, localRoute, proxyHeaders, proxyUrl, remoteRoute,
+} from '../util';
 import constants from '../constants';
 
 // noinspection JSUnusedLocalSymbols
@@ -91,8 +93,8 @@ function setEnvData(localData, remoteData) {
 export default function EnvVarsPage({ state, dispatch }) {
   const [data, setData] = useState(setEnvData(state.envLocalData, state.envRemoteData));
   const fetchPageData = () => fetchData(
-    constants.ENV_VAR_ROUTE,
-    state.targetUrl + constants.ENV_VAR_ROUTE,
+    localRoute(constants.ENV_VAR_ROUTE),
+    remoteRoute(state.targetUrl, constants.ENV_VAR_ROUTE),
     state.token,
     () => dispatch({ type: 'set-env-loading' }),
     (res, rRes) => dispatch({

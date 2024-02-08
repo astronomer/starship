@@ -27,7 +27,7 @@ import humanFormat from 'human-format';
 import { ExternalLinkIcon, RepeatIcon } from '@chakra-ui/icons';
 import StarshipPage from '../component/StarshipPage';
 import {
-  fetchData, proxyHeaders, proxyUrl,
+  fetchData, localRoute, proxyHeaders, proxyUrl, remoteRoute,
 } from '../util';
 import constants from '../constants';
 import TooltipHeader from '../component/TooltipHeader';
@@ -183,8 +183,8 @@ export default function DAGHistoryPage({ state, dispatch }) {
   const columnHelper = createColumnHelper();
   const [data, setData] = useState(Object.values(state.dagsData));
   const fetchPageData = () => fetchData(
-    constants.DAGS_ROUTE,
-    state.targetUrl + constants.DAGS_ROUTE,
+    localRoute(constants.DAGS_ROUTE),
+    remoteRoute(state.targetUrl, constants.DAGS_ROUTE),
     state.token,
     () => dispatch({ type: 'set-dags-loading' }),
     (res, rRes) => dispatch({ type: 'set-dags-data', dagsData: setDagData(res.data, rRes.data) }),
