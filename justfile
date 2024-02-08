@@ -30,7 +30,10 @@ test-backend:
 
 # Test Starship Webapp Frontend
 test-frontend:
-    cd astronomer_starship && npm run test
+    cd astronomer_starship && vitest run
+
+test-frontend-watch:
+    cd astronomer_starship && vitest watch
 
 # Run unit tests
 test: test-frontend test-backend
@@ -38,9 +41,21 @@ test: test-frontend test-backend
 test-cicd:
   act pull-request -W .github/workflows/checks.yml --container-architecture linux/amd64
 
+lint-frontend:
+    cd astronomer_starship && eslint .. --ext js,jsx --report-unused-disable-directives --max-warnings 0
+
+lint-backend:
+    ruff -c pyproject.toml
+
+lint: lint-frontend lint-backend
+
+
 # Build Starship Webapp Frontend
 build-frontend:
-    cd astronomer_starship && npm run build
+    cd astronomer_starship && vite build
+
+build-frontend-watch:
+    cd astronomer_starship && vite build --watch
 
 # Build Starship Package
 build-backend:
@@ -130,7 +145,7 @@ deploy-test-no-symlink TESTPATH:
 
 # Serve Webapp on localhost
 serve-frontend: build
-    cd astronomer_starship && npm run dev
+    cd astronomer_starship && vite
 
 # Update the baseline for detect-secrets / pre-commit
 update-secrets:

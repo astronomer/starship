@@ -3,15 +3,6 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "buildWatch": "vite build --watch",
-    "lint": "eslint .. --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "test": "vitest run",
-    "testWatch": "vitest watch",
-    "preview": "vite preview"
-  },
   "dependencies": {
     "@chakra-ui/icons": "^2.1.1",
     "@chakra-ui/react": "^2.8.2",
