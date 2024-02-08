@@ -78,7 +78,7 @@ function DAGHistoryMigrateButton({
         // Then create DAG Runs
         axios.post(
           proxyUrl(url + constants.DAG_RUNS_ROUTE),
-          { dag_runs: dagRunsRes.data },
+          { dag_runs: dagRunsRes.data.dag_runs },
           { params: { dag_id: dagId }, headers: proxyHeaders(token) },
         ).then((dagRunCreateRes) => {
           if (dagRunCreateRes.status !== 200) {
@@ -99,7 +99,7 @@ function DAGHistoryMigrateButton({
           // Then create Task Instances
           axios.post(
             proxyUrl(url + constants.TASK_INSTANCE_ROUTE),
-            { task_instances: taskInstanceRes.data },
+            { task_instances: taskInstanceRes.data.task_instances },
             { params: { dag_id: dagId }, headers: proxyHeaders(token) },
           ).then(
             (taskInstanceCreateRes) => {
@@ -229,7 +229,10 @@ export default function DAGHistoryPage({ state, dispatch }) {
         cell: (info) => (
           <VStack>
             <Tooltip hasArrow label={`File: ${info.row.original.local.fileloc}`}>
-              <Link isExternal href={`/dags/${info.getValue()}`}>
+              <Link
+                isExternal
+                href={localRoute(`/dags/${info.getValue()}`)}
+              >
                 {info.getValue()}
                 <ExternalLinkIcon mx="2px" />
               </Link>
@@ -370,7 +373,11 @@ export default function DAGHistoryPage({ state, dispatch }) {
               {humanFormat(info.row.original.remote.dag_run_count)}
             </Badge>
           </Tooltip>
-          <Link isExternal href={`${state.targetUrl}/dags/${info.row.original.remote.dag_id}`} mx="2px">
+          <Link
+            isExternal
+            href={remoteRoute(state.targetUrl, `/dags/${info.row.original.remote.dag_id}`)}
+            mx="2px"
+          >
             (
             <ExternalLinkIcon mx="2px" />
             )
