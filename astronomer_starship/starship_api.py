@@ -3,35 +3,78 @@ from __future__ import annotations
 import os
 from abc import ABC, abstractmethod
 from airflow.plugins_manager import AirflowPlugin
-from airflow.security import permissions
 from airflow.version import version
-from airflow.www import auth
 from airflow.www.app import csrf
 from flask import Blueprint, request, jsonify
 from flask_appbuilder import expose, BaseView
+from typing import Any, Callable
 
 
 def starship_route(
-    get=None, post=None, put=None, delete=None, patch=None, *args, **kwargs
+    get=None,
+    post=None,
+    put=None,
+    delete=None,
+    patch=None,
+    kwargs_fn: Callable[[], dict] = None,
 ):
-    if request.method == "GET":
-        res = get(*args, **kwargs)
-    elif request.method == "POST":
-        from sqlalchemy.exc import IntegrityError
+    try:
+        args = []
+        kwargs = kwargs_fn() if kwargs_fn else {}
+    except RuntimeError as e:
+        return jsonify({"error": e}), 400
+    except Exception as e:
+        return jsonify({"error": f"Unknown Error in kwargs_fn - {e}"}), 500
 
-        try:
-            res = post(*args, **kwargs)
-        except IntegrityError:
-            res = jsonify({"error": "Duplicate Record"})
-            res.status_code = 409
-    elif request.method == "PUT":
-        res = put(*args, **kwargs)
-    elif request.method == "DELETE":
-        res = delete(*args, **kwargs)
-    elif request.method == "PATCH":
-        res = patch(*args, **kwargs)
-    else:
-        raise NotImplementedError()
+    if request.method not in ["GET", "POST", "PUT", "DELETE", "PATCH"]:
+        raise RuntimeError(f"Unsupported Method: {request.method}")
+
+    try:
+        if request.method == "GET":
+            res = get(*args, **kwargs)
+        elif request.method == "POST":
+            from sqlalchemy.exc import IntegrityError, DataError, StatementError
+
+            try:
+                res = post(*args, **kwargs)
+            except IntegrityError as e:
+                res = jsonify(
+                    {
+                        "error": "Integrity Error (Duplicate Record?)",
+                        "error_message": e,
+                        "kwargs": kwargs,
+                    }
+                )
+                res.status_code = 409
+            except DataError as e:
+                res = jsonify(
+                    {"error": "Data Error", "error_message": e, "kwargs": kwargs}
+                )
+                res.status_code = 400
+            except StatementError as e:
+                res = jsonify(
+                    {"error": "SQL Error", "error_message": e, "kwargs": kwargs}
+                )
+                res.status_code = 400
+        elif request.method == "PUT":
+            res = put(*args, **kwargs)
+        elif request.method == "DELETE":
+            res = delete(*args, **kwargs)
+        elif request.method == "PATCH":
+            res = patch(*args, **kwargs)
+    except Exception as e:
+        import traceback
+
+        res = jsonify(
+            {
+                "error": "Unknown Error",
+                "error_type": type(e),
+                "error_message": f"{e}\n{traceback.format_exc()}",
+                "kwargs": kwargs,
+            }
+        )
+        res.status_code = 500
+    # noinspection PyUnboundLocalVariable
     return res
 
 
@@ -57,6 +100,24 @@ class StarshipCompatabilityLayer:
             raise RuntimeError(f"Unsupported Airflow Version: {version}")
 
 
+def get_required(_request, key, is_json: bool = True) -> Any:
+    if is_json and key in request.json:
+        return request.json[key]
+    elif not is_json and key in request.args:
+        return request.args[key]
+    else:
+        raise RuntimeError(f"Missing required key: {key}")
+
+
+def get_optional(_request, key, is_json: bool = True) -> Any:
+    if is_json and key in request.json:
+        return request.json.get(key, None)
+    elif not is_json and key in request.args:
+        return request.args.get(key, None)
+    else:
+        return None
+
+
 class StarshipApi(BaseView):
     route_base = "/api/starship"
     default_view = "health"
@@ -75,129 +136,152 @@ class StarshipApi(BaseView):
         """Get the Airflow Version"""
         return starship_route(get=starship_compat.get_airflow_version)
 
+    # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
     @expose("/env_vars", methods=["GET"])
     @csrf.exempt
-    @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
     def env_vars(self):
         """Get the Environment Variables"""
-        return starship_route(
-            get=starship_compat.get_env_vars,
-        )
+        return starship_route(get=starship_compat.get_env_vars)
 
+    # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_POOL)])
     @expose("/pools", methods=["GET", "POST"])
     @csrf.exempt
-    @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_POOL)])
     def pools(self):
         """Get Pools or set a Pool"""
+
+        def kwargs_fn() -> dict:
+            return (
+                {
+                    "name": get_required(request, "name"),
+                    "slots": get_required(request, "slots"),
+                    "description": get_optional(request, "description"),
+                }
+                if request.method == "POST"
+                else {}
+            )
+
         return starship_route(
             get=starship_compat.get_pools,
             post=starship_compat.set_pool,
-            **{
-                "name": request.json["name"],
-                "slots": request.json["slots"],
-                "description": request.json.get("description", None),
-            }
-            if request.method == "POST"
-            else {},
+            kwargs_fn=kwargs_fn,
         )
 
+    # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_VARIABLE)])
     @expose("/variables", methods=["GET", "POST"])
     @csrf.exempt
-    @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_VARIABLE)])
     def variables(self):
         """Get Variables or set a Variable"""
+
+        def kwargs_fn() -> dict:
+            return (
+                {
+                    "key": get_required(request, "key"),
+                    "val": get_required(request, "val"),
+                    "description": get_optional(request, "description"),
+                }
+                if request.method == "POST"
+                else {}
+            )
+
         return starship_route(
             get=starship_compat.get_variables,
             post=starship_compat.set_variable,
-            **{
-                "key": request.json["key"],
-                "val": request.json["val"],
-                "description": request.json.get("description", None),
-            }
-            if request.method == "POST"
-            else {},
+            kwargs_fn=kwargs_fn,
         )
 
+    # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONNECTION)])
     @expose("/connections", methods=["GET", "POST"])
     @csrf.exempt
-    @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONNECTION)])
     def connections(self):
         """Get Connections or set a Connection"""
+
+        def kwargs_fn() -> dict:
+            return (
+                {
+                    "conn_id": get_required(request, "conn_id"),
+                    "conn_type": get_required(request, "conn_type"),
+                    "host": get_optional(request, "host"),
+                    "port": get_optional(request, "port"),
+                    "schema": get_optional(request, "schema"),
+                    "login": get_optional(request, "login"),
+                    "password": get_optional(request, "password"),
+                    "extra": get_optional(request, "extra"),
+                    "description": get_optional(request, "description"),
+                }
+                if request.method == "POST"
+                else {}
+            )
+
         return starship_route(
             get=starship_compat.get_connections,
             post=starship_compat.set_connection,
-            **{
-                "conn_id": request.json["conn_id"],
-                "conn_type": request.json["conn_type"],
-                "host": request.json.get("host"),
-                "port": request.json.get("port"),
-                "schema": request.json.get("schema"),
-                "login": request.json.get("login"),
-                "password": request.json.get("password"),
-                "extra": request.json.get("extra"),
-                "description": request.json.get("description"),
-            }
-            if request.method == "POST"
-            else {},
+            kwargs_fn=kwargs_fn,
         )
 
+    # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG)])
     @expose("/dags", methods=["GET", "PATCH"])
     @csrf.exempt
-    @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG)])
     def dags(self):
+        def kwargs_fn() -> dict:
+            return (
+                {
+                    "dag_id": get_required(request, "dag_id"),
+                    "is_paused": get_required(request, "is_paused"),
+                }
+                if request.method == "PATCH"
+                else {}
+            )
+
         return starship_route(
             get=starship_compat.get_dags,
             patch=starship_compat.set_dag_is_paused,
-            **{
-                "dag_id": request.json["dag_id"],
-                "is_paused": request.json["is_paused"],
-            }
-            if request.method == "PATCH"
-            else {},
+            kwargs_fn=kwargs_fn,
         )
 
+    @staticmethod
+    def _get_dag_id_limit_offset(kwargs):
+        if request.method == "GET":
+            kwargs["dag_id"] = get_required(request, "dag_id", is_json=False)
+
+            # Limit is the number of rows to return.
+            kwargs["limit"] = get_optional(request, "limit", is_json=False)
+
+            # Offset is the number of rows in the result set to skip before beginning to return rows.
+            kwargs["offset"] = get_optional(request, "offset", is_json=False)
+        return kwargs
+
+    # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG_RUN)])
     @expose("/dag_runs", methods=["GET", "POST"])
     @csrf.exempt
-    @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG_RUN)])
     def dag_runs(self):
-        kwargs = {}
-        if request.method == "GET":
-            kwargs["dag_id"] = request.args["dag_id"]
-            if "limit" in request.args:
-                """Limit is the number of rows to return."""
-                kwargs["limit"] = request.args.get("limit")
-            if "offset" in request.args:
-                """Offset is the number of rows in the result set to skip before beginning to return rows."""
-                kwargs["offset"] = request.args.get("offset")
-        if request.method == "POST":
-            kwargs["dag_runs"] = request.json["dag_runs"]
+        def kwargs_fn() -> dict:
+            kwargs = {}
+            self._get_dag_id_limit_offset(kwargs)
+            if request.method == "POST":
+                kwargs["dag_runs"] = get_required(request, "dag_runs")
+            return kwargs
+
         return starship_route(
             get=starship_compat.get_dag_runs,
             post=starship_compat.set_dag_runs,
-            **kwargs,
+            kwargs_fn=kwargs_fn,
         )
 
+    # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_TASK_INSTANCE)])
     @expose("/task_instances", methods=["GET", "POST"])
     @csrf.exempt
-    @auth.has_access(
-        [(permissions.ACTION_CAN_READ, permissions.RESOURCE_TASK_INSTANCE)]
-    )
     def task_instances(self):
-        kwargs = {}
-        if request.method == "GET":
-            kwargs["dag_id"] = request.args["dag_id"]
-            if "limit" in request.args:
-                """Limit is the number of rows to return."""
-                kwargs["limit"] = request.args.get("limit")
-            if "offset" in request.args:
-                """Offset is the number of rows in the result set to skip before beginning to return rows."""
-                kwargs["offset"] = request.args.get("offset")
-        if request.method == "POST":
-            kwargs["task_instances"] = request.json["task_instances"]
+        def kwargs_fn() -> dict:
+            kwargs = {}
+            self._get_dag_id_limit_offset(kwargs)
+            if request.method == "POST":
+                kwargs["task_instances"] = get_required(request, "task_instances")
+            return kwargs
+
         return starship_route(
             get=starship_compat.get_task_instances,
             post=starship_compat.set_task_instances,
-            **kwargs,
+            kwargs_fn=kwargs_fn,
         )
 
 
@@ -340,14 +424,18 @@ class StarshipAirflow(StarshipAirflowSpec):
         from airflow.models import Pool
 
         try:
-            self.session.add(
-                Pool(
-                    pool=name,
-                    slots=slots,
-                    **({"description": description} if description else {}),
-                )
+            pool = Pool(
+                pool=name,
+                slots=slots,
+                **({"description": description} if description else {}),
             )
+            self.session.add(pool)
             self.session.commit()
+            return {
+                "name": pool.pool,
+                "slots": pool.slots,
+                "description": pool.description,
+            }
         except Exception as e:
             self.session.rollback()
             raise e
@@ -489,7 +577,7 @@ class StarshipAirflow(StarshipAirflowSpec):
             self.session.rollback()
             raise e
 
-    def _get_dag_runs(self, dag_id: str, offset: int = 0, limit: int = 10):
+    def get_dag_runs(self, dag_id: str, offset: int = 0, limit: int = 10):
         from sqlalchemy import desc
         from airflow.models import DagRun
 
@@ -500,38 +588,35 @@ class StarshipAirflow(StarshipAirflowSpec):
                 .order_by(desc(DagRun.start_date))
             )
             if offset:
-                query.offset(offset)
-            return query.limit(limit).all()
+                query = query.offset(offset)
+            dag_runs = query.limit(limit).all()
+            dag_run_count = self._get_stats(dag_id)
+            return {
+                "dag_runs": [
+                    {
+                        "dag_id": dag_run.dag_id,
+                        "queued_at": dag_run.queued_at,
+                        "execution_date": dag_run.execution_date,
+                        "start_date": dag_run.start_date,
+                        "end_date": dag_run.end_date,
+                        "state": dag_run.state,
+                        "run_id": dag_run.run_id,
+                        "creating_job_id": dag_run.creating_job_id,
+                        "external_trigger": dag_run.external_trigger,
+                        "run_type": dag_run.run_type,
+                        "conf": dag_run.conf,
+                        "data_interval_start": dag_run.data_interval_start,
+                        "data_interval_end": dag_run.data_interval_end,
+                        "last_scheduling_decision": dag_run.last_scheduling_decision,
+                        "dag_hash": dag_run.dag_hash,
+                    }
+                    for dag_run in dag_runs
+                ],
+                "dag_run_count": dag_run_count["dag_run_count"],
+            }
         except Exception as e:
             self.session.rollback()
             raise e
-
-    def get_dag_runs(self, dag_id: str, offset: int = 0, limit: int = 10):
-        dag_runs = self._get_dag_runs(dag_id, offset, limit)
-        dag_run_count = self._get_stats(dag_id)
-        return {
-            "dag_runs": [
-                {
-                    "dag_id": dag_run.dag_id,
-                    "queued_at": dag_run.queued_at,
-                    "execution_date": dag_run.execution_date,
-                    "start_date": dag_run.start_date,
-                    "end_date": dag_run.end_date,
-                    "state": dag_run.state,
-                    "run_id": dag_run.run_id,
-                    "creating_job_id": dag_run.creating_job_id,
-                    "external_trigger": dag_run.external_trigger,
-                    "run_type": dag_run.run_type,
-                    "conf": dag_run.conf,
-                    "data_interval_start": dag_run.data_interval_start,
-                    "data_interval_end": dag_run.data_interval_end,
-                    "last_scheduling_decision": dag_run.last_scheduling_decision,
-                    "dag_hash": dag_run.dag_hash,
-                }
-                for dag_run in dag_runs
-            ],
-            "dag_run_count": dag_run_count,
-        }
 
     def set_dag_runs(self, dag_runs: list):
         dag_runs = self.insert_directly("dag_run", dag_runs)
@@ -539,42 +624,97 @@ class StarshipAirflow(StarshipAirflowSpec):
         return {"dag_runs": dag_runs, "dag_run_count": stats["dag_run_count"]}
 
     def get_task_instances(self, dag_id: str, offset: int = 0, limit: int = 10):
-        dag_runs = self._get_dag_runs(dag_id, offset, limit)
-        dag_run_count = self._get_stats(dag_id)
-        return {
-            "task_instances": [
-                {
-                    "dag_id": task_instance.dag_id,
-                    "run_id": task_instance.run_id,
-                    "task_id": task_instance.task_id,
-                    "start_date": task_instance.start_date,
-                    "end_date": task_instance.end_date,
-                    "duration": task_instance.duration,
-                    "state": task_instance.state,
-                    "max_tries": task_instance.max_tries,
-                    "hostname": task_instance.hostname,
-                    "unixname": task_instance.unixname,
-                    "job_id": task_instance.job_id,
-                    "pool": task_instance.pool,
-                    "pool_slots": task_instance.pool_slots,
-                    "queue": task_instance.queue,
-                    "priority_weight": task_instance.priority_weight,
-                    "operator": task_instance.operator,
-                    "queued_dttm": task_instance.queued_dttm,
-                    "queued_by_job_id": task_instance.queued_by_job_id,
-                    "pid": task_instance.pid,
-                    "executor_config": task_instance.executor_config,
-                    "external_executor_id": task_instance.external_executor_id,
-                    "trigger_id": task_instance.trigger_id,
-                    "trigger_timeout": task_instance.trigger_timeout,
-                    "next_method": task_instance.next_method,
-                    "next_kwargs": task_instance.next_kwargs,
-                }
-                for dag_run in dag_runs
-                for task_instance in dag_run.task_instances
-            ],
-            "dag_run_count": dag_run_count,
-        }
+        from sqlalchemy import desc
+        from airflow.models import DagRun, TaskInstance
+        from sqlalchemy.orm import load_only
+
+        try:
+            sub_query = (
+                self.session.query(DagRun.run_id)
+                .filter(DagRun.dag_id == dag_id)
+                .order_by(desc(DagRun.start_date))
+                .limit(limit)
+            )
+            if offset:
+                sub_query = sub_query.offset(offset)
+            sub_query = sub_query.subquery()
+            task_instances = (
+                self.session.query(TaskInstance)
+                .filter(DagRun.dag_id == dag_id)
+                .filter(TaskInstance.run_id.in_(sub_query))
+                .options(
+                    load_only(
+                        "dag_id",
+                        "run_id",
+                        "task_id",
+                        "start_date",
+                        "end_date",
+                        "duration",
+                        "state",
+                        "max_tries",
+                        "hostname",
+                        "unixname",
+                        "job_id",
+                        "pool",
+                        "pool_slots",
+                        "queue",
+                        "priority_weight",
+                        "operator",
+                        "queued_dttm",
+                        "queued_by_job_id",
+                        "pid",
+                        # "executor_config",
+                        "external_executor_id",
+                        "trigger_id",
+                        "trigger_timeout",
+                        # "next_method",
+                        # "next_kwargs",
+                    )
+                )
+                .order_by(desc(TaskInstance.start_date))
+                .limit(limit)
+                .all()
+            )
+            dag_run_count = self._get_stats(dag_id)
+            return {
+                "task_instances": [
+                    {
+                        "dag_id": task_instance.dag_id,
+                        "run_id": task_instance.run_id,
+                        "task_id": task_instance.task_id,
+                        "start_date": task_instance.start_date,
+                        "end_date": task_instance.end_date,
+                        "duration": task_instance.duration,
+                        "state": task_instance.state,
+                        "max_tries": task_instance.max_tries,
+                        "hostname": task_instance.hostname,
+                        "unixname": task_instance.unixname,
+                        "job_id": task_instance.job_id,
+                        "pool": task_instance.pool,
+                        "pool_slots": task_instance.pool_slots,
+                        "queue": task_instance.queue,
+                        "priority_weight": task_instance.priority_weight,
+                        "operator": task_instance.operator,
+                        "queued_dttm": task_instance.queued_dttm,
+                        "queued_by_job_id": task_instance.queued_by_job_id,
+                        "pid": task_instance.pid,
+                        # "executor_config": None,
+                        "external_executor_id": task_instance.external_executor_id,
+                        "trigger_id": task_instance.trigger_id,
+                        "trigger_timeout": task_instance.trigger_timeout,
+                        # Exception:
+                        # /airflow/serialization/serialized_objects.py\", line 521, in deserialize
+                        # KeyError: <Encoding.VAR: '__var'>
+                        # "next_method": task_instance.next_method,
+                        # "next_kwargs": task_instance.next_kwargs,
+                    }
+                    for task_instance in task_instances
+                ],
+                "dag_run_count": dag_run_count["dag_run_count"],
+            }
+        except Exception as e:
+            self.session.rollback()
+            raise e
 
     def set_task_instances(self, task_instances: list):
         """These need to be inserted directly to skip TaskInstance.__init__"""
@@ -582,39 +722,32 @@ class StarshipAirflow(StarshipAirflowSpec):
         return {"task_instances": task_instances}
 
     def insert_directly(self, table_name, items):
-        from sqlalchemy.exc import NoSuchTableError
-        from sqlalchemy import Table, MetaData
-        from sqlalchemy.dialects.postgresql import insert
+        from sqlalchemy.exc import InvalidRequestError
+        from sqlalchemy import MetaData
         import pickle
 
-        engine = self.session.get_bind()
-        metadata_obj = MetaData(bind=engine)
+        if not items:
+            return []
+
+        # Clean data before inserting
+        for item in items:
+            # Dropping conf and executor_config because they are pickle objects
+            for k in ["conf", "id", "executor_config"]:
+                if k in item:
+                    if k == "executor_config":
+                        item[k] = pickle.dumps({})
+                    else:
+                        del item[k]
         try:
-            # noinspection DuplicatedCode
-            try:
-                table = Table(
-                    f"airflow.{table_name}", metadata_obj, autoload_with=engine
-                )
-            except NoSuchTableError:
-                table = Table(table_name, metadata_obj, autoload_with=engine)
-            if not items:
-                return []
-
-            for item in items:
-                # Dropping conf and executor_config because they are pickle objects
-                # I can't figure out how to send them
-                for k in ["conf", "id", "conf", "executor_config"]:
-                    if k in item:
-                        if k == "executor_config":
-                            item[k] = pickle.dumps({})
-                        else:
-                            del item[k]
-
-            with engine.begin() as txn:
-                txn.execute(insert(table).on_conflict_do_nothing(), items)
-            # Unneeded?
+            engine = self.session.get_bind()
+            metadata = MetaData(bind=engine)
+            metadata.reflect(engine, only=[table_name])
+            table = metadata.tables[table_name]
+            self.session.execute(table.insert().values(items))
             self.session.commit()
             return items
+        except (InvalidRequestError, KeyError):
+            return self.insert_directly(f"airflow.{table_name}", items)
         except Exception as e:
             self.session.rollback()
             raise e
