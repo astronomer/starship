@@ -16,6 +16,7 @@ repos:
       - id: debug-statements
       - id: detect-private-key
       - id: name-tests-test
+        exclude: tests/docker_test
       - id: trailing-whitespace
       - id: detect-aws-credentials
         args: ["--allow-missing-credentials"]

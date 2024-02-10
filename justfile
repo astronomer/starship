@@ -18,11 +18,19 @@ install-frontend:
     cd astronomer_starship && npm install
 
 # install backend requirements
-install-backend:
-    pip install -e '.[dev]'
+install-backend EDITABLE="":
+    pip install {{EDITABLE}} '.[dev]'
 
 # Install the project
 install: clean install-frontend install-backend
+
+test-run-container-test IMAGE="apache/airflow:2.3.4":
+    docker run --entrypoint=bash -e DOCKER_TEST=True \
+      -v "$HOME/starship:/usr/local/airflow/starship:rw" \
+      {{IMAGE}} -- \
+      /usr/local/airflow/starship/tests/docker_test/run_container_test.sh \
+      {{IMAGE}}
+
 
 # Test Starship Python API
 test-backend:
@@ -30,10 +38,10 @@ test-backend:
 
 # Test Starship Webapp Frontend
 test-frontend:
-    cd astronomer_starship && vitest run
+    cd astronomer_starship && npx vitest run
 
 test-frontend-watch:
-    cd astronomer_starship && vitest watch
+    cd astronomer_starship && npx vitest watch
 
 # Run unit tests
 test: test-frontend test-backend
@@ -42,7 +50,7 @@ test-cicd:
   act pull-request -W .github/workflows/checks.yml --container-architecture linux/amd64
 
 lint-frontend:
-    cd astronomer_starship && eslint .. --ext js,jsx --report-unused-disable-directives --max-warnings 0
+    cd astronomer_starship && npx eslint .. --ext js,jsx --report-unused-disable-directives --max-warnings 0
 
 lint-backend:
     ruff -c pyproject.toml
@@ -52,24 +60,30 @@ lint: lint-frontend lint-backend
 
 # Build Starship Webapp Frontend
 build-frontend:
-    cd astronomer_starship && vite build
+    cd astronomer_starship && npx vite build
 
 build-frontend-watch:
-    cd astronomer_starship && vite build --watch
+    cd astronomer_starship && npx vite build --watch
 
 # Build Starship Package
-build-backend:
+build-backend: clean-backend-build
     python -m build
 
 # Build the project
 build: install clean build-backend build-frontend
 
 # Clean up any temp and dependency directories
-clean:
-    rm -rf dist
+clean-backend-build:
+    rm -rf dist dist
     rm -rf *.egg-info
+
+clean-frontend-build:
     rm -rf astronomer_starship/static
+
+clean-frontend-install:
     rm -rf astronomer_starship/node_modules
+
+clean: clean-backend-build clean-frontend-build clean-frontend-install
 
 # Tag as v$(<src>.__version__) and push to GH
 tag: clean
@@ -122,6 +136,7 @@ create-test TESTPATH:
 ## (Start/Restart) a test astro project with Starship installed
 start-test TESTPATH START="start":
     cd {{TESTPATH}} && tar --exclude='node_modules' -czh . | docker build -t test - && astro dev {{START}} -i test
+    just logs-test {{TESTPATH}}
 
 ## (Start/Restart) a test astro project with Starship installed without symlinks
 start-test-no-symlink TESTPATH START="start":
@@ -145,7 +160,7 @@ deploy-test-no-symlink TESTPATH:
 
 # Serve Webapp on localhost
 serve-frontend: build
-    cd astronomer_starship && vite
+    cd astronomer_starship && npx vite
 
 # Update the baseline for detect-secrets / pre-commit
 update-secrets:

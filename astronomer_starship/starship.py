@@ -1,5 +1,4 @@
 import os
-
 import requests
 from airflow.plugins_manager import AirflowPlugin
 from airflow.www.app import csrf
@@ -7,6 +6,10 @@ from flask import Blueprint, request, Response
 from flask_appbuilder import BaseView
 from flask_appbuilder import expose
 
+# INCOMPATIBILITY: Airflow 1.10.15
+# File "/home/airflow/.local/lib/python3.6/site-packages/astronomer_starship/starship.py", line 9, in <module>
+#   from airflow.security import permissions
+# ImportError: cannot import name 'permissions'
 from airflow.security import permissions
 from airflow.www import auth
 
@@ -58,14 +61,14 @@ class Starship(BaseView):
 
         if os.getenv("DEBUG", False):
             print(
-                f"{url=}\n"
-                f"{request_method=}\n"
-                f"{request_headers=}\n"
-                f"{request.data=}\n"
+                f"url={url}\n"
+                f"request_method={request_method}\n"
+                f"request_headers={request_headers}\n"
+                f"request.data={request.data}\n"
                 "==========="
-                f"{response_headers=}\n"
-                f"{response.status_code=}\n"
-                f"{response.content=}\n"
+                f"response_headers={response_headers}\n"
+                f"response.status_code={response.status_code}\n"
+                f"response.content={response.content}\n"
             )
         response_headers["Starship-Proxy-Status"] = "OK"
         return Response(

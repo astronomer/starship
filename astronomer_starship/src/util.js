@@ -75,25 +75,6 @@ export function proxyHeaders(token) {
   };
 }
 
-/** TODO - Deprecated
- * From https://stackoverflow.com/a/62017005
- * Usage:
- *   useEffect(useThrottle(() => console.log(value), 1000), [value]);
- * @param cb
- * @param delay
- * @returns {(function(): (*))|*}
- */
-export function useThrottle(cb, delay) {
-  const options = { leading: true, trailing: false }; // add custom lodash options
-  const cbRef = useRef(cb);
-  // use mutable ref to make useCallback/throttle not depend on `cb` dep
-  useEffect(() => { cbRef.current = cb; });
-  return useCallback(
-    throttle((...args) => cbRef.current(...args), delay, options),
-    [delay],
-  );
-}
-
 /**
  * Fetches data from both the local and remote endpoints
  * @param localRouteUrl
