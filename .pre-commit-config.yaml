@@ -10,6 +10,7 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
+        exclude: tests
       - id: check-added-large-files
       - id: check-merge-conflict
       - id: check-vcs-permalinks
