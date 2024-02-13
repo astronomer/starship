@@ -8,7 +8,7 @@ import { RepeatIcon } from '@chakra-ui/icons';
 import MigrateButton from '../component/MigrateButton';
 import StarshipPage from '../component/StarshipPage';
 import {
-  fetchData, localRoute, proxyHeaders, proxyUrl, remoteRoute,
+  fetchData, localRoute, objectWithoutKey, proxyHeaders, proxyUrl, remoteRoute,
 } from '../util';
 import constants from '../constants';
 
@@ -58,11 +58,7 @@ export default function PoolsPage({ state, dispatch }) {
           route={proxyUrl(state.targetUrl + constants.POOL_ROUTE)}
           headers={proxyHeaders(state.token)}
           existsInRemote={info.row.original.exists}
-          sendData={{
-            name: info.row.getValue('name'),
-            slots: info.row.getValue('slots'),
-            description: info.row.getValue('description'),
-          }}
+          sendData={{ ...objectWithoutKey(info.row.original, 'exists') }}
         />
       ),
     }),

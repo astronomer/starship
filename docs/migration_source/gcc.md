@@ -16,7 +16,7 @@ You must be an Admin to see Plugins on GCC.
 1. Navigate to your [Environments](https://console.cloud.google.com/composer/environments/)
 2. Go to PyPi Packages
     ![PyPi Packages Tab](./gcc_pkg.png)
-3. Click `+ Add Package` and put `astronomer_starship` under `Package name`
+3. Click `+ Add Package` and put `astronomer-starship` under `Package name`
     ![PyPi Packages Tab, Adding a Package](./gcc_pkg_starship.png)
 
 

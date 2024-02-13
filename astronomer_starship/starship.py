@@ -37,7 +37,14 @@ class Starship(BaseView):
             )
 
         request_headers = dict(request.headers)
-        token = request_headers["Starship-Proxy-Token"]
+        token = (
+            request_headers.get("Starship-Proxy-Token")
+            or request_headers.get("STARSHIP-PROXY-TOKEN")
+            or request_headers.get("starship-proxy-token")
+            or request_headers.get("Starship_Proxy_Token")
+            or request_headers.get("STARSHIP_PROXY_TOKEN")
+            or request_headers.get("starship_proxy_token")
+        )
         if not token:
             return Response("No Token Provided", status=400)
         request_headers = dict(

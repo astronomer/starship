@@ -9,7 +9,7 @@ import StarshipPage from '../component/StarshipPage';
 import MigrateButton from '../component/MigrateButton';
 import HiddenValue from '../component/HiddenValue';
 import {
-  fetchData, localRoute, proxyHeaders, proxyUrl, remoteRoute,
+  fetchData, localRoute, objectWithoutKey, proxyHeaders, proxyUrl, remoteRoute,
 } from '../util';
 import constants from '../constants';
 
@@ -72,16 +72,7 @@ export default function ConnectionsPage({ state, dispatch }) {
           route={proxyUrl(state.targetUrl + constants.CONNECTIONS_ROUTE)}
           headers={proxyHeaders(state.token)}
           existsInRemote={info.row.original.exists}
-          sendData={{
-            conn_id: info.row.getValue('conn_id'),
-            conn_type: info.row.getValue('conn_type'),
-            host: info.row.getValue('host'),
-            port: info.row.getValue('port'),
-            schema: info.row.getValue('schema'),
-            login: info.row.getValue('login'),
-            password: info.row.getValue('password'),
-            extra: info.row.getValue('extra'),
-          }}
+          sendData={{ ...objectWithoutKey(info.row.original, 'exists') }}
         />
       ),
     }),

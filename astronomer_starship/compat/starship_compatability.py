@@ -1,3 +1,4 @@
+import json
 import os
 from flask import jsonify
 from sqlalchemy.orm import Session
@@ -105,15 +106,20 @@ def results_to_list_via_attrs(
     ... )
     [{'key': 'key'}]
     """
-    return [
-        {
-            attr: getattr(result, attr_desc["attr"], None)
-            if attr_desc["attr"]
-            else None
-            for attr, attr_desc in attrs.items()
-        }
-        for result in results
-    ]
+    return json.loads(
+        json.dumps(
+            [
+                {
+                    attr: getattr(result, attr_desc["attr"], None)
+                    if attr_desc["attr"]
+                    else None
+                    for attr, attr_desc in attrs.items()
+                }
+                for result in results
+            ],
+            default=str,
+        )
+    )
 
 
 def generic_get_all(session: Session, qualname: str, attrs: dict) -> list:
@@ -367,19 +373,26 @@ class StarshipAirflow:
                 .group_by(DagModel)
                 .all()
             )
-            return [
-                {
-                    attr: (
-                        # e.g. result.DagModel.dag_id
-                        getattr(getattr(result, "DagModel"), attr_desc["attr"], None)
-                        if attr_desc["attr"] is not None
-                        else getattr(result, attr)
-                        # e.g. result.task_count
-                    )
-                    for attr, attr_desc in self.dag_attrs().items()
-                }
-                for result in results
-            ]
+            return json.loads(
+                json.dumps(
+                    [
+                        {
+                            attr: (
+                                # e.g. result.DagModel.dag_id
+                                getattr(
+                                    getattr(result, "DagModel"), attr_desc["attr"], None
+                                )
+                                if attr_desc["attr"] is not None
+                                else getattr(result, attr)
+                                # e.g. result.task_count
+                            )
+                            for attr, attr_desc in self.dag_attrs().items()
+                        }
+                        for result in results
+                    ],
+                    default=str,
+                )
+            )
         except Exception as e:
             self.session.rollback()
             raise e

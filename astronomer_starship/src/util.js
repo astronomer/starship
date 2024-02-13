@@ -1,5 +1,3 @@
-import throttle from 'lodash.throttle';
-import { useCallback, useEffect, useRef } from 'react';
 import axios from 'axios';
 
 /**
@@ -71,7 +69,7 @@ export function proxyUrl(url) {
  */
 export function proxyHeaders(token) {
   return {
-    STARSHIP_PROXY_TOKEN: token,
+    'Starship-Proxy-Token': token,
   };
 }
 
@@ -104,4 +102,9 @@ export function fetchData(
         .catch((err) => errorDispatch(err)); // , dispatch));
     })
     .catch((err) => errorDispatch(err)); // , dispatch));
+}
+
+export function objectWithoutKey(object, key) {
+  const { [key]: _, ...otherKeys } = object;
+  return otherKeys;
 }

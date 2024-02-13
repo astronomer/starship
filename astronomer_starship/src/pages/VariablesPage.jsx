@@ -8,7 +8,7 @@ import { RepeatIcon } from '@chakra-ui/icons';
 import MigrateButton from '../component/MigrateButton';
 import StarshipPage from '../component/StarshipPage';
 import {
-  fetchData, localRoute, proxyHeaders, proxyUrl, remoteRoute,
+  fetchData, localRoute, objectWithoutKey, proxyHeaders, proxyUrl, remoteRoute,
 } from '../util';
 import constants from '../constants';
 
@@ -59,7 +59,7 @@ export default function VariablesPage({ state, dispatch }) {
           route={proxyUrl(state.targetUrl + constants.VARIABLES_ROUTE)}
           headers={proxyHeaders(state.token)}
           existsInRemote={info.row.original.exists}
-          sendData={{ key: info.row.getValue('key'), val: info.row.getValue('val') }}
+          sendData={{ ...objectWithoutKey(info.row.original, 'exists') }}
         />
       ),
     }),
