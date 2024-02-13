@@ -1,0 +1,24 @@
+{% extends base_template %}
+
+{% block head_js %}
+{{ super() }}
+{#<script>#}
+{#  const airflow_version = "{{ airflow_version }}"#}
+{#  const airflow_base_url = "{{ airflow_base_url }}"#}
+{#</script>#}
+<script type="module" crossorigin src="static/assets/index.js"></script>
+{% endblock %}
+
+{% block head_css %}
+{{ super() }}
+<link rel="stylesheet" crossorigin href="static/assets/index.css">
+{% endblock %}
+
+{% block page_title %}
+Starship Migration Plugin
+{% endblock %}
+
+{% block content %}
+<div id="root" class="starship-main"></div>
+{#<iframe id="starship-main" src="{{ url_for('starship.static', filename='index.html') }}"></iframe>#}
+{% endblock %}

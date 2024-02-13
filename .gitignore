@@ -1,5 +1,5 @@
-poetry.lock
 venv
+venv*
 /build/
 __pycache__
 /.idea/
@@ -11,3 +11,7 @@ dist/
 .pytest_cache/
 lib/
 .ruff_cache
+dist
+node_modules
+static
+*.test.log

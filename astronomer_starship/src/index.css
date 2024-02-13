@@ -1,0 +1,45 @@
+.container:has(.row > .starship-main) {
+    padding: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.starship-main {
+    flex-grow: 1;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+}
+
+.starship-page {
+    padding: 15px;
+    border-radius: 1px;
+    width: 95%;
+    margin: 30px;
+}
+
+#is-astro:not(:checked) + .chakra-switch__track {
+    background-color: teal;
+}
+
+#is-astro:checked + .chakra-switch__track {
+    background-color: mediumpurple;
+}
+
+#is-astro + .chakra-switch__track {
+    border-radius: 0;
+}
+
+.data-table {
+    overflow-x: scroll;
+}
+
+#starship-navbar a {
+    margin: 0 1px;
+    border-radius: 0;
+}
+
+#starship-navbar .active {
+    box-shadow: mediumpurple 0 5px 0 0;
+}
