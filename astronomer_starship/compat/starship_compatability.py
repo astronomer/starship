@@ -870,7 +870,7 @@ class StarshipAirflow:
             table = metadata.tables[table_name]
             self.session.execute(table.insert().values(items))
             self.session.commit()
-            return items
+            return [item for item in items if item not in ["executor_config"]]
         except (InvalidRequestError, KeyError):
             return self.insert_directly(f"airflow.{table_name}", items)
         except Exception as e:
