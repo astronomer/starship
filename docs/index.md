@@ -28,9 +28,14 @@ pip install astronomer-starship
 ```
 
 ## Usage
-1) Install Starship to your existing Airflow Deployment
-2) In the Airflow UI, navigate to the new "Astronomer" menu and select the Migration Tool 🚀 option
-3) Follow the prompts to migrate your metadata
+1. Create a Workspace in Astro to hold your Deployments
+2. [Create an Airflow Deployment](https://cloud.astronomer.io/) to match your existing Airflow
+3. Run `astro dev init` with the [Astro CLI](https://docs.astronomer.io/astro/cli/overview) to create a new Airflow Deployment locally
+4. Deploy your DAGs to the new Airflow Deployment with `astro deploy`
+5. [Install Starship](#installation) (and any additional Python Dependencies) to your new Airflow Deployment
+6. [Install Starship](#installation) to your existing Airflow Deployment
+7. In the Airflow UI, navigate to the new `Astronomer` menu and select the `Migration Tool 🚀` option
+8. Follow the prompts to migrate your metadata, or if needed, look at the instructions to use the Operator
 
 ## Compatability
 

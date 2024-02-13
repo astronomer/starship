@@ -1,5 +1,7 @@
 #!/usr/bin/env just --justfile
 set dotenv-load := true
+SRC_DIR := "astronomer_starship"
+DOCS_DIR := "docs"
 VERSION := `echo $(python -c 'from astronomer_starship import __version__; print(__version__)')`
 
 default:
@@ -166,10 +168,14 @@ serve-frontend: build
 update-secrets:
     detect-secrets scan  > .secrets.baseline  # pragma: allowlist secret
 
-# Generate and serve the documentation (or `build`)
-generate-docs CMD="serve":
-    mkdocs {{CMD}}
+# Render and serve documentation locally
+serve-docs:
+    mkdocs serve -w {{DOCS_DIR}} -w {{SRC_DIR}}
+
+# Build documentation locally (likely unnecessary)
+build-docs: clean
+    mkdocs build
 
 # Deploy the documentation to GitHub Pages
-deploy-docs UPSTREAM="origin":
+deploy-docs UPSTREAM="origin": clean
     mkdocs gh-deploy -r {{UPSTREAM}}
