@@ -93,7 +93,7 @@ clean-frontend-install:
 clean: clean-backend-build clean-frontend-build clean-frontend-install
 
 # Tag as v$(<src>.__version__) and push to GH
-tag: clean
+tag:
     # Delete tag if it already exists
     git tag -d v{{VERSION}} || true
     # Tag and push
