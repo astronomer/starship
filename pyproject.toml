@@ -33,8 +33,9 @@ include-package-data = false
 version = { attr = "astronomer_starship.__version__" }
 
 [tool.setuptools.packages.find]
+include = ["astronomer_starship", "astronomer_starship.*"]
 exclude = [
-    "*venv", "*venv.*",
+    "*venv*", "*venv*.*",
     "*tests.*", "*tests",
     "*build", "*build.*",
     "*dist", "*dist.*",

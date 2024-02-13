@@ -61,7 +61,7 @@ lint: lint-frontend lint-backend
 
 
 # Build Starship Webapp Frontend
-build-frontend:
+build-frontend: clean-frontend-build
     cd astronomer_starship && npx vite build
 
 build-frontend-watch:
@@ -72,7 +72,7 @@ build-backend: clean-backend-build
     python -m build
 
 # Build the project
-build: install clean build-backend build-frontend
+build: install clean build-frontend build-backend
 
 # Clean up any temp and dependency directories
 clean-backend-build:
@@ -100,7 +100,7 @@ deploy-tag: tag
 deploy: deploy-tag
 
 # Upload to TestPyPi for testing (note: you can only use each version once)
-upload-testpypi: build install clean
+upload-testpypi: clean install build
     python -m twine check dist/*
     TWINE_USER=${TWINE_USER} TWINE_PASS=${TWINE_PASS} python -m twine upload --repository testpypi dist/*
 
