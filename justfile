@@ -38,6 +38,9 @@ test-run-container-test IMAGE="apache/airflow:2.3.4":
 test-backend:
     pytest -c pyproject.toml
 
+test-backend-with-coverage:
+    pytest -c pyproject.toml --cov=./ --cov-report=xml
+
 # Test Starship Webapp Frontend
 test-frontend:
     cd astronomer_starship && npx vitest run
@@ -47,6 +50,8 @@ test-frontend-watch:
 
 # Run unit tests
 test: test-frontend test-backend
+
+test-with-coverage: test-frontend test-backend-with-coverage
 
 test-cicd:
   act pull-request -W .github/workflows/checks.yml --container-architecture linux/amd64
