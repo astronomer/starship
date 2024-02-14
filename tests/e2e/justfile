@@ -1,0 +1,20 @@
+#!/usr/bin/env just --justfile
+
+mwaa_create NAME="mwaa":
+    aws cloudformation create-stack --stack-name {{NAME}} --template-body file://mwaa.yaml --capabilities CAPABILITY_IAM
+
+mwaa_destroy NAME="mwaa":
+    aws cloudformation delete-stack --stack-name {{NAME}}
+
+mwaa_upload BUCKET="mwaa-environmentbucket-t5uda12zvurr":
+    aws s3 cp requirements.txt s3://{{BUCKET}}/requirements.txt
+
+gcc_permission NAME="composer" REGION="us-central1" USER:
+  gcloud composer environments run {{NAME}} --location {{REGION}} users add-role -- -e {{USER}} -r Admin
+
+gcc_webserver_restart NAME="composer" REGION="us-central1":
+    gcloud beta composer environments restart-web-server {{NAME}} --location {{REGION}}
+
+create_astro_deployment NAME="mwaa" VERSION PATH:
+    astro deployment create -n {{NAME}} -v {{VERSION}}
+    cd {{PATH}} && astro dev init
