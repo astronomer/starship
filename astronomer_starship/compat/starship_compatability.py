@@ -492,6 +492,11 @@ class StarshipAirflow:
                 "methods": [("POST", True)],
                 "test_value": "dag_0",
             },
+            "run_id": {
+                "attr": "run_id",
+                "methods": [("POST", True)],
+                "test_value": "manual__1970-01-01T00:00:00+00:00",
+            },
             "queued_at": {
                 "attr": "queued_at",
                 "methods": [("POST", False)],
@@ -516,11 +521,6 @@ class StarshipAirflow:
                 "attr": "state",
                 "methods": [("POST", False)],
                 "test_value": "SUCCESS",
-            },
-            "run_id": {
-                "attr": "run_id",
-                "methods": [("POST", True)],
-                "test_value": "manual__1970-01-01T00:00:00+00:00",
             },
             "creating_job_id": {
                 "attr": "creating_job_id",

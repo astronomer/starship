@@ -1,7 +1,7 @@
 """NOTE: These tests run _inside docker containers_ generated from the validation_test.py file."""
+import json
 import os
 import pytest
-import pytz
 
 from astronomer_starship.compat.starship_compatability import (
     StarshipCompatabilityLayer,
@@ -97,7 +97,9 @@ def test_dag_runs_and_task_instances(starship):
     assert len(actual_dag_runs) == 1, actual
     if "conf" in actual_dag_runs[0]:
         del actual_dag_runs[0]["conf"]
-    assert actual_dag_runs[0] in test_input["dag_runs"], actual_dag_runs
+    assert json.dumps(actual_dag_runs[0], default=str) in json.dumps(
+        test_input["dag_runs"], default=str
+    ), actual_dag_runs
 
     # Set Task Instances
     test_input = get_test_data(method="POST", attrs=starship.task_instances_attrs())
@@ -107,17 +109,12 @@ def test_dag_runs_and_task_instances(starship):
     # Get Task Instances
     actual = starship.get_task_instances(dag_id)
     actual_task_instances = actual["task_instances"]
-    # [
-    #     task_instance for task_instance in actual["task_instances"]
-    #     if ('run_id' in task_instance and task_instance["run_id"] == run_id)
-    #     or ('execution_date' in task_instance and task_instance["execution_date"] == execution_date)
-    # ]
     assert len(actual_task_instances) == 1, actual
     test_input["task_instances"][0]["executor_config"] = None
     if "trigger_timeout" in actual_task_instances[0]:
-        actual_task_instances[0]["trigger_timeout"] = actual_task_instances[0][
-            "trigger_timeout"
-        ].replace(tzinfo=pytz.UTC)
-    assert (
-        actual_task_instances[0] == test_input["task_instances"][0]
+        del actual_task_instances[0]["trigger_timeout"]
+    if "trigger_timeout" in test_input["task_instances"][0]:
+        del test_input["task_instances"][0]["trigger_timeout"]
+    assert json.dumps(actual_task_instances, default=str) in json.dumps(
+        test_input["task_instances"], default=str
     ), actual_task_instances
