@@ -24,24 +24,15 @@ import PropTypes from 'prop-types';
 import {
   CheckIcon, ExternalLinkIcon, RepeatIcon,
 } from '@chakra-ui/icons';
-import { MdNightlight } from 'react-icons/md';
-import { NavLink } from 'react-router-dom';
-import { IoTelescopeOutline } from 'react-icons/io5';
 import { getTargetUrlFromParts, tokenUrlFromAirflowUrl } from '../util';
 import ValidatedUrlCheckbox from '../component/ValidatedUrlCheckbox';
 
 export default function SetupPage({ state, dispatch }) {
-  const { colorMode, toggleColorMode } = useColorMode();
   return (
     <Box>
       <HStack>
         <Text fontSize="xl">Starship is a utility to migrate Airflow metadata between instances</Text>
         <Spacer />
-        <Button size="sm" leftIcon={<MdNightlight />} onClick={toggleColorMode}>
-          {colorMode === 'light' ? 'Dark' : 'Light'}
-          {' '}
-          Mode
-        </Button>
         <Button
           size="sm"
           leftIcon={<RepeatIcon />}

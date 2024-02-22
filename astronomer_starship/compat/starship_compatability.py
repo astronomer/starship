@@ -153,7 +153,7 @@ def get_test_data(attrs: dict, method: "Union[str, None]" = None) -> "Dict[str, 
     >>> get_test_data(method="PATCH", attrs=StarshipAirflow.dag_attrs())
     {'dag_id': 'dag_0', 'is_paused': False}
     >>> get_test_data(attrs=StarshipAirflow.dag_attrs()) # doctest: +ELLIPSIS
-    {'dag_id': 'dag_0', 'schedule_interval': '@once', 'is_paused': False, ... 'task_count': 0}
+    {'dag_id': 'dag_0', 'schedule_interval': '@once', 'is_paused': False, ... 'dag_run_count': 0}
     """
 
     if method:
@@ -335,7 +335,7 @@ class StarshipAirflow:
                 "test_value": "baz",
             },
             "tags": {
-                "attr": "tags",
+                "attr": None,
                 "methods": [],
                 "test_value": ["bar", "foo"],
             },
@@ -344,51 +344,35 @@ class StarshipAirflow:
                 "methods": [],
                 "test_value": 0,
             },
-            "task_count": {
-                "attr": None,
-                "methods": [],
-                "test_value": 0,
-            },
         }
 
     def get_dags(self):
         """Get all DAGs"""
-        from airflow.models import DagModel, TaskInstance, DagRun
-        from sqlalchemy.sql.functions import count
-        from sqlalchemy import distinct
+        from airflow.models import DagModel
 
         try:
+            fields = [
+                getattr(DagModel, attr_desc["attr"])
+                for attr_desc in self.dag_attrs().values()
+                if attr_desc["attr"] is not None
+            ]
             # py36/sqlalchemy1.3 doesn't like label?
             # noinspection PyUnresolvedReferences
-            results = (
-                self.session.query(
-                    DagModel,
-                    count(distinct(TaskInstance.task_id)).label("task_count"),
-                    count(distinct(DagRun.run_id)).label("dag_run_count"),
-                )
-                .join(
-                    TaskInstance, TaskInstance.dag_id == DagModel.dag_id, isouter=True
-                )
-                .join(DagRun, DagRun.dag_id == DagModel.dag_id, isouter=True)
-                .group_by(DagModel)
-                .all()
-            )
             return json.loads(
                 json.dumps(
                     [
                         {
                             attr: (
-                                # e.g. result.DagModel.dag_id
-                                getattr(
-                                    getattr(result, "DagModel"), attr_desc["attr"], None
-                                )
-                                if attr_desc["attr"] is not None
-                                else getattr(result, attr)
-                                # e.g. result.task_count
+                                self._get_tags(result.dag_id)
+                                if attr == "tags"
+                                else self._get_dag_run_count(result.dag_id)
+                                if attr == "dag_run_count"
+                                else getattr(result, attr_desc["attr"], None)
+                                # e.g. result.dag_id
                             )
                             for attr, attr_desc in self.dag_attrs().items()
                         }
-                        for result in results
+                        for result in self.session.query(*fields).all()
                     ],
                     default=str,
                 )
@@ -413,6 +397,23 @@ class StarshipAirflow:
                 "dag_id": dag_id,
                 "is_paused": is_paused,
             }
+        except Exception as e:
+            self.session.rollback()
+            raise e
+
+    def _get_tags(self, dag_id: str):
+        try:
+            from airflow.models import DagTag
+
+            # noinspection PyTypeChecker
+            return (
+                tag[0]
+                for tag in self.session.query(DagTag.name)
+                .filter(DagTag.dag_id == dag_id)
+                .all()
+            )
+        except ImportError:
+            return []
         except Exception as e:
             self.session.rollback()
             raise e
