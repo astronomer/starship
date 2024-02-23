@@ -628,14 +628,16 @@ Connections, Environment Variables, Pools, and DAG History between two Airflow i
 </code></pre></div>
 <h2 id="usage">Usage</h2>
 <ol>
-<li>Create a Workspace in Astro to hold your Deployments</li>
-<li><a href="https://cloud.astronomer.io/">Create an Airflow Deployment</a> to match your existing Airflow</li>
-<li>Run <code>astro dev init</code> with the <a href="https://docs.astronomer.io/astro/cli/overview">Astro CLI</a> to create a new Airflow Deployment locally</li>
-<li>Deploy your DAGs to the new Airflow Deployment with <code>astro deploy</code></li>
-<li><a href="#installation">Install Starship</a> (and any additional Python Dependencies) to your new Airflow Deployment</li>
+<li>Create a <a href="https://docs.astronomer.io/astro/manage-workspaces">Workspace</a> in <a href="https://cloud.astronomer.io/">Astro</a> or <a href="https://docs.astronomer.io/software">Software</a> to hold Astro Deployments</li>
+<li><a href="https://docs.astronomer.io/astro/create-deployment">Create an Astro Deployment</a> matching the source Airflow deployment configuration as possible</li>
+<li>Run <code>astro dev init</code> with the <a href="https://docs.astronomer.io/astro/cli/overview">Astro CLI</a> to create a <a href="https://docs.astronomer.io/astro/cli/develop-project">Astro Project</a> locally in your terminal</li>
+<li>Add any DAGs to the <code>/dags</code> folder in the Astro Project</li>
+<li>Complete any additional setup required to convert your existing Airflow deployment to an Astro Project</li>
+<li><a href="#installation">Install Starship</a> (and any additional Python Dependencies) to the Astro Project</li>
 <li><a href="#installation">Install Starship</a> to your existing Airflow Deployment</li>
-<li>In the Airflow UI, navigate to the new <code>Astronomer</code> menu and select the <code>Migration Tool 🚀</code> option</li>
-<li>Follow the prompts to migrate your metadata, or if needed, look at the instructions to use the Operator</li>
+<li><a href="https://docs.astronomer.io/astro/cli/astro-deploy">Deploy the Astro Project</a> to the Astro Deployment with <code>astro deploy</code></li>
+<li>In the Airflow UI of the source Airflow deployment, navigate to the new <code>Astronomer</code> menu and select the <code>Migration Tool 🚀</code> option</li>
+<li>Follow the UI prompts to migrate, or if needed, look at the instructions to use the Operator</li>
 </ol>
 <h2 id="compatability">Compatability</h2>
 <table>
@@ -700,7 +702,7 @@ Connections, Environment Variables, Pools, and DAG History between two Airflow i
 <p>This project is an Airflow Plugin that adds custom API routes. Ensure your environments are correctly secured.</p>
 <hr />
 <p><strong>Artwork</strong>
-Orbiter logo <a href="https://thenounproject.com/lorenzo.verdenelli/">by Lorenzo</a> used with permission
+Starship logo <a href="https://thenounproject.com/lorenzo.verdenelli/">by Lorenzo</a> used with permission
 from <a href="https://thenounproject.com/icon/starship-6088295/">The Noun Project</a>
 under <a href="https://creativecommons.org/licenses/by/3.0/us/legalcode">Creative Commons</a>.</p>
 
