@@ -28,7 +28,7 @@ pip install astronomer-starship
 ```
 
 ## Usage
-1. Create a [Workspace](https://docs.astronomer.io/astro/manage-workspaces) in [Astro](https://cloud.astronomer.io/) or a [Software](https://docs.astronomer.io/software) installation to hold Astro Deployments
+1. Create a [Workspace](https://docs.astronomer.io/astro/manage-workspaces) in [Astro](https://cloud.astronomer.io/) or [Software](https://docs.astronomer.io/software) to hold Astro Deployments
 2. [Create an Astro Deployment](https://docs.astronomer.io/astro/create-deployment) matching the source Airflow deployment configuration as possible
 3. Run `astro dev init` with the [Astro CLI](https://docs.astronomer.io/astro/cli/overview) to create a [Astro Project](https://docs.astronomer.io/astro/cli/develop-project) locally in your terminal
 4. Add any DAGs to the `/dags` folder in the Astro Project
