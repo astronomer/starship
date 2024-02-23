@@ -406,12 +406,12 @@ class StarshipAirflow:
             from airflow.models import DagTag
 
             # noinspection PyTypeChecker
-            return (
+            return [
                 tag[0]
                 for tag in self.session.query(DagTag.name)
                 .filter(DagTag.dag_id == dag_id)
                 .all()
-            )
+            ]
         except ImportError:
             return []
         except Exception as e:
