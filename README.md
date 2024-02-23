@@ -20,6 +20,6 @@ Connections, Environment Variables, Pools, and DAG History between two Airflow i
 ---
 
 **Artwork**
-Orbiter logo [by Lorenzo](https://thenounproject.com/lorenzo.verdenelli/) used with permission
+Starship logo [by Lorenzo](https://thenounproject.com/lorenzo.verdenelli/) used with permission
 from [The Noun Project](https://thenounproject.com/icon/starship-6088295/)
 under [Creative Commons](https://creativecommons.org/licenses/by/3.0/us/legalcode).
