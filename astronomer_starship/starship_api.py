@@ -352,7 +352,6 @@ class StarshipApi(BaseView):
                 "owners": "user",
                 "tags": ["tag1", "tag2"],
                 "dag_run_count": 2,
-                "task_count": 3
             },
             ...
         ]

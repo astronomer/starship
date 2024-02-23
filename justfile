@@ -169,6 +169,12 @@ deploy-test-no-symlink TESTPATH:
 serve-frontend: build
     cd astronomer_starship && npx vite
 
+# Restart just the webserver container (e.g. to reload the plugin)
+restart-webserver:
+    docker restart $(docker container ls --filter name=webserver --format="{{{{.ID}}") \
+      && docker logs -f $(docker container ls --filter name=webserver --format="{{{{.ID}}") --since 1m
+
+
 # Update the baseline for detect-secrets / pre-commit
 update-secrets:
     detect-secrets scan  > .secrets.baseline  # pragma: allowlist secret

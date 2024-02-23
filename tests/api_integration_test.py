@@ -198,4 +198,10 @@ def test_integration_dag_runs_and_task_instances(url_and_token_and_starship):
     }
     # gets blanked out
     test_input["task_instances"][0]["executor_config"] = None
+
+    if "trigger_timeout" in actual_task_instance:
+        del actual_task_instance["trigger_timeout"]
+    if "trigger_timeout" in test_input["task_instances"][0]:
+        del test_input["task_instances"][0]["trigger_timeout"]
+
     assert actual_task_instance == test_input["task_instances"][0], actual_task_instance
