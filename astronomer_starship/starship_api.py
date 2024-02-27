@@ -107,7 +107,7 @@ class StarshipApi(BaseView):
 
         ---
 
-        ### `GET /starship/api/health`
+        ### `GET /api/starship/health`
 
         **Parameters:** None
 
@@ -130,7 +130,7 @@ class StarshipApi(BaseView):
 
         ---
 
-        ### `GET /starship/api/airflow_version`
+        ### `GET /api/starship/airflow_version`
 
         **Parameters:** None
 
@@ -150,7 +150,7 @@ class StarshipApi(BaseView):
 
         ---
 
-        ### `GET /starship/api/env_vars`
+        ### `GET /api/starship/env_vars`
 
         **Parameters:** None
 
@@ -179,7 +179,7 @@ class StarshipApi(BaseView):
 
         ---
 
-        ### GET /starship/api/pools
+        ### GET /api/starship/pools
 
         **Parameters:** None
 
@@ -195,7 +195,7 @@ class StarshipApi(BaseView):
         ]
         ```
 
-        ### POST /starship/api/pools
+        ### POST /api/starship/pools
 
         **Parameters:** JSON
 
@@ -227,7 +227,7 @@ class StarshipApi(BaseView):
 
         ---
 
-        ### `GET /starship/api/variable`
+        ### `GET /api/starship/variable`
 
         **Parameters:** None
 
@@ -243,7 +243,7 @@ class StarshipApi(BaseView):
         ]
         ```
 
-        ### `POST /starship/api/variable`
+        ### `POST /api/starship/variable`
 
         **Parameters:** JSON
 
@@ -274,7 +274,7 @@ class StarshipApi(BaseView):
 
         ---
 
-        ### `GET /starship/api/connection`
+        ### `GET /api/starship/connection`
 
         **Parameters:** None
 
@@ -299,7 +299,7 @@ class StarshipApi(BaseView):
         ]
         ```
 
-        ### `POST /starship/api/connection`
+        ### `POST /api/starship/connection`
 
         **Parameters:** JSON
 
@@ -336,7 +336,7 @@ class StarshipApi(BaseView):
 
         ---
 
-        ### `GET /starship/api/dags`
+        ### `GET /api/starship/dags`
 
         **Parameters:** None
 
@@ -357,7 +357,7 @@ class StarshipApi(BaseView):
         ]
         ```
 
-        ### `PATCH /starship/api/dags`
+        ### `PATCH /api/starship/dags`
 
         **Parameters:** JSON
 
@@ -392,7 +392,7 @@ class StarshipApi(BaseView):
 
         ---
 
-        ### `GET /starship/api/dag_runs`
+        ### `GET /api/starship/dag_runs`
 
         **Parameters:** Args
 
@@ -426,7 +426,7 @@ class StarshipApi(BaseView):
         ]
         ```
 
-        ### `POST /starship/api/dag_runs`
+        ### `POST /api/starship/dag_runs`
 
         **Parameters:** JSON
 
@@ -480,7 +480,7 @@ class StarshipApi(BaseView):
 
         ---
 
-        ### `GET /starship/api/task_instances`
+        ### `GET /api/starship/task_instances`
 
         **Parameters:** Args
 
@@ -517,7 +517,7 @@ class StarshipApi(BaseView):
         }
         ```
 
-        ### `POST /starship/api/task_instances`
+        ### `POST /api/starship/task_instances`
 
         **Parameters:** JSON
 
