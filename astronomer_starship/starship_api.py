@@ -30,8 +30,8 @@ def starship_route(
         kwargs = (
             kwargs_fn(
                 request_method=request_method,
-                args=request.args 
-                if request_method in ["GET", "POST", "DELETE"] 
+                args=request.args
+                if request_method in ["GET", "POST", "DELETE"]
                 else {},
                 json=(request.json if request.is_json else {}),
             )
