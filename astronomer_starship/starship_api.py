@@ -458,8 +458,8 @@ class StarshipApi(BaseView):
         | data_interval_start      | >2.1    | date | 1970-01-01T00:00:00+00:00         |
         | data_interval_end        | >2.1    | date | 1970-01-01T00:00:00+00:00         |
         | last_scheduling_decision |         | date | 1970-01-01T00:00:00+00:00         |
-        | dash_hash                |         | str  | ...                               |
-        | clean_number             | >=2.8   | int  | 0                                 |
+        | dag_hash                 |         | str  | ...                               |
+        | clear_number             | >=2.8   | int  | 0                                 |
         """
         return starship_route(
             get=starship_compat.get_dag_runs,
