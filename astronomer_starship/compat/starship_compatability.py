@@ -680,7 +680,7 @@ class StarshipAirflow:
                 "test_value": -1,
             },
             "try_number": {
-                "attr": "try_number",
+                "attr": "_try_number",
                 "methods": [("POST", True)],
                 "test_value": 0,
             },
