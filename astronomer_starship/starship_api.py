@@ -30,9 +30,9 @@ def starship_route(
         kwargs = (
             kwargs_fn(
                 request_method=request_method,
-                args=request.args
-                if request_method in ["GET", "POST", "DELETE"]
-                else {},
+                args=(
+                    request.args if request_method in ["GET", "POST", "DELETE"] else {}
+                ),
                 json=(request.json if request.is_json else {}),
             )
             if kwargs_fn
@@ -404,26 +404,30 @@ class StarshipApi(BaseView):
 
         **Response**:
         ```json
-        [
-            {
-                "dag_id": "dag_0",
-                "queued_at": "1970-01-01T00:00:00+00:00",
-                "execution_date": "1970-01-01T00:00:00+00:00",
-                "start_date": "1970-01-01T00:00:00+00:00",
-                "end_date": "1970-01-01T00:00:00+00:00",
-                "state": "SUCCESS",
-                "run_id": "manual__1970-01-01T00:00:00+00:00",
-                "creating_job_id": 123,
-                "external_trigger": true,
-                "run_type": "manual",
-                "conf": None,
-                "data_interval_start": "1970-01-01T00:00:00+00:00",
-                "data_interval_end": "1970-01-01T00:00:00+00:00",
-                "last_scheduling_decision": "1970-01-01T00:00:00+00:00",
-                "dag_hash": "...."
-            },
-            ...
-        ]
+        {
+            "dag_run_count": 1,
+            "dag_runs":
+                [
+                    {
+                        "dag_id": "dag_0",
+                        "queued_at": "1970-01-01T00:00:00+00:00",
+                        "execution_date": "1970-01-01T00:00:00+00:00",
+                        "start_date": "1970-01-01T00:00:00+00:00",
+                        "end_date": "1970-01-01T00:00:00+00:00",
+                        "state": "SUCCESS",
+                        "run_id": "manual__1970-01-01T00:00:00+00:00",
+                        "creating_job_id": 123,
+                        "external_trigger": true,
+                        "run_type": "manual",
+                        "conf": None,
+                        "data_interval_start": "1970-01-01T00:00:00+00:00",
+                        "data_interval_end": "1970-01-01T00:00:00+00:00",
+                        "last_scheduling_decision": "1970-01-01T00:00:00+00:00",
+                        "dag_hash": "...."
+                    },
+                    ...
+                ]
+        }
         ```
 
         ### `POST /api/starship/dag_runs`
