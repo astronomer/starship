@@ -9,10 +9,6 @@ from airflow.models.baseoperator import BaseOperator
 from airflow.utils.state import DagRunState
 
 
-SOURCE_URL = "XXXXX"
-ASTRO_URL = "XXXXX"
-ASTRO_API_TOKEN = "XXXXX"
-
 DAG_RUNS = "/api/starship/dag_runs"
 TASK_INSTANCES = "/api/starship/task_instances"
 DAGS = "/api/starship/dags"
