@@ -1,9 +1,11 @@
-from typing import Literal
 from logging import getLogger
 import requests
 from requests.adapters import HTTPAdapter
+from typing import Literal
+from textwrap import dedent
 from urllib3.util.retry import Retry
 from urllib.parse import urljoin
+
 from airflow.utils.state import DagRunState
 from airflow.hooks.base import BaseHook
 
@@ -42,7 +44,6 @@ def _request(
 
 
 class StarshipAPIHook(BaseHook):
-
     DAG_RUNS = "/api/starship/dag_runs"
     TASK_INSTANCES = "/api/starship/task_instances"
     DAGS = "/api/starship/dags"
@@ -153,7 +154,6 @@ class StarshipAPIHook(BaseHook):
 
 
 class StarshipDagRunMigrationHook(BaseHook):
-
     def __init__(
         self,
         source_webserver_url: str,
@@ -184,7 +184,10 @@ class StarshipDagRunMigrationHook(BaseHook):
             state = self.source_api_hook.get_latest_dagrun_state(dag_id=dag_id)
             if state not in (DagRunState.FAILED, DagRunState.SUCCESS):
                 logger.info(
-                    f"Latest dagrun for {dag_id} is not not in state {(DagRunState.FAILED, DagRunState.SUCCESS)}. Skipping migration."
+                    dedent(
+                        f"""Latest dagrun for {dag_id} is not not in state
+                    {(DagRunState.FAILED, DagRunState.SUCCESS)}. Skipping migration."""
+                    )
                 )
             else:
                 self.source_api_hook.set_dag_state(
