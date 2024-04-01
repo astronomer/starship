@@ -624,6 +624,7 @@ class StarshipAirflow:
                         "run_id": "manual__1970-01-01T00:00:00+00:00",
                         "task_id": "task_id",
                         "map_index": -1,
+                        "try_number": 0,
                         "start_date": epoch_tz,
                         "end_date": epoch_tz,
                         "duration": 1.0,
@@ -677,6 +678,11 @@ class StarshipAirflow:
                 "attr": "map_index",
                 "methods": [("POST", True)],
                 "test_value": -1,
+            },
+            "try_number": {
+                "attr": "_try_number",
+                "methods": [("POST", True)],
+                "test_value": 0,
             },
             "start_date": {
                 "attr": "start_date",
@@ -1033,6 +1039,11 @@ class StarshipCompatabilityLayer:
     - 2.2 https://github.com/apache/airflow/tree/2.2.5/airflow/models
     - 2.3 https://github.com/apache/airflow/blob/2.3.4/airflow/models
     - 2.4 https://github.com/apache/airflow/blob/2.4.3/airflow/models
+    - 2.5 https://github.com/apache/airflow/tree/2.5.3/airflow/models
+    - 2.6 https://github.com/apache/airflow/tree/2.6.3/airflow/models
+    - 2.7 https://github.com/apache/airflow/tree/2.7.3/airflow/models
+    - 2.8 https://github.com/apache/airflow/tree/2.8.3/airflow/models
+    - 2.9
 
     >>> isinstance(StarshipCompatabilityLayer("2.8.1"), StarshipAirflow28)
     True
