@@ -110,7 +110,7 @@ class StarshipAPIHook(BaseHook):
         self,
         dag_id: str,
         limit: int = 5,
-    ) -> requests.Response:
+    ) -> dict:
         task_instances = urljoin(self.webserver_url, StarshipAPIHook.TASK_INSTANCES)
         resp = _request(
             type="get",
@@ -119,7 +119,20 @@ class StarshipAPIHook(BaseHook):
             headers=self.headers,
             params={"dag_id": dag_id, "limit": limit},
         )
-        return resp
+        return resp.json()
+
+    def set_task_instances(self, task_instances: list[dict]):
+        task_instance_endpoint = urljoin(
+            self.webserver_url, StarshipAPIHook.TASK_INSTANCES
+        )
+        resp = _request(
+            type="post",
+            endpoint=task_instance_endpoint,
+            auth=self.auth,
+            headers=self.headers,
+            json={"task_instances": task_instances},
+        )
+        return resp.json()
 
     def set_dag_state(
         self,
@@ -178,7 +191,15 @@ class StarshipDagRunMigrationHook(BaseHook):
                     dag_id=dag_id,
                     action="pause",
                 )
-                dag_runs = self.source_api_hook.get_dagruns(
-                    dag_id=dag_id,
-                )
-                self.target_api_hook.set_dagruns(dag_runs=dag_runs["dag_runs"])
+                self.get_and_set_dagruns(dag_id)
+                self.get_and_set_task_instances(dag_id)
+
+    def get_and_set_dagruns(self, dag_id):
+        dag_runs = self.source_api_hook.get_dagruns(
+            dag_id=dag_id,
+        )
+        self.target_api_hook.set_dagruns(dag_runs=dag_runs["dag_runs"])
+
+    def get_and_set_task_instances(self, dag_id):
+        task_instances = self.source_api_hook.get_task_instances(dag_id=dag_id)
+        self.target_api_hook.set_task_instances(task_instances=task_instances)
