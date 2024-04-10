@@ -4,13 +4,16 @@ from requests.adapters import HTTPAdapter
 from typing import Literal
 from textwrap import dedent
 from urllib3.util.retry import Retry
-from urllib.parse import urljoin
 
 from airflow.utils.state import DagRunState
 from airflow.hooks.base import BaseHook
 
 
 logger = getLogger(__name__)
+
+
+def urljoin(base: str, endpoint: str) -> str:
+    return "/".join((base.rstrip("/"), endpoint.lstrip("/")))
 
 
 def session_with_retry(retries=3, backoff_factor=2):
@@ -38,15 +41,19 @@ def _request(
     s = session_with_retry(retries=retries, backoff_factor=backoff_factor)
     request_mapping = {"get": s.get, "post": s.post, "put": s.put, "patch": s.patch}
     method = request_mapping.get(type)
+    if auth:
+        auth = tuple(auth)
     resp = method(endpoint, params=params, json=json, auth=auth, headers=headers)
-    logger.info(f"request status {resp.status_code} for endpoint {endpoint}")
+    logger.info(
+        f"request status {resp.status_code} for {type} on endpoint {endpoint} with text {resp.text}"
+    )
     return resp
 
 
 class StarshipAPIHook(BaseHook):
-    DAG_RUNS = "/api/starship/dag_runs"
-    TASK_INSTANCES = "/api/starship/task_instances"
-    DAGS = "/api/starship/dags"
+    DAG_RUNS = "api/starship/dag_runs"
+    TASK_INSTANCES = "api/starship/task_instances"
+    DAGS = "api/starship/dags"
 
     def __init__(
         self,
@@ -61,12 +68,12 @@ class StarshipAPIHook(BaseHook):
         self.headers = headers
 
     # todo: maybe create utility classes?
-    def get_dags(self):
+    def get_dags(self) -> dict:
         dags = urljoin(self.webserver_url, StarshipAPIHook.DAGS)
         resp = _request("get", endpoint=dags, auth=self.auth, headers=self.headers)
         return resp.json()
 
-    def get_dagruns(self, dag_id, limit=5) -> dict:
+    def get_dag_runs(self, dag_id, limit=5) -> dict:
         dagrun_endpoint = urljoin(self.webserver_url, StarshipAPIHook.DAG_RUNS)
         resp = _request(
             type="get",
@@ -77,7 +84,7 @@ class StarshipAPIHook(BaseHook):
         )
         return resp.json()
 
-    def set_dagruns(
+    def set_dag_runs(
         self,
         dag_runs: list[dict],
     ) -> dict:
@@ -92,19 +99,14 @@ class StarshipAPIHook(BaseHook):
         return resp.json()
 
     def get_latest_dagrun_state(self, dag_id) -> str:
-        latest = self.get_dagruns(
-            webserver_url=self.webserver_url,
+        latest = self.get_dag_runs(
             dag_id=dag_id,
-            auth=self.auth,
-            headers=self.headers,
             limit=1,
         )
-        if latest.status_code != 200:
-            raise Exception(
-                f"Retriveing latest dagrun failed with status: {latest.status_code} {latest.text}"
-            )
+        logger.info(f"fetching latest dagrun for {dag_id}")
+        logger.info(f"{latest}")
 
-        return latest[0]["state"]
+        return latest["dag_runs"][0]["state"]
 
     # another reason for class to couple dagrun and task instance retrieval limits
     def get_task_instances(
@@ -122,7 +124,7 @@ class StarshipAPIHook(BaseHook):
         )
         return resp.json()
 
-    def set_task_instances(self, task_instances: list[dict]):
+    def set_task_instances(self, task_instances: list[dict]) -> dict:
         task_instance_endpoint = urljoin(
             self.webserver_url, StarshipAPIHook.TASK_INSTANCES
         )
@@ -139,7 +141,7 @@ class StarshipAPIHook(BaseHook):
         self,
         dag_id: str,
         action=Literal["pause", "unpause"],
-    ):
+    ) -> requests.Response:
         action_dict = {"pause": True, "unpause": False}
         is_paused = action_dict[action]
         payload = {"dag_id": dag_id, "is_paused": is_paused}
@@ -176,9 +178,9 @@ class StarshipDagRunMigrationHook(BaseHook):
     def load_dagruns_to_target(
         self,
         dag_ids: list[str] = None,
-    ):
+    ) -> None:
         if not dag_ids:
-            dag_ids = self.source_api_hook.get_dags()
+            dag_ids = [dag["dag_id"] for dag in self.source_api_hook.get_dags()]
 
         for dag_id in dag_ids:
             state = self.source_api_hook.get_latest_dagrun_state(dag_id=dag_id)
@@ -197,12 +199,14 @@ class StarshipDagRunMigrationHook(BaseHook):
                 self.get_and_set_dagruns(dag_id)
                 self.get_and_set_task_instances(dag_id)
 
-    def get_and_set_dagruns(self, dag_id):
-        dag_runs = self.source_api_hook.get_dagruns(
+    def get_and_set_dagruns(self, dag_id: str) -> None:
+        dag_runs = self.source_api_hook.get_dag_runs(
             dag_id=dag_id,
         )
-        self.target_api_hook.set_dagruns(dag_runs=dag_runs["dag_runs"])
+        self.target_api_hook.set_dag_runs(dag_runs=dag_runs["dag_runs"])
 
-    def get_and_set_task_instances(self, dag_id):
+    def get_and_set_task_instances(self, dag_id: str) -> None:
         task_instances = self.source_api_hook.get_task_instances(dag_id=dag_id)
-        self.target_api_hook.set_task_instances(task_instances=task_instances)
+        self.target_api_hook.set_task_instances(
+            task_instances=task_instances["task_instances"]
+        )

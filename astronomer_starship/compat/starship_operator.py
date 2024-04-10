@@ -9,9 +9,9 @@ class StarshipOperator(BaseOperator):
         self.hook = hook
 
     def execute(self, context):
-        ctx = context["conf"].as_dict()
+        conf = context["conf"]
 
         if not self.hook:
-            self.hook = StarshipDagRunMigrationHook(**ctx)
+            self.hook = StarshipDagRunMigrationHook(**conf)
 
-        return self.hook.load_dagruns_to_target(dag_ids=ctx.get("dag_ids"))
+        return self.hook.load_dagruns_to_target(dag_ids=conf.get("dag_ids"))
