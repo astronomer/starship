@@ -4,6 +4,10 @@ from astronomer_starship.compat.starship_hook import StarshipDagRunMigrationHook
 
 
 class StarshipOperator(BaseOperator):
+    """
+    Migrate dag run and task run history by using this operator as a task in a DAG
+    """
+
     def __init__(self, hook: StarshipDagRunMigrationHook = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.hook = hook

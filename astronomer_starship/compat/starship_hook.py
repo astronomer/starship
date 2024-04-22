@@ -44,9 +44,10 @@ def _request(
     if auth:
         auth = tuple(auth)
     resp = method(endpoint, params=params, json=json, auth=auth, headers=headers)
-    logger.info(
-        f"request status {resp.status_code} for {type} on endpoint {endpoint} with text {resp.text}"
-    )
+    if resp.status_code != 200:
+        logger.info(
+            f"request failed with status {resp.status_code} for {type} on endpoint {endpoint} with text {resp.text}"
+        )
     return resp
 
 
