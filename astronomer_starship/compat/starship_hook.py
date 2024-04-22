@@ -1,7 +1,7 @@
 from logging import getLogger
 import requests
 from requests.adapters import HTTPAdapter
-from typing import Literal
+from typing import Literal, Union
 from textwrap import dedent
 from urllib3.util.retry import Retry
 
@@ -161,8 +161,8 @@ class StarshipDagRunMigrationHook(BaseHook):
         self,
         source_webserver_url: str,
         target_webserver_url: str,
-        source_auth: tuple = None,
-        target_auth: tuple = None,
+        source_auth: Union[tuple, list] = None,
+        target_auth: Union[tuple, list] = None,
         source_headers: dict = None,
         target_headers: dict = None,
         logger_name: str | None = None,
