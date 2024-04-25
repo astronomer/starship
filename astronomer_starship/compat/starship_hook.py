@@ -165,6 +165,7 @@ class StarshipDagRunMigrationHook(BaseHook):
         target_auth: Union[tuple, list] = None,
         source_headers: dict = None,
         target_headers: dict = None,
+        unpause_dags_in_target=False,
         logger_name: str | None = None,
     ):
         super().__init__(logger_name)
@@ -175,6 +176,7 @@ class StarshipDagRunMigrationHook(BaseHook):
         self.target_api_hook = StarshipAPIHook(
             webserver_url=target_webserver_url, auth=target_auth, headers=target_headers
         )
+        self.unpause_dags_in_target = unpause_dags_in_target
 
     def load_dagruns_to_target(
         self,
@@ -199,6 +201,9 @@ class StarshipDagRunMigrationHook(BaseHook):
                 )
                 self.get_and_set_dagruns(dag_id)
                 self.get_and_set_task_instances(dag_id)
+
+                if self.unpause_dags_in_target:
+                    self.target_api_hook.set_dag_state(dag_id=dag_id, action="unpause")
 
     def get_and_set_dagruns(self, dag_id: str) -> None:
         dag_runs = self.source_api_hook.get_dag_runs(
