@@ -5,7 +5,7 @@ DOCS_DIR := "docs"
 VERSION := `echo $(python -c 'from astronomer_starship import __version__; print(__version__)')`
 
 default:
-  @just --choose
+    @just --choose
 
 # Print this help text
 help:
@@ -14,6 +14,7 @@ help:
 # Install pre-commit
 install-precommit:
     pre-commit install
+
 
 # install frontend requirements
 install-frontend:
@@ -26,6 +27,7 @@ install-backend EDITABLE="":
 # Install the project
 install: clean install-frontend install-backend
 
+# Run container test via docker
 test-run-container-test IMAGE="apache/airflow:2.3.4":
     docker run --entrypoint=bash -e DOCKER_TEST=True \
       -v "$HOME/starship:/usr/local/airflow/starship:rw" \
@@ -33,11 +35,11 @@ test-run-container-test IMAGE="apache/airflow:2.3.4":
       /usr/local/airflow/starship/tests/docker_test/run_container_test.sh \
       {{IMAGE}}
 
-
 # Test Starship Python API
 test-backend:
     pytest -c pyproject.toml
 
+# Test Starship Python API with coverage
 test-backend-with-coverage:
     pytest -c pyproject.toml --cov=./ --cov-report=xml
 
@@ -45,30 +47,40 @@ test-backend-with-coverage:
 test-frontend:
     cd astronomer_starship && npx vitest run
 
+# Test the frontend and retest while watching for changes
 test-frontend-watch:
     cd astronomer_starship && npx vitest watch
 
 # Run unit tests
 test: test-frontend test-backend
 
+# Run unit tests with coverage
 test-with-coverage: test-frontend test-backend-with-coverage
 
-test-cicd:
-  act pull-request -W .github/workflows/checks.yml --container-architecture linux/amd64
+# Run integration tests
+test-integration $MANUAL_TESTS="true":
+    @just test
 
+# Test CICD setup with `act`
+test-cicd:
+    act pull-request -W .github/workflows/checks.yml --container-architecture linux/amd64
+
+# Lint the frontend code
 lint-frontend:
     cd astronomer_starship && npx eslint .. --ext js,jsx --report-unused-disable-directives --max-warnings 0
 
+# Lint the backend code
 lint-backend:
     ruff -c pyproject.toml
 
+# Run all linting
 lint: lint-frontend lint-backend
-
 
 # Build Starship Webapp Frontend
 build-frontend: clean-frontend-build
     cd astronomer_starship && npx vite build
 
+# Build the frontend and rebuild while watching for changes
 build-frontend-watch:
     cd astronomer_starship && npx vite build --watch
 
@@ -84,12 +96,15 @@ clean-backend-build:
     rm -rf dist dist
     rm -rf *.egg-info
 
+# Clean artifacts created after building the frontend
 clean-frontend-build:
     rm -rf astronomer_starship/static
 
+# Clean artifacts used by the frontend
 clean-frontend-install:
     rm -rf astronomer_starship/node_modules
 
+# Clean everything
 clean: clean-backend-build clean-frontend-build clean-frontend-install
 
 # Tag as v$(<src>.__version__) and push to GH
@@ -99,9 +114,11 @@ tag:
     # Tag and push
     git tag v{{VERSION}}
 
+# Deploy the project
 deploy-tag: tag
     git push origin v{{VERSION}}
 
+# Deploy the project
 deploy: deploy-tag
 
 # Upload to TestPyPi for testing (note: you can only use each version once)

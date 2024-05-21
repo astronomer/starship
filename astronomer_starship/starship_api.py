@@ -1,5 +1,7 @@
 import json
 from functools import partial
+
+import flask
 from airflow.plugins_manager import AirflowPlugin
 from airflow.www.app import csrf
 from flask import Blueprint, request, jsonify
@@ -91,8 +93,10 @@ def starship_route(
             }
         )
         res.status_code = 500
+
+    # https://github.com/pallets/flask/issues/4659
     # noinspection PyUnboundLocalVariable
-    return res
+    return jsonify(res) if flask.__version__ < "2.2" and isinstance(res, list) else res
 
 
 class StarshipApi(BaseView):
