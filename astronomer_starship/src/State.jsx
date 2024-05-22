@@ -86,7 +86,7 @@ export const reducer = (state, action) => {
         urlDeploymentPart: action.urlDeploymentPart,
         urlOrgPart: action.urlOrgPart,
         isValidUrl: action.urlOrgPart && action.urlDeploymentPart,
-        isSetupComplete: action.urlOrgPart && action.urlDeploymentPart && state.token,
+        isSetupComplete: state.isStarship && state.isAirflow && state.token && action.urlOrgPart && action.urlDeploymentPart,
       };
     }
     case 'set-token': {
@@ -94,7 +94,7 @@ export const reducer = (state, action) => {
         ...state,
         isTokenTouched: true,
         token: action.token,
-        isSetupComplete: action.token && state.isValidUrl,
+        isSetupComplete: state.isStarship && state.isAirflow && action.token && state.isValidUrl,
       };
     }
     case 'toggle-is-astro': {
@@ -103,6 +103,7 @@ export const reducer = (state, action) => {
         isAstro: !state.isAstro,
         isProductSelected: true,
         targetUrl: getTargetUrlFromParts(state.urlOrgPart, state.urlDeploymentPart, !state.isAstro),
+        token: null,
         isSetupComplete: false,
       };
     }
@@ -110,10 +111,18 @@ export const reducer = (state, action) => {
       return { ...state, isProductSelected: true };
     }
     case 'set-is-starship': {
-      return { ...state, isStarship: action.isStarship };
+      return {
+        ...state,
+        isStarship: action.isStarship,
+        isSetupComplete: action.isStarship && state.isAirflow && state.token && state.isValidUrl,
+      };
     }
     case 'set-is-airflow': {
-      return { ...state, isAirflow: action.isAirflow };
+      return {
+        ...state,
+        isAirflow: action.isAirflow,
+        isSetupComplete: action.isAirflow && state.isStarship && state.token && state.isValidUrl,
+      };
     }
     case 'set-software-info': {
       return {
