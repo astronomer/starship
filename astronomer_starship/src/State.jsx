@@ -31,6 +31,12 @@ export const initialState = {
   isProductSelected: false,
   isTokenTouched: false,
   token: null,
+  deploymentId: null,
+
+  // Software Specific:
+  releaseName: null,
+  workspaceId: null,
+
   // ### VARIABLES PAGE ####
   variablesLocalData: [],
   variablesRemoteData: [],
@@ -51,6 +57,7 @@ export const initialState = {
   envRemoteData: [],
   envLoading: false,
   envError: null,
+  organizationId: null,
   // ### DAGS PAGE ####
   dagsData: {},
   dagsLoading: false,
@@ -107,6 +114,14 @@ export const reducer = (state, action) => {
     }
     case 'set-is-airflow': {
       return { ...state, isAirflow: action.isAirflow };
+    }
+    case 'set-software-info': {
+      return {
+        ...state,
+        releaseName: action.releaseName,
+        workspaceId: action.workspaceId,
+        deploymentId: action.deploymentId,
+      };
     }
 
     // ### VARIABLES PAGE ####
@@ -208,6 +223,8 @@ export const reducer = (state, action) => {
         ...state,
         envLocalData: action.envLocalData,
         envRemoteData: action.envRemoteData,
+        organizationId: action.envRemoteData['ASTRO_ORGANIZATION_ID'] || state.organizationId,
+        deploymentId: action.envRemoteData['ASTRO_DEPLOYMENT_ID'] || state.deploymentId,
         envLoading: false,
       };
     }
