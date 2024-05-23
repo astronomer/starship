@@ -32,6 +32,8 @@ export const initialState = {
   isTokenTouched: false,
   token: null,
   deploymentId: null,
+  telescopeOrganizationId: '',
+  telescopePresignedUrl: '',
 
   // Software Specific:
   releaseName: null,
@@ -130,6 +132,20 @@ export const reducer = (state, action) => {
         releaseName: action.releaseName,
         workspaceId: action.workspaceId,
         deploymentId: action.deploymentId,
+      };
+    }
+
+    // ### Telescope ###
+    case 'set-telescope-org': {
+      return {
+        ...state,
+        telescopeOrganizationId: action.telescopeOrganizationId,
+      };
+    }
+    case 'set-telescope-presigned-url': {
+      return {
+        ...state,
+        telescopePresignedUrl: action.telescopePresignedUrl,
       };
     }
 

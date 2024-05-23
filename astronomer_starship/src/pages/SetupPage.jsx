@@ -24,6 +24,8 @@ import PropTypes from 'prop-types';
 import {
   CheckIcon, ExternalLinkIcon, RepeatIcon,
 } from '@chakra-ui/icons';
+import { IoTelescopeOutline } from 'react-icons/io5';
+import { NavLink } from 'react-router-dom';
 import { getHoustonRoute, getTargetUrlFromParts, proxyHeaders, proxyUrl, tokenUrlFromAirflowUrl } from '../util';
 import ValidatedUrlCheckbox from '../component/ValidatedUrlCheckbox';
 import axios from "axios";
@@ -88,6 +90,14 @@ export default function SetupPage({ state, dispatch }) {
       <HStack>
         <Text fontSize="xl">Starship is a utility to migrate Airflow metadata between instances</Text>
         <Spacer />
+        <Button
+          size="sm"
+          leftIcon={<IoTelescopeOutline />}
+          as={NavLink}
+          to="/telescope"
+        >
+          Telescope
+        </Button>
         <Button
           size="sm"
           leftIcon={<RepeatIcon />}

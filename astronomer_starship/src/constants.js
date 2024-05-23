@@ -1,4 +1,5 @@
 const constants = {
+  TELESCOPE_ROUTE: '/api/starship/telescope',
   ENV_VAR_ROUTE: '/api/starship/env_vars',
   POOL_ROUTE: '/api/starship/pools',
   CONNECTIONS_ROUTE: '/api/starship/connections',
