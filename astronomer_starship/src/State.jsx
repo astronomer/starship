@@ -31,6 +31,12 @@ export const initialState = {
   isProductSelected: false,
   isTokenTouched: false,
   token: null,
+  deploymentId: null,
+
+  // Software Specific:
+  releaseName: null,
+  workspaceId: null,
+
   // ### VARIABLES PAGE ####
   variablesLocalData: [],
   variablesRemoteData: [],
@@ -51,6 +57,7 @@ export const initialState = {
   envRemoteData: [],
   envLoading: false,
   envError: null,
+  organizationId: null,
   // ### DAGS PAGE ####
   dagsData: {},
   dagsLoading: false,
@@ -79,7 +86,7 @@ export const reducer = (state, action) => {
         urlDeploymentPart: action.urlDeploymentPart,
         urlOrgPart: action.urlOrgPart,
         isValidUrl: action.urlOrgPart && action.urlDeploymentPart,
-        isSetupComplete: action.urlOrgPart && action.urlDeploymentPart && state.token,
+        isSetupComplete: state.isStarship && state.isAirflow && state.token && action.urlOrgPart && action.urlDeploymentPart,
       };
     }
     case 'set-token': {
@@ -87,7 +94,7 @@ export const reducer = (state, action) => {
         ...state,
         isTokenTouched: true,
         token: action.token,
-        isSetupComplete: action.token && state.isValidUrl,
+        isSetupComplete: state.isStarship && state.isAirflow && action.token && state.isValidUrl,
       };
     }
     case 'toggle-is-astro': {
@@ -96,6 +103,7 @@ export const reducer = (state, action) => {
         isAstro: !state.isAstro,
         isProductSelected: true,
         targetUrl: getTargetUrlFromParts(state.urlOrgPart, state.urlDeploymentPart, !state.isAstro),
+        token: null,
         isSetupComplete: false,
       };
     }
@@ -103,10 +111,26 @@ export const reducer = (state, action) => {
       return { ...state, isProductSelected: true };
     }
     case 'set-is-starship': {
-      return { ...state, isStarship: action.isStarship };
+      return {
+        ...state,
+        isStarship: action.isStarship,
+        isSetupComplete: action.isStarship && state.isAirflow && state.token && state.isValidUrl,
+      };
     }
     case 'set-is-airflow': {
-      return { ...state, isAirflow: action.isAirflow };
+      return {
+        ...state,
+        isAirflow: action.isAirflow,
+        isSetupComplete: action.isAirflow && state.isStarship && state.token && state.isValidUrl,
+      };
+    }
+    case 'set-software-info': {
+      return {
+        ...state,
+        releaseName: action.releaseName,
+        workspaceId: action.workspaceId,
+        deploymentId: action.deploymentId,
+      };
     }
 
     // ### VARIABLES PAGE ####
@@ -131,6 +155,7 @@ export const reducer = (state, action) => {
       return action.error.response.status === 401 ? {
         ...state,
         variablesError: action.error,
+        variablesLoading: false,
         isSetupComplete: false,
         isTokenTouched: false,
         token: null,
@@ -159,6 +184,7 @@ export const reducer = (state, action) => {
       return action.error.response.status === 401 ? {
         ...state,
         connectionsError: action.error,
+        connectionsLoading: false,
         isSetupComplete: false,
         isTokenTouched: false,
         token: null,
@@ -187,6 +213,7 @@ export const reducer = (state, action) => {
       return action.error.response.status === 401 ? {
         ...state,
         poolsError: action.error,
+        poolsLoading: false,
         isSetupComplete: false,
         isTokenTouched: false,
         token: null,
@@ -208,6 +235,8 @@ export const reducer = (state, action) => {
         ...state,
         envLocalData: action.envLocalData,
         envRemoteData: action.envRemoteData,
+        organizationId: action.envRemoteData['ASTRO_ORGANIZATION_ID'] || state.organizationId,
+        deploymentId: action.envRemoteData['ASTRO_DEPLOYMENT_ID'] || state.deploymentId,
         envLoading: false,
       };
     }
@@ -215,6 +244,7 @@ export const reducer = (state, action) => {
       return action.error.response.status === 401 ? {
         ...state,
         envError: action.error,
+        envLoading: false,
         isSetupComplete: false,
         isTokenTouched: false,
         token: null,
@@ -241,6 +271,7 @@ export const reducer = (state, action) => {
       return action.error.response.status === 401 ? {
         ...state,
         dagsError: action.error,
+        dagsLoading: false,
         isSetupComplete: false,
         isTokenTouched: false,
         token: null,
