@@ -19,6 +19,7 @@ import {
 } from './State';
 import './index.css';
 import AppLoading from './component/AppLoading';
+import TelescopePage from './pages/TelescopePage';
 
 export default function App() {
   const [state, dispatch] = useReducer(reducer, initialState, getInitialState);
@@ -118,7 +119,8 @@ export default function App() {
         <Route path="pools" element={<PoolsPage key="pools" state={state} dispatch={dispatch} />} />
         <Route path="env" element={<EnvVarsPage key="env-vars" state={state} dispatch={dispatch} />} />
         <Route path="dags" element={<DAGHistoryPage key="dag-history" state={state} dispatch={dispatch} />} />
-      </Route>,
+        <Route path="telescope" element={<TelescopePage key="telescope" state={state} dispatch={dispatch} />} />
+     </Route>,
     ),
   );
   return (
