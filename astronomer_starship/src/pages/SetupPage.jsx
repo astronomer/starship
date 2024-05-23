@@ -19,20 +19,85 @@ import {
   FormHelperText,
   InputRightElement, useColorMode, Spacer,
 } from '@chakra-ui/react';
-import React from 'react';
+import React, { useEffect } from 'react';
 import PropTypes from 'prop-types';
 import {
   CheckIcon, ExternalLinkIcon, RepeatIcon,
 } from '@chakra-ui/icons';
-import { getTargetUrlFromParts, tokenUrlFromAirflowUrl } from '../util';
+import { IoTelescopeOutline } from 'react-icons/io5';
+import { NavLink } from 'react-router-dom';
+import { getHoustonRoute, getTargetUrlFromParts, proxyHeaders, proxyUrl, tokenUrlFromAirflowUrl } from '../util';
 import ValidatedUrlCheckbox from '../component/ValidatedUrlCheckbox';
+import axios from "axios";
+
+const workspaceDeploymentsQuery = {
+  operationName: "workspaces",
+  query: `
+query workspaces {
+  workspaces {
+    id
+    deployments {
+      id
+      releaseName
+    }
+  }
+}`,
+  variables: {}
+};
 
 export default function SetupPage({ state, dispatch }) {
+  // Get the workspace ID & etc. if it's software and setup is completed
+  useEffect(
+    () => {
+      if (
+        state.isSetupComplete && // setup is completed
+        !state.isAstro &&  // it's Software
+        !(state.releaseName && state.workspaceId && state.deploymentId) // one or more of three isn't set
+      ){
+        axios.post(
+          proxyUrl(getHoustonRoute(state.urlOrgPart)),
+          workspaceDeploymentsQuery,
+          {
+            headers: proxyHeaders(state.token)
+          }
+        )
+        .then((res) => {
+          let found = false;
+          for (let workspace of res.data?.data?.workspaces) {
+            if (found) break;
+            for (let deployment of workspace.deployments) {
+              if (found) break;
+              if (deployment.releaseName === state.urlDeploymentPart) {
+                dispatch({
+                  type: 'set-software-info',
+                  deploymentId: deployment.id,
+                  releaseName: deployment.releaseName,
+                  workspaceId: workspace.id
+                });
+              }
+            }
+          }
+          res.data?.data?.workspaces
+        })
+        .catch((err) => {});
+      }
+    },
+    [state],
+  );
+
   return (
     <Box>
       <HStack>
         <Text fontSize="xl">Starship is a utility to migrate Airflow metadata between instances</Text>
         <Spacer />
+        <Button
+          size="sm"
+          leftIcon={<IoTelescopeOutline />}
+          as={NavLink}
+          to="/telescope"
+        >
+          Telescope
+        </Button>
         <Button
           size="sm"
           leftIcon={<RepeatIcon />}
@@ -125,12 +190,12 @@ export default function SetupPage({ state, dispatch }) {
                     <InputRightAddon>/home</InputRightAddon>
                   </InputGroup>
                 ) : (
-                  // Software URL Template: https://astro.basedomain.com/space-name-1234/airflow/
+                  // Software URL Template: https://deployments.basedomain.com/space-name-1234/airflow/home
                   <InputGroup size="sm">
-                    <InputLeftAddon>https://</InputLeftAddon>
+                    <InputLeftAddon>https://deployments.</InputLeftAddon>
                     <Input
                       className="astroUrl"
-                      placeholder="astro.basedomain.com"
+                      placeholder="basedomain.com"
                       errorBorderColor="red.300"
                       value={state.urlOrgPart}
                       isInvalid={state.isTouched && !state.isValidUrl}
@@ -148,7 +213,7 @@ export default function SetupPage({ state, dispatch }) {
                     <InputRightAddon>/</InputRightAddon>
                     <Input
                       className="astroUrl"
-                      placeholder="space-name-1234"
+                      placeholder="release-name-1234"
                       errorBorderColor="red.300"
                       value={state.urlDeploymentPart}
                       isInvalid={state.isTouched && !state.isValidUrl}

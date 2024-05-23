@@ -3,7 +3,7 @@ import axios from 'axios';
 /**
  * Returns the PAT URL for a given Airflow URL
  * for Astro that's https://cloud.astronomer.io/token
- * for Software (like https://baseurl.domain.com/airflow/...) it's https://baseurl.domain.com/token
+ * for Software (like https://deployments.basedomain.com/airflow/...) it's https://basedomain.com/token
  * @param targetUrl
  * @returns {string}
  *
@@ -11,13 +11,16 @@ import axios from 'axios';
  * 'https://cloud.astronomer.io/token'
  */
 export function tokenUrlFromAirflowUrl(targetUrl) {
+  // Software
   if (!targetUrl.includes('astronomer.run')) {
     const urlBody = targetUrl.split('://')[1];
     if (urlBody) {
       const url = urlBody.split('/', 1)[0] || urlBody;
-      return `https://${url}/token`;
+      const basedomain = url.split('deployments.', 2)[1] || url;
+      return `https://${basedomain}/token`;
     }
   }
+  // Astro
   return 'https://cloud.astronomer.io/token';
 }
 
@@ -31,7 +34,7 @@ export function tokenUrlFromAirflowUrl(targetUrl) {
 export function getTargetUrlFromParts(urlOrgPart, urlDeploymentPart, isAstro) {
   return isAstro
     ? `https://${urlOrgPart}.astronomer.run/${urlDeploymentPart}`
-    : `https://${urlOrgPart}/${urlDeploymentPart}/airflow`;
+    : `https://deployments.${urlOrgPart}/${urlDeploymentPart}/airflow`;
 }
 
 /**
@@ -98,7 +101,16 @@ export function fetchData(
     .then((res) => {
       axios
         .get(proxyUrl(remoteRouteUrl), { headers: proxyHeaders(token) })
-        .then((rRes) => dataDispatch(res, rRes)) // , dispatch))
+        .then((rRes) => {
+          if (
+            res.status === 200 && res.headers['content-type'] === 'application/json' &&
+            rRes.status === 200 && res.headers['content-type'] === 'application/json'
+          ){
+            dataDispatch(res, rRes)
+          } else {
+            errorDispatch('Invalid response');
+          }
+        }) // , dispatch))
         .catch((err) => errorDispatch(err)); // , dispatch));
     })
     .catch((err) => errorDispatch(err)); // , dispatch));
@@ -107,4 +119,25 @@ export function fetchData(
 export function objectWithoutKey(object, key) {
   const { [key]: _, ...otherKeys } = object;
   return otherKeys;
+}
+
+/**
+ * Constructs and returns the URL for the Astro Deployment Environment Variable API route
+ *
+ * @param {string} organizationId
+ * @param {string} deploymentId
+ * @returns {string} - The URL for the Astro Environment Variable service.
+ */
+export function getAstroEnvVarRoute(organizationId, deploymentId) {
+  return `https://api.astronomer.io/platform/v1beta1/organizations/${organizationId}/deployments/${deploymentId}`;
+}
+
+/**
+ * Constructs and returns the URL for a Houston API
+ *
+ * @param {string} basedomain
+ * @returns {string} - The URL for the Houston service.
+ */
+export function getHoustonRoute(basedomain) {
+  return `https://houston.${basedomain}/v1/`;
 }

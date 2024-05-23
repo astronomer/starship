@@ -1,19 +1,67 @@
 import json
 from functools import partial
+
+import flask
+import requests
 from airflow.plugins_manager import AirflowPlugin
 from airflow.www.app import csrf
 from flask import Blueprint, request, jsonify
 from flask_appbuilder import expose, BaseView
+import os
+from typing import Any, Dict, List, Union
+import base64
+import logging
+from json import JSONDecodeError
+
+from astronomer_starship.compat.starship_compatability import (
+    StarshipCompatabilityLayer,
+    get_kwargs_fn,
+)
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from typing import Callable
 
-from astronomer_starship.compat.starship_compatability import (
-    StarshipCompatabilityLayer,
-    get_kwargs_fn,
-)
+
+def get_json_or_clean_str(o: str) -> Union[List[Any], Dict[Any, Any], Any]:
+    """For Aeroscope - Either load JSON (if we can) or strip and split the string, while logging the error"""
+    try:
+        return json.loads(o)
+    except (JSONDecodeError, TypeError) as e:
+        logging.debug(e)
+        logging.debug(o)
+        return o.strip()
+
+
+def clean_airflow_report_output(log_string: str) -> Union[dict, str]:
+    r"""For Aeroscope - Look for the magic string from the Airflow report and then decode the base64 and convert to json
+    Or return output as a list, trimmed and split on newlines
+    >>> clean_airflow_report_output('INFO 123 - xyz - abc\n\n\nERROR - 1234\n%%%%%%%\naGVsbG8gd29ybGQ=')
+    'hello world'
+    >>> clean_airflow_report_output(
+    ...   'INFO 123 - xyz - abc\n\n\nERROR - 1234\n%%%%%%%\neyJvdXRwdXQiOiAiaGVsbG8gd29ybGQifQ=='
+    ... )
+    {'output': 'hello world'}
+    """
+
+    log_lines = log_string.split("\n")
+    enumerated_log_lines = list(enumerate(log_lines))
+    found_i = -1
+    for i, line in enumerated_log_lines:
+        if "%%%%%%%" in line:
+            found_i = i + 1
+            break
+    if found_i != -1:
+        output = base64.decodebytes(
+            "\n".join(log_lines[found_i:]).encode("utf-8")
+        ).decode("utf-8")
+        try:
+            return json.loads(output)
+        except JSONDecodeError:
+            return get_json_or_clean_str(output)
+    else:
+        return get_json_or_clean_str(log_string)
 
 
 def starship_route(
@@ -91,8 +139,10 @@ def starship_route(
             }
         )
         res.status_code = 500
+
+    # https://github.com/pallets/flask/issues/4659
     # noinspection PyUnboundLocalVariable
-    return res
+    return jsonify(res) if flask.__version__ < "2.2" and isinstance(res, list) else res
 
 
 class StarshipApi(BaseView):
@@ -121,6 +171,53 @@ class StarshipApi(BaseView):
             return "OK"
 
         return starship_route(get=ok)
+
+    @expose("/telescope", methods=["GET"])
+    @csrf.exempt
+    def telescope(self):
+        from socket import gethostname
+        import io
+        import runpy
+        from urllib.request import urlretrieve
+        from contextlib import redirect_stdout, redirect_stderr
+        from urllib.error import HTTPError
+        from datetime import datetime, timezone
+
+        aero_version = os.getenv("TELESCOPE_REPORT_RELEASE_VERSION", "latest")
+        a = "airflow_report.pyz"
+        aero_url = (
+            "https://github.com/astronomer/telescope/releases/latest/download/airflow_report.pyz"
+            if aero_version == "latest"
+            else f"https://github.com/astronomer/telescope/releases/download/{aero_version}/airflow_report.pyz"
+        )
+        try:
+            urlretrieve(aero_url, a)
+        except HTTPError as e:
+            raise RuntimeError(
+                f"Error finding specified version:{aero_version} -- Reason:{e.reason}"
+            )
+
+        s = io.StringIO()
+        with redirect_stdout(s), redirect_stderr(s):
+            runpy.run_path(a)
+        report = {
+            "telescope_version": "aeroscope-latest",
+            "report_date": datetime.now(timezone.utc).isoformat()[:10],
+            "organization_name": request.args["organization"],
+            "local": {
+                gethostname(): {
+                    "airflow_report": clean_airflow_report_output(s.getvalue())
+                }
+            },
+        }
+        presigned_url = request.args.get("presigned_url", False)
+        if presigned_url:
+            try:
+                upload = requests.put(presigned_url, data=json.dumps(report))
+                return upload.content, upload.status_code
+            except requests.exceptions.ConnectionError as e:
+                return str(e), 400
+        return report
 
     @expose("/airflow_version", methods=["GET"])
     @csrf.exempt
