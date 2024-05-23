@@ -101,7 +101,16 @@ export function fetchData(
     .then((res) => {
       axios
         .get(proxyUrl(remoteRouteUrl), { headers: proxyHeaders(token) })
-        .then((rRes) => dataDispatch(res, rRes)) // , dispatch))
+        .then((rRes) => {
+          if (
+            res.status === 200 && res.headers['content-type'] === 'application/json' &&
+            rRes.status === 200 && res.headers['content-type'] === 'application/json'
+          ){
+            dataDispatch(res, rRes)
+          } else {
+            errorDispatch('Invalid response');
+          }
+        }) // , dispatch))
         .catch((err) => errorDispatch(err)); // , dispatch));
     })
     .catch((err) => errorDispatch(err)); // , dispatch));

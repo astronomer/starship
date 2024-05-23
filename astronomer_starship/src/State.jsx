@@ -155,6 +155,7 @@ export const reducer = (state, action) => {
       return action.error.response.status === 401 ? {
         ...state,
         variablesError: action.error,
+        variablesLoading: false,
         isSetupComplete: false,
         isTokenTouched: false,
         token: null,
@@ -183,6 +184,7 @@ export const reducer = (state, action) => {
       return action.error.response.status === 401 ? {
         ...state,
         connectionsError: action.error,
+        connectionsLoading: false,
         isSetupComplete: false,
         isTokenTouched: false,
         token: null,
@@ -211,6 +213,7 @@ export const reducer = (state, action) => {
       return action.error.response.status === 401 ? {
         ...state,
         poolsError: action.error,
+        poolsLoading: false,
         isSetupComplete: false,
         isTokenTouched: false,
         token: null,
@@ -241,6 +244,7 @@ export const reducer = (state, action) => {
       return action.error.response.status === 401 ? {
         ...state,
         envError: action.error,
+        envLoading: false,
         isSetupComplete: false,
         isTokenTouched: false,
         token: null,
@@ -267,6 +271,7 @@ export const reducer = (state, action) => {
       return action.error.response.status === 401 ? {
         ...state,
         dagsError: action.error,
+        dagsLoading: false,
         isSetupComplete: false,
         isTokenTouched: false,
         token: null,
