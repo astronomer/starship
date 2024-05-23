@@ -14,6 +14,7 @@ import {
   fetchData, getAstroEnvVarRoute, getHoustonRoute, localRoute, proxyHeaders, proxyUrl, remoteRoute,
 } from '../util';
 import constants from '../constants';
+import HiddenValue from "../component/HiddenValue.jsx";
 
 const getDeploymentsQuery = `query deploymentVariables($deploymentUuid: Uuid!, $releaseName: String!) {
   deploymentVariables(
@@ -156,6 +157,9 @@ EnvVarMigrateButton.defaultProps = {
 };
 
 const columnHelper = createColumnHelper();
+const valueColumn = columnHelper.accessor('value', {
+  id: 'value', cell: (props) => <HiddenValue value={props.getValue()} />,
+});
 
 function setEnvData(localData, remoteData) {
   return Object.entries(localData).map(
@@ -190,7 +194,7 @@ export default function EnvVarsPage({ state, dispatch }) {
   // noinspection JSCheckFunctionSignatures
   const columns = [
     columnHelper.accessor('key'),
-    columnHelper.accessor('value'),
+    valueColumn,
     columnHelper.display({
       id: 'migrate',
       header: 'Migrate',
