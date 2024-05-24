@@ -1,6 +1,8 @@
 from airflow.models.baseoperator import BaseOperator
 
-from astronomer_starship.compat.starship_hook import StarshipDagRunMigrationHook
+from astronomer_starship.providers.starship.hooks.starship import (
+    StarshipDagRunMigrationHook,
+)
 
 
 class StarshipOperator(BaseOperator):
