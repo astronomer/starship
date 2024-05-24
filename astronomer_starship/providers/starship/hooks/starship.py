@@ -1,218 +1,205 @@
-from logging import getLogger
-import requests
-from requests.adapters import HTTPAdapter
-from typing import Literal, Union
-from textwrap import dedent
-from urllib3.util.retry import Retry
+from abc import ABC, abstractmethod
 
-from airflow.utils.state import DagRunState
+from typing import List
+
+from airflow.providers.http.hooks.http import HttpHook
 from airflow.hooks.base import BaseHook
 
+from astronomer_starship.starship_api import starship_compat
 
-logger = getLogger(__name__)
-
-
-def urljoin(base: str, endpoint: str) -> str:
-    return "/".join((base.rstrip("/"), endpoint.lstrip("/")))
-
-
-def session_with_retry(retries=3, backoff_factor=2):
-    sess = requests.Session()
-    retry = Retry(
-        total=retries,
-        backoff_factor=backoff_factor,
-        status_forcelist=[500, 502, 503, 504],
-    )
-    sess.mount("http://", HTTPAdapter(max_retries=retry))
-    sess.mount("https://", HTTPAdapter(max_retries=retry))
-    return sess
+POOLS_ROUTE = "/api/starship/pools"
+CONNECTIONS_ROUTE = "/api/starship/connections"
+VARIABLES_ROUTE = "/api/starship/variables"
+DAGS_ROUTE = "/api/starship/dags"
+DAG_RUNS_ROUTE = "/api/starship/dag_runs"
+TASK_INSTANCES_ROUTE = "/api/starship/task_instances"
 
 
-def _request(
-    type: Literal["get", "post", "put", "patch"],
-    endpoint,
-    auth=None,
-    json=None,
-    params=None,
-    headers=None,
-    retries=3,
-    backoff_factor=2,
-):
-    s = session_with_retry(retries=retries, backoff_factor=backoff_factor)
-    request_mapping = {"get": s.get, "post": s.post, "put": s.put, "patch": s.patch}
-    method = request_mapping.get(type)
-    if auth:
-        auth = tuple(auth)
-    resp = method(endpoint, params=params, json=json, auth=auth, headers=headers)
-    if resp.status_code != 200:
-        logger.info(
-            f"request failed with status {resp.status_code} for {type} on endpoint {endpoint} with text {resp.text}"
-        )
-    return resp
+class StarshipHook(ABC):
+    @abstractmethod
+    def get_variables(self):
+        pass
+
+    @abstractmethod
+    def set_variable(self, **kwargs):
+        pass
+
+    @abstractmethod
+    def get_pools(self):
+        pass
+
+    @abstractmethod
+    def set_pool(self, **kwargs):
+        pass
+
+    @abstractmethod
+    def get_connections(self):
+        pass
+
+    @abstractmethod
+    def set_connection(self, **kwargs):
+        pass
+
+    @abstractmethod
+    def get_dags(self):
+        pass
+
+    @abstractmethod
+    def set_dag_is_paused(self, dag_id: str, is_paused: bool):
+        pass
+
+    @abstractmethod
+    def get_dag_runs(self, dag_id: str, offset: int = 0, limit: int = 10) -> dict:
+        pass
+
+    @abstractmethod
+    def set_dag_runs(self, dag_runs: list):
+        pass
+
+    @abstractmethod
+    def get_task_instances(self, dag_id: str, offset: int = 0, limit: int = 10):
+        pass
+
+    @abstractmethod
+    def set_task_instances(self, task_instances: list):
+        pass
 
 
-class StarshipAPIHook(BaseHook):
-    DAG_RUNS = "api/starship/dag_runs"
-    TASK_INSTANCES = "api/starship/task_instances"
-    DAGS = "api/starship/dags"
+class StarshipLocalHook(BaseHook, StarshipHook):
+    def get_variables(self):
+        return starship_compat.get_variables()
 
-    def __init__(
-        self,
-        webserver_url,
-        auth=None,
-        headers=None,
-        logger_name: str | None = None,
-    ):
-        super().__init__(logger_name)
-        self.webserver_url = webserver_url
-        self.auth = auth
-        self.headers = headers
+    def set_variable(self, **kwargs):
+        raise RuntimeError("Setting local data is not supported")
 
-    # todo: maybe create utility classes?
+    def get_pools(self):
+        return starship_compat.get_pools()
+
+    def set_pool(self, **kwargs):
+        raise RuntimeError("Setting local data is not supported")
+
+    def set_connection(self, **kwargs):
+        raise RuntimeError("Setting local data is not supported")
+
+    def set_dag_is_paused(self, dag_id: str, is_paused: bool):
+        return starship_compat.set_dag_is_paused(dag_id, is_paused)
+
+    def get_dag_runs(self, dag_id: str, offset: int = 0, limit: int = 10) -> dict:
+        return starship_compat.get_dag_runs(dag_id, limit)
+
+    def set_dag_runs(self, dag_runs: list):
+        raise RuntimeError("Setting local data is not supported")
+
+    def get_task_instances(self, dag_id: str, offset: int = 0, limit: int = 10):
+        return starship_compat.get_task_instances(dag_id, offset, limit)
+
+    def set_task_instances(self, task_instances: list):
+        raise RuntimeError("Setting local data is not supported")
+
     def get_dags(self) -> dict:
-        dags = urljoin(self.webserver_url, StarshipAPIHook.DAGS)
-        resp = _request("get", endpoint=dags, auth=self.auth, headers=self.headers)
-        return resp.json()
+        return starship_compat.get_dags()
 
-    def get_dag_runs(self, dag_id, limit=5) -> dict:
-        dagrun_endpoint = urljoin(self.webserver_url, StarshipAPIHook.DAG_RUNS)
-        resp = _request(
-            type="get",
-            endpoint=dagrun_endpoint,
-            auth=self.auth,
-            headers=self.headers,
-            params={"dag_id": dag_id, "limit": limit},
+
+class StarshipHttpHook(HttpHook, StarshipHook):
+    conn_name_attr = "http_conn_id"
+    default_conn_name = "starship_default"
+    conn_type = "http"
+    hook_name = "HTTP"
+
+    def get_variables(self):
+        return (
+            self.get_conn()
+            .get(self.get_connection(self.http_conn_id).url / VARIABLES_ROUTE)
+            .json()
         )
-        return resp.json()
 
-    def set_dag_runs(
-        self,
-        dag_runs: list[dict],
-    ) -> dict:
-        dagrun_endpoint = urljoin(self.webserver_url, StarshipAPIHook.DAG_RUNS)
-        resp = _request(
-            type="post",
-            endpoint=dagrun_endpoint,
-            auth=self.auth,
-            headers=self.headers,
-            json={"dag_runs": dag_runs},
+    def set_variable(self, **kwargs):
+        return (
+            self.get_conn()
+            .post(
+                self.get_connection(self.http_conn_id).url / VARIABLES_ROUTE,
+                json=kwargs,
+            )
+            .json()
         )
-        return resp.json()
 
-    def get_latest_dagrun_state(self, dag_id) -> str:
-        latest = self.get_dag_runs(
-            dag_id=dag_id,
-            limit=1,
+    def get_pools(self):
+        return (
+            self.get_conn()
+            .get(self.get_connection(self.http_conn_id).url / POOLS_ROUTE)
+            .json()
         )
-        logger.info(f"fetching latest dagrun for {dag_id}")
-        logger.info(f"{latest}")
 
-        return latest["dag_runs"][0]["state"]
-
-    # another reason for class to couple dagrun and task instance retrieval limits
-    def get_task_instances(
-        self,
-        dag_id: str,
-        limit: int = 5,
-    ) -> dict:
-        task_instances = urljoin(self.webserver_url, StarshipAPIHook.TASK_INSTANCES)
-        resp = _request(
-            type="get",
-            endpoint=task_instances,
-            auth=self.auth,
-            headers=self.headers,
-            params={"dag_id": dag_id, "limit": limit},
+    def set_pool(self, **kwargs):
+        return (
+            self.get_conn()
+            .post(self.get_connection(self.http_conn_id).url / POOLS_ROUTE, json=kwargs)
+            .json()
         )
-        return resp.json()
+
+    def set_connection(self, **kwargs):
+        return (
+            self.get_conn()
+            .post(
+                self.get_connection(self.http_conn_id).url / CONNECTIONS_ROUTE,
+                json=kwargs,
+            )
+            .json()
+        )
+
+    def get_dags(self) -> dict:
+        return (
+            self.get_conn()
+            .get(self.get_connection(self.http_conn_id).url / DAGS_ROUTE)
+            .json()
+        )
+
+    def get_dag_runs(self, dag_id: str, offset: int = 0, limit: int = 10) -> dict:
+        return (
+            self.get_conn()
+            .get(
+                self.get_connection(self.http_conn_id).url / DAG_RUNS_ROUTE,
+                params={"dag_id": dag_id, "limit": limit},
+            )
+            .json()
+        )
+
+    def set_dag_runs(self, dag_runs: List[dict]) -> dict:
+        return (
+            self.get_conn()
+            .post(
+                self.get_connection(self.http_conn_id).url / DAG_RUNS_ROUTE,
+                json={"dag_runs": dag_runs},
+            )
+            .json()
+        )
+
+    def get_task_instances(self, dag_id: str, offset: int = 0, limit: int = 10):
+        return (
+            self.get_conn()
+            .get(
+                self.get_connection(self.http_conn_id).url / TASK_INSTANCES_ROUTE,
+                params={"dag_id": dag_id, "limit": limit},
+            )
+            .json()
+        )
 
     def set_task_instances(self, task_instances: list[dict]) -> dict:
-        task_instance_endpoint = urljoin(
-            self.webserver_url, StarshipAPIHook.TASK_INSTANCES
-        )
-        resp = _request(
-            type="post",
-            endpoint=task_instance_endpoint,
-            auth=self.auth,
-            headers=self.headers,
-            json={"task_instances": task_instances},
-        )
-        return resp.json()
-
-    def set_dag_state(
-        self,
-        dag_id: str,
-        action=Literal["pause", "unpause"],
-    ) -> requests.Response:
-        action_dict = {"pause": True, "unpause": False}
-        is_paused = action_dict[action]
-        payload = {"dag_id": dag_id, "is_paused": is_paused}
-        dag_endpoint = urljoin(self.webserver_url, StarshipAPIHook.DAGS)
-        return _request(
-            type="patch",
-            endpoint=dag_endpoint,
-            auth=self.auth,
-            headers=self.headers,
-            json=payload,
+        return (
+            self.get_conn()
+            .post(
+                self.get_connection(self.http_conn_id).url / TASK_INSTANCES_ROUTE,
+                json={"task_instances": task_instances},
+            )
+            .json()
         )
 
-
-class StarshipDagRunMigrationHook(BaseHook):
-    def __init__(
-        self,
-        source_webserver_url: str,
-        target_webserver_url: str,
-        source_auth: Union[tuple, list] = None,
-        target_auth: Union[tuple, list] = None,
-        source_headers: dict = None,
-        target_headers: dict = None,
-        unpause_dags_in_target=False,
-        logger_name: str | None = None,
-    ):
-        super().__init__(logger_name)
-
-        self.source_api_hook = StarshipAPIHook(
-            webserver_url=source_webserver_url, auth=source_auth, headers=source_headers
-        )
-        self.target_api_hook = StarshipAPIHook(
-            webserver_url=target_webserver_url, auth=target_auth, headers=target_headers
-        )
-        self.unpause_dags_in_target = unpause_dags_in_target
-
-    def load_dagruns_to_target(
-        self,
-        dag_ids: list[str] = None,
-    ) -> None:
-        if not dag_ids:
-            dag_ids = [dag["dag_id"] for dag in self.source_api_hook.get_dags()]
-
-        for dag_id in dag_ids:
-            state = self.source_api_hook.get_latest_dagrun_state(dag_id=dag_id)
-            if state not in (DagRunState.FAILED, DagRunState.SUCCESS):
-                logger.info(
-                    dedent(
-                        f"""Latest dagrun for {dag_id} is not not in state
-                    {(DagRunState.FAILED, DagRunState.SUCCESS)}. Skipping migration."""
-                    )
-                )
-            else:
-                self.source_api_hook.set_dag_state(
-                    dag_id=dag_id,
-                    action="pause",
-                )
-                self.get_and_set_dagruns(dag_id)
-                self.get_and_set_task_instances(dag_id)
-
-                if self.unpause_dags_in_target:
-                    self.target_api_hook.set_dag_state(dag_id=dag_id, action="unpause")
-
-    def get_and_set_dagruns(self, dag_id: str) -> None:
-        dag_runs = self.source_api_hook.get_dag_runs(
-            dag_id=dag_id,
-        )
-        self.target_api_hook.set_dag_runs(dag_runs=dag_runs["dag_runs"])
-
-    def get_and_set_task_instances(self, dag_id: str) -> None:
-        task_instances = self.source_api_hook.get_task_instances(dag_id=dag_id)
-        self.target_api_hook.set_task_instances(
-            task_instances=task_instances["task_instances"]
+    def set_dag_is_paused(self, dag_id: str, is_paused: bool):
+        return (
+            self.get_conn()
+            .patch(
+                self.get_connection(self.http_conn_id).url / DAGS_ROUTE,
+                json={"dag_id": dag_id, "is_paused": is_paused},
+            )
+            .json()
         )
