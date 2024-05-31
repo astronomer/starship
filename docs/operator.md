@@ -1,69 +1,80 @@
-The Starship Operator should be used in instances where the Airflow Webserver is unable to correctly host a Plugin.
+# Starship Migration DAG
+The `StarshipAirflowMigrationDAG` can be used to migrate Airflow Variables, Pools, Connections,
+and DAG History from one Airflow instance to another.
 
-The `AstroMigrationOperator` should be used if migrating from a
+The `StarshipAirflowMigrationDAG` should be used in instances where the **source** Airflow Webserver
+is unable to correctly host a Plugin. The Target must still have a functioning Starship Plugin installed,
+be running the same version of Airflow, and have the same set of DAGs deployed.
+
+The `StarshipAirflowMigrationDAG` should be used if migrating from a
 Google Cloud Composer 1 (with Airflow 2.x) or MWAA v2.0.2 environment.
-These environments do not support webserver plugins and will require using the `AstroMigrationOperator`
+These environments do not support webserver plugins and will require using the `StarshipAirflowMigrationDAG`
 to migrate data.
 
 ## Installation
 Add the following line to your `requirements.txt` in your source environment:
 
    ```
-   astronomer-starship==1.2.1
+   astronomer-starship
    ```
+
+## Setup
+Make a connection in Airflow with the following details:
+- **Conn ID**: `starship_default`
+- **Conn Type**: `HTTP`
+- **Host**: the URL of the homepage of Airflow (excluding `/home` on the end of the URL)
+  - For example, if your deployment URL is `https://astronomer.astronomer.run/abcdt4ry/home`, you'll use `https://astronomer.astronomer.run/abcdt4ry`
+- **Schema**: `https`
+- **Extras**: `{"Authorization": "Bearer <token>"}`
 
 ## Usage
 1. Add the following DAG to your source environment:
 
-    ```python title="dags/astronomer_migration_dag.py"
-    from airflow import DAG
+    ```python title="dags/starship_airflow_migration_dag.py"
+    from astronomer_starship.providers.starship.operators.starship import StarshipAirflowMigrationDAG
 
-    from astronomer.starship.operators import AstroMigrationOperator
-    from datetime import datetime
-
-    with DAG(
-    dag_id="astronomer_migration_dag",
-    start_date=datetime(2020, 8, 15),
-    schedule_interval=None,
-    ) as dag:
-
-    AstroMigrationOperator(
-    task_id="export_meta",
-    deployment_url='{{ dag_run.conf["deployment_url"] }}',
-    token='{{ dag_run.conf["astro_token"] }}',
-    )
+    globals()['starship_airflow_migration_dag'] = StarshipAirflowMigrationDAG(http_conn_id="starship_default")
     ```
 
-3. Deploy this DAG to your source Airflow environment, configured as described in the **Configuration** section below
-4. Once the DAG is available in the Airflow UI, click the "Trigger DAG" button, then click "Trigger DAG w/ config", and input the following in the configuration dictionary:
-   - `astro_token`: To retrieve anf Astronomer token, navigate to [cloud.astronomer.io/token](https://cloud.astronomer.io/token) and log in using your Astronomer credentials
-   - `deployment_url`: To retrieve a deployment URL - navigate to the Astronomer Airlow deployment that you'd like to migrate to in the Astronomer UI, click `Open Airflow` and copy the page URL (excluding `/home` on the end of the URL)
-      - For example, if your deployment URL is `https://astronomer.astronomer.run/abcdt4ry/home`, you'll use `https://astronomer.astronomer.run/abcdt4ry`
-   - The config dictionary used when triggering the DAG should be formatted as:
+2. Unpause the DAG in the Airflow UI
+3. Once the DAG successfully runs, your connections, variables, and environment variables should all be migrated to Astronomer
 
-    ```json
-    {
-     "deployment_url": "your-deployment-url",
-     "astro_token": "your-astro-token"
-    }
-    ```
-5. Once the DAG successfully runs, your connections, variables, and environment variables should all be migrated to Astronomer
+## Configuration
 
-### Configuration
+The `StarshipAirflowMigrationDAG` can be configured as follows:
 
-The `AstroMigrationOperator` can be configured as follows:
+```python
+StarshipAirflowMigrationDAG(
+    http_conn_id="starship_default",
+    variables=None,  # None to migrate all, or ["var1", "var2"] to migrate specific items, or empty list to skip all
+    pools=None,  # None to migrate all, or ["pool1", "pool2"] to migrate specific items, or empty list to skip all
+    connections=None,  # None to migrate all, or ["conn1", "conn2"] to migrate specific items, or empty list to skip all
+    dag_ids=None,  # None to migrate all, or ["dag1", "dag2"] to migrate specific items, or empty list to skip all
+)
+```
 
-- `variables_exclude_list`: List the individual Airflow Variables which you **do not** want to be migrated. Any Variables not listed will be migrated to the desination Airflow deployment.
-- `connection_exclude_list`: List the individual Airflow Connections which you **do not** want to be migrated. Any Variables not listed will be migrated to the desination Airflow deployment.
-- `env_include_list`: List the individual Environment Variables which you **do** want to be migrated. Only the Environment Variables listed will be migrated to the desination Airflow deployment. None are migrated by default.
+You can use this DAG to migrate all items, or specific items by providing a list of names.
 
-    ```python
-    AstroMigrationOperator(
-        task_id="export_meta",
-        deployment_url='{{ dag_run.conf["deployment_url"] }}',
-        token='{{ dag_run.conf["astro_token"] }}',
-        variables_exclude_list=["some_var_1"],
-        connection_exclude_list=["some_conn_1"],
-        env_include_list=["FOO", "BAR"],
-    )
-    ```
+You can skip migration by providing an empty list.
+
+## Python API
+
+### Hooks
+
+::: astronomer_starship.providers.starship.hooks.starship
+    options:
+        heading_level: 4
+        show_root_toc_entry: false
+        show_root_heading: false
+        inherited_members: true
+        show_source: false
+
+### Operators, TaskGroups, DAG
+
+::: astronomer_starship.providers.starship.operators.starship
+    options:
+        heading_level: 4
+        show_root_toc_entry: false
+        show_root_heading: false
+        inherited_members: true
+        show_source: false

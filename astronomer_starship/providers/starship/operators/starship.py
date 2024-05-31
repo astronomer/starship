@@ -1,10 +1,4 @@
-"""
-Compatability Notes:
-- @task() is >=AF2.0
-- @task_group is >=AF2.1
-- Dynamic Task Mapping is >=AF2.3
-- Dynamic Task Mapping labelling is >=AF2.9
-"""
+"""Operators, TaskGroups, and DAGs for interacting with the Starship migrations."""
 from datetime import datetime
 from typing import Any, Union, List
 
@@ -21,6 +15,12 @@ from astronomer_starship.providers.starship.hooks.starship import (
     StarshipHttpHook,
 )
 
+# Compatability Notes:
+# - @task() is >=AF2.0
+# - @task_group is >=AF2.1
+# - Dynamic Task Mapping is >=AF2.3
+# - Dynamic Task Mapping labelling is >=AF2.9
+
 
 class StarshipMigrationOperator(BaseOperator):
     def __init__(self, http_conn_id=None, **kwargs):
@@ -30,6 +30,8 @@ class StarshipMigrationOperator(BaseOperator):
 
 
 class StarshipVariableMigrationOperator(StarshipMigrationOperator):
+    """Operator to migrate a single Variable from one Airflow instance to another."""
+
     def __init__(self, variable_key: Union[str, None] = None, **kwargs):
         super().__init__(**kwargs)
         self.variable_key = variable_key
@@ -48,6 +50,7 @@ class StarshipVariableMigrationOperator(StarshipMigrationOperator):
 
 
 def starship_variables_migration(variables: List[str] = None, **kwargs):
+    """TaskGroup to fetch and migrate Variables from one Airflow instance to another."""
     with TaskGroup("variables") as tg:
 
         @task()
@@ -80,6 +83,8 @@ def starship_variables_migration(variables: List[str] = None, **kwargs):
 
 
 class StarshipPoolMigrationOperator(StarshipMigrationOperator):
+    """Operator to migrate a single Pool from one Airflow instance to another."""
+
     def __init__(self, pool_name: Union[str, None] = None, **kwargs):
         super().__init__(**kwargs)
         self.pool_name = pool_name
@@ -98,6 +103,7 @@ class StarshipPoolMigrationOperator(StarshipMigrationOperator):
 
 
 def starship_pools_migration(pools: List[str] = None, **kwargs):
+    """TaskGroup to fetch and migrate Pools from one Airflow instance to another."""
     with TaskGroup("pools") as tg:
 
         @task()
@@ -127,6 +133,8 @@ def starship_pools_migration(pools: List[str] = None, **kwargs):
 
 
 class StarshipConnectionMigrationOperator(StarshipMigrationOperator):
+    """Operator to migrate a single Connection from one Airflow instance to another."""
+
     def __init__(self, connection_id: Union[str, None] = None, **kwargs):
         super().__init__(**kwargs)
         self.connection_id = connection_id
@@ -149,6 +157,7 @@ class StarshipConnectionMigrationOperator(StarshipMigrationOperator):
 
 
 def starship_connections_migration(connections: List[str] = None, **kwargs):
+    """TaskGroup to fetch and migrate Connections from one Airflow instance to another."""
     with TaskGroup("connections") as tg:
 
         @task()
@@ -180,6 +189,8 @@ def starship_connections_migration(connections: List[str] = None, **kwargs):
 
 
 class StarshipDagHistoryMigrationOperator(StarshipMigrationOperator):
+    """Operator to migrate a single DAG from one Airflow instance to another, with it's history."""
+
     def __init__(
         self,
         target_dag_id: str,
@@ -229,6 +240,7 @@ class StarshipDagHistoryMigrationOperator(StarshipMigrationOperator):
 
 
 def starship_dag_history_migration(dag_ids: List[str] = None, **kwargs):
+    """TaskGroup to fetch and migrate DAGs with their history from one Airflow instance to another."""
     with TaskGroup("dag_history") as tg:
 
         @task()
@@ -273,7 +285,7 @@ def starship_dag_history_migration(dag_ids: List[str] = None, **kwargs):
 
 
 # noinspection PyPep8Naming
-def StarshipMigrationDAG(
+def StarshipAirflowMigrationDAG(
     http_conn_id: str,
     variables: List[str] = None,
     pools: List[str] = None,
@@ -281,8 +293,11 @@ def StarshipMigrationDAG(
     dag_ids: List[str] = None,
     **kwargs,
 ):
+    """
+    DAG to fetch and migrate Variables, Pools, Connections, and DAGs with history from one Airflow instance to another.
+    """
     dag = DAG(
-        dag_id="StarshipAirflowMigrationDAG",
+        dag_id="starship_airflow_migration_dag",
         schedule="@once",
         start_date=datetime(1970, 1, 1),
         tags=["migration", "starship"],
@@ -291,32 +306,34 @@ def StarshipMigrationDAG(
         # Starship Migration DAG
         A DAG to migrate Airflow Variables, Pools, Connections, and DAG History from one Airflow instance to another.
 
+        You can use this DAG to migrate all items, or specific items by providing a list of names.
+
+        You can skip migration by providing an empty list.
+
+        ## Setup:
+        Make a connection in Airflow with the following details:
+        - **Conn ID**: `starship_default`
+        - **Conn Type**: `HTTP`
+        - **Host**: the URL of the homepage of Airflow (excluding `/home` on the end of the URL)
+          - For example, if your deployment URL is `https://astronomer.astronomer.run/abcdt4ry/home`, you'll use `https://astronomer.astronomer.run/abcdt4ry`
+        - **Schema**: `https`
+        - **Extras**: `{"Authorization": "Bearer <token>"}`
+
         ## Usage:
         ```python
         from astronomer_starship.providers.starship.operators.starship import (
-            StarshipMigrationDAG,
+            StarshipAirflowMigrationDAG,
         )
 
-        # Make a connection in Airflow with the following details:
-        import os
-
-        os.environ["AIRFLOW_CONN_STARSHIP_DEFAULT"] = (
-            "{"
-            ' "conn_id": "starship_default", '
-            ' "host": "<airflow url>", "port": 443, "schema": "https", '
-            ' "extras": {"Authorization": "Bearer <token>"}'
-            "}"
-        )
-
-        globals()["StarshipAirflowMigrationDAG"] = StarshipMigrationDAG(
+        globals()["starship_airflow_migration_dag"] = StarshipAirflowMigrationDAG(
             http_conn_id="starship_default",
-            variables=["var1", "var2"],  # or None to migrate all, or empty list to skip
-            pools=["pool1", "pool2"],  # or None to migrate all, or empty list to skip
-            connections=["conn1", "conn2"],  # or None to migrate all, or empty list to skip
-            dag_ids=["dag1", "dag2"],  # or None to migrate all, or empty list to skip
+            variables=None,  # None to migrate all, or ["var1", "var2"] to migrate specific items, or empty list to skip all
+            pools=None,  # None to migrate all, or ["pool1", "pool2"] to migrate specific items, or empty list to skip all
+            connections=None,  # None to migrate all, or ["conn1", "conn2"] to migrate specific items, or empty list to skip all
+            dag_ids=None,  # None to migrate all, or ["dag1", "dag2"] to migrate specific items, or empty list to skip all
         )
         ```
-        """,
+        """,  # noqa: E501
     )
     with dag:
         starship_variables_migration(
