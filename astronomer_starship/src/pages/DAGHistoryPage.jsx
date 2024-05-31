@@ -160,7 +160,7 @@ DAGHistoryMigrateButton.defaultProps = {
   isDisabled: false,
 };
 
-function setDagData(localData, remoteData, key = 'dag_id') {
+export function setDagData(localData, remoteData, key = 'dag_id') {
   const output = {};
   localData.forEach((i) => {
     const keyValue = i[key];
