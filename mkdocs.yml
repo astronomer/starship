@@ -6,6 +6,9 @@ site_url: https://astronomer.github.io/starship/
 theme:
     name: material
 
+    logo: starship.svg
+    favicon: starship.png
+
     palette:
     # Palette toggle for light mode
     - media: "(prefers-color-scheme: light)"
@@ -45,6 +48,9 @@ theme:
       - search.suggest
 
 markdown_extensions:
+- toc:
+    permalink: true
+
 - pymdownx.superfences
 - pymdownx.highlight:
     use_pygments: true

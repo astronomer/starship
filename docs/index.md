@@ -17,7 +17,7 @@ Connections, Environment Variables, Pools, and DAG History between two Airflow i
 <p align="center">
   <img
     width="600px" height="200px"
-    src="https://raw.githubusercontent.com/astronomer/starship/main/starship_diagram.svg"
+    src="https://raw.githubusercontent.com/astronomer/starship/main/docs/starship_diagram.svg"
     alt="Logo of Spaceship"
   />
 </p>
