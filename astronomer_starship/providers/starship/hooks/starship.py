@@ -78,128 +78,114 @@ class StarshipLocalHook(BaseHook, StarshipHook):
     def set_pool(self, **kwargs):
         raise RuntimeError("Setting local data is not supported")
 
+    # noinspection PyMethodOverriding
+    def get_connections(self):
+        return starship_compat.get_connections()
+
     def set_connection(self, **kwargs):
-        raise RuntimeError("Setting local data is not supported")
-
-    def set_dag_is_paused(self, dag_id: str, is_paused: bool):
-        return starship_compat.set_dag_is_paused(dag_id, is_paused)
-
-    def get_dag_runs(self, dag_id: str, offset: int = 0, limit: int = 10) -> dict:
-        return starship_compat.get_dag_runs(dag_id, limit)
-
-    def set_dag_runs(self, dag_runs: list):
-        raise RuntimeError("Setting local data is not supported")
-
-    def get_task_instances(self, dag_id: str, offset: int = 0, limit: int = 10):
-        return starship_compat.get_task_instances(dag_id, offset, limit)
-
-    def set_task_instances(self, task_instances: list):
         raise RuntimeError("Setting local data is not supported")
 
     def get_dags(self) -> dict:
         return starship_compat.get_dags()
 
-
-class StarshipHttpHook(HttpHook, StarshipHook):
-    conn_name_attr = "http_conn_id"
-    default_conn_name = "starship_default"
-    conn_type = "http"
-    hook_name = "HTTP"
-
-    def get_variables(self):
-        return (
-            self.get_conn()
-            .get(self.get_connection(self.http_conn_id).url / VARIABLES_ROUTE)
-            .json()
-        )
-
-    def set_variable(self, **kwargs):
-        return (
-            self.get_conn()
-            .post(
-                self.get_connection(self.http_conn_id).url / VARIABLES_ROUTE,
-                json=kwargs,
-            )
-            .json()
-        )
-
-    def get_pools(self):
-        return (
-            self.get_conn()
-            .get(self.get_connection(self.http_conn_id).url / POOLS_ROUTE)
-            .json()
-        )
-
-    def set_pool(self, **kwargs):
-        return (
-            self.get_conn()
-            .post(self.get_connection(self.http_conn_id).url / POOLS_ROUTE, json=kwargs)
-            .json()
-        )
-
-    def set_connection(self, **kwargs):
-        return (
-            self.get_conn()
-            .post(
-                self.get_connection(self.http_conn_id).url / CONNECTIONS_ROUTE,
-                json=kwargs,
-            )
-            .json()
-        )
-
-    def get_dags(self) -> dict:
-        return (
-            self.get_conn()
-            .get(self.get_connection(self.http_conn_id).url / DAGS_ROUTE)
-            .json()
-        )
+    def set_dag_is_paused(self, dag_id: str, is_paused: bool):
+        return starship_compat.set_dag_is_paused(dag_id, is_paused)
 
     def get_dag_runs(self, dag_id: str, offset: int = 0, limit: int = 10) -> dict:
-        return (
-            self.get_conn()
-            .get(
-                self.get_connection(self.http_conn_id).url / DAG_RUNS_ROUTE,
-                params={"dag_id": dag_id, "limit": limit},
-            )
-            .json()
-        )
+        return starship_compat.get_dag_runs(dag_id, offset=offset, limit=limit)
 
-    def set_dag_runs(self, dag_runs: List[dict]) -> dict:
-        return (
-            self.get_conn()
-            .post(
-                self.get_connection(self.http_conn_id).url / DAG_RUNS_ROUTE,
-                json={"dag_runs": dag_runs},
-            )
-            .json()
-        )
+    def set_dag_runs(self, dag_runs: list):
+        raise RuntimeError("Setting local data is not supported")
 
     def get_task_instances(self, dag_id: str, offset: int = 0, limit: int = 10):
-        return (
-            self.get_conn()
-            .get(
-                self.get_connection(self.http_conn_id).url / TASK_INSTANCES_ROUTE,
-                params={"dag_id": dag_id, "limit": limit},
-            )
-            .json()
-        )
+        return starship_compat.get_task_instances(dag_id, offset=offset, limit=limit)
 
-    def set_task_instances(self, task_instances: list[dict]) -> dict:
-        return (
-            self.get_conn()
-            .post(
-                self.get_connection(self.http_conn_id).url / TASK_INSTANCES_ROUTE,
-                json={"task_instances": task_instances},
-            )
-            .json()
-        )
+    def set_task_instances(self, task_instances: list):
+        raise RuntimeError("Setting local data is not supported")
+
+
+class StarshipHttpHook(HttpHook, StarshipHook):
+    def get_variables(self):
+        conn = self.get_conn()
+        url = self.url_from_endpoint(VARIABLES_ROUTE)
+        res = conn.get(url)
+        res.raise_for_status()
+        return res.json()
+
+    def set_variable(self, **kwargs):
+        conn = self.get_conn()
+        url = self.url_from_endpoint(VARIABLES_ROUTE)
+        res = conn.post(url, json=kwargs)
+        res.raise_for_status()
+        return res.json()
+
+    def get_pools(self):
+        conn = self.get_conn()
+        url = self.url_from_endpoint(POOLS_ROUTE)
+        res = conn.get(url)
+        res.raise_for_status()
+        return res.json()
+
+    def set_pool(self, **kwargs):
+        conn = self.get_conn()
+        url = self.url_from_endpoint(POOLS_ROUTE)
+        res = conn.post(url, json=kwargs)
+        res.raise_for_status()
+        return res.json()
+
+    # noinspection PyMethodOverriding
+    def get_connections(self):
+        conn = self.get_conn()
+        url = self.url_from_endpoint(CONNECTIONS_ROUTE)
+        res = conn.get(url)
+        res.raise_for_status()
+        return res.json()
+
+    def set_connection(self, **kwargs):
+        conn = self.get_conn()
+        url = self.url_from_endpoint(CONNECTIONS_ROUTE)
+        res = conn.post(url, json=kwargs)
+        res.raise_for_status()
+        return res.json()
+
+    def get_dags(self) -> dict:
+        conn = self.get_conn()
+        url = self.url_from_endpoint(DAGS_ROUTE)
+        res = conn.get(url)
+        res.raise_for_status()
+        return res.json()
 
     def set_dag_is_paused(self, dag_id: str, is_paused: bool):
-        return (
-            self.get_conn()
-            .patch(
-                self.get_connection(self.http_conn_id).url / DAGS_ROUTE,
-                json={"dag_id": dag_id, "is_paused": is_paused},
-            )
-            .json()
-        )
+        conn = self.get_conn()
+        url = self.url_from_endpoint(DAGS_ROUTE)
+        res = conn.patch(url, json={"dag_id": dag_id, "is_paused": is_paused})
+        res.raise_for_status()
+        return res.json()
+
+    def get_dag_runs(self, dag_id: str, offset: int = 0, limit: int = 10) -> dict:
+        conn = self.get_conn()
+        url = self.url_from_endpoint(DAG_RUNS_ROUTE)
+        res = conn.get(url, params={"dag_id": dag_id, "limit": limit})
+        res.raise_for_status()
+        return res.json()
+
+    def set_dag_runs(self, dag_runs: List[dict]) -> dict:
+        conn = self.get_conn()
+        url = self.url_from_endpoint(DAG_RUNS_ROUTE)
+        res = conn.post(url, json={"dag_runs": dag_runs})
+        res.raise_for_status()
+        return res.json()
+
+    def get_task_instances(self, dag_id: str, offset: int = 0, limit: int = 10):
+        conn = self.get_conn()
+        url = self.url_from_endpoint(TASK_INSTANCES_ROUTE)
+        res = conn.get(url, params={"dag_id": dag_id, "limit": limit})
+        res.raise_for_status()
+        return res.json()
+
+    def set_task_instances(self, task_instances: list[dict]) -> dict:
+        conn = self.get_conn()
+        url = self.url_from_endpoint(TASK_INSTANCES_ROUTE)
+        res = conn.post(url, json={"task_instances": task_instances})
+        res.raise_for_status()
+        return res.json()
