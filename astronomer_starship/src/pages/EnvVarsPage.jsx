@@ -120,6 +120,7 @@ EnvVarMigrateButton.propTypes = {
   route: PropTypes.string.isRequired,
   headers: PropTypes.objectOf(PropTypes.string),
   existsInRemote: PropTypes.bool,
+  isAstro: PropTypes.bool.isRequired,
   // eslint-disable-next-line react/forbid-prop-types
   sendData: PropTypes.object.isRequired,
   deploymentId: PropTypes.string,
@@ -189,6 +190,7 @@ export default function EnvVarsPage({ state, dispatch }) {
             value: info.row.getValue('value'),
             isSecret: false
           }}
+          isAstro={state.isAstro}
           deploymentId={state.deploymentId}
           releaseName={state.releaseName}
          />
