@@ -35,7 +35,6 @@ export default function TelescopePage({ state, dispatch }) {
     setRoute(_route);
     const _filename = `${state.telescopeOrganizationId}.${(new Date()).toISOString().slice(0,10)}.data.json`
     setFilename(_filename);
-    console.log(_route, _filename);
   }, [state]);
   return (
     <Box>
@@ -114,10 +113,7 @@ export default function TelescopePage({ state, dispatch }) {
                   setError(err);
                 };
                 axios.get(route)
-                  .then((res) => {
-                    console.log(res.data);
-                    setIsUploadComplete(true);
-                  })
+                  .then((res) => setIsUploadComplete(true))
                   .catch(errFn)
                   .finally(() => {
                     setIsUploading(false);
