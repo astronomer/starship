@@ -7,11 +7,6 @@ from airflow.plugins_manager import AirflowPlugin
 from airflow.www.app import csrf
 from flask import Blueprint, request, jsonify
 from flask_appbuilder import expose, BaseView
-import os
-from typing import Any, Dict, List, Union
-import base64
-import logging
-from json import JSONDecodeError
 
 from astronomer_starship.compat.starship_compatability import (
     StarshipCompatabilityLayer,
@@ -21,11 +16,14 @@ from astronomer_starship.compat.starship_compatability import (
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Callable
+    from typing import Callable, Any, Dict, List, Union
 
 
 def get_json_or_clean_str(o: str) -> Union[List[Any], Dict[Any, Any], Any]:
     """For Aeroscope - Either load JSON (if we can) or strip and split the string, while logging the error"""
+    from json import JSONDecodeError
+    import logging
+
     try:
         return json.loads(o)
     except (JSONDecodeError, TypeError) as e:
@@ -44,6 +42,8 @@ def clean_airflow_report_output(log_string: str) -> Union[dict, str]:
     ... )
     {'output': 'hello world'}
     """
+    from json import JSONDecodeError
+    import base64
 
     log_lines = log_string.split("\n")
     enumerated_log_lines = list(enumerate(log_lines))
@@ -182,6 +182,7 @@ class StarshipApi(BaseView):
         from contextlib import redirect_stdout, redirect_stderr
         from urllib.error import HTTPError
         from datetime import datetime, timezone
+        import os
 
         aero_version = os.getenv("TELESCOPE_REPORT_RELEASE_VERSION", "latest")
         a = "airflow_report.pyz"
