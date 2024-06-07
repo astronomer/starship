@@ -1,4 +1,19 @@
 # API
+
+## Error Responses
+In the event of an error, the API will return a JSON response with an `error` key
+and an HTTP `status_code`. The `error` key will contain a message describing the error.
+
+| **Type**                          | **Status Code** | **Response Example**                                                                        |
+|-----------------------------------|-----------------|---------------------------------------------------------------------------------------------|
+| **Request kwargs - RuntimeError** | 400             | ```{"error": "..."}```                                                                      |
+| **Request kwargs - Exception**    | 500             | ```{"error": "Unknown Error in kwargs_fn - ..."}```                                         |
+| **Unknown Error**                 | 500             | ```{"error": "Unknown Error", "error_type": ..., "error_message": ..., "kwargs": ...}```    |
+| **`POST` Integrity Error**        | 409             | ```{"error": "Integrity Error (Duplicate Record?)", "error_message": ..., "kwargs": ...}``` |
+| **`POST` Data Error**             | 400             | ```{"error": "Data Error", "error_message": ..., "kwargs": ...}```                          |
+| **`POST` SQL Error**              | 400             | ```{"error": "SQL Error", "error_message": ..., "kwargs": ...}```                           |
+
+
 ## Airflow Version
 ::: astronomer_starship.starship_api.StarshipApi.airflow_version
     options:

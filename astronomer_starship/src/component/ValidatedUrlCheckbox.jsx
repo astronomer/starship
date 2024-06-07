@@ -12,13 +12,29 @@ export default function ValidatedUrlCheckbox({
   useEffect(() => {
     // noinspection JSCheckFunctionSignatures
     axios.get(proxyUrl(url), { headers: proxyHeaders(token) })
-      .then((res) => setValid(res.status === 200))
+      .then((res) => {
+        // Valid if it's a 200, has data, and is JSON
+        const isValid = (
+          res.status === 200 &&
+          res.data &&
+          (res.headers['content-type'] === 'application/json' || res.data === "OK")
+        );
+        setValid(isValid);
+      })
       .catch((err) => {
-        toast({
-          title: err.response?.data?.error || err.response?.data || err.message,
-          status: 'error',
-          isClosable: true,
-        });
+        if (err.response.status === 404) {
+          toast({
+            title: 'Not found',
+            status: 'error',
+            isClosable: true,
+          });
+        } else {
+          toast({
+            title: err.response?.data?.error || err.message || err.response?.data,
+            status: 'error',
+            isClosable: true,
+          });
+        }
         setValid(false);
       })
       .finally(() => setLoading.off());

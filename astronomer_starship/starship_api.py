@@ -2,20 +2,67 @@ import json
 from functools import partial
 
 import flask
+import requests
 from airflow.plugins_manager import AirflowPlugin
 from airflow.www.app import csrf
 from flask import Blueprint, request, jsonify
 from flask_appbuilder import expose, BaseView
 
+from astronomer_starship.compat.starship_compatability import (
+    StarshipCompatabilityLayer,
+    get_kwargs_fn,
+)
+
+from typing import Any, Dict, List, Union
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from typing import Callable
 
-from astronomer_starship.compat.starship_compatability import (
-    StarshipCompatabilityLayer,
-    get_kwargs_fn,
-)
+
+def get_json_or_clean_str(o: str) -> Union[List[Any], Dict[Any, Any], Any]:
+    """For Aeroscope - Either load JSON (if we can) or strip and split the string, while logging the error"""
+    from json import JSONDecodeError
+    import logging
+
+    try:
+        return json.loads(o)
+    except (JSONDecodeError, TypeError) as e:
+        logging.debug(e)
+        logging.debug(o)
+        return o.strip()
+
+
+def clean_airflow_report_output(log_string: str) -> Union[dict, str]:
+    r"""For Aeroscope - Look for the magic string from the Airflow report and then decode the base64 and convert to json
+    Or return output as a list, trimmed and split on newlines
+    >>> clean_airflow_report_output('INFO 123 - xyz - abc\n\n\nERROR - 1234\n%%%%%%%\naGVsbG8gd29ybGQ=')
+    'hello world'
+    >>> clean_airflow_report_output(
+    ...   'INFO 123 - xyz - abc\n\n\nERROR - 1234\n%%%%%%%\neyJvdXRwdXQiOiAiaGVsbG8gd29ybGQifQ=='
+    ... )
+    {'output': 'hello world'}
+    """
+    from json import JSONDecodeError
+    import base64
+
+    log_lines = log_string.split("\n")
+    enumerated_log_lines = list(enumerate(log_lines))
+    found_i = -1
+    for i, line in enumerated_log_lines:
+        if "%%%%%%%" in line:
+            found_i = i + 1
+            break
+    if found_i != -1:
+        output = base64.decodebytes(
+            "\n".join(log_lines[found_i:]).encode("utf-8")
+        ).decode("utf-8")
+        try:
+            return json.loads(output)
+        except JSONDecodeError:
+            return get_json_or_clean_str(output)
+    else:
+        return get_json_or_clean_str(log_string)
 
 
 def starship_route(
@@ -32,9 +79,9 @@ def starship_route(
         kwargs = (
             kwargs_fn(
                 request_method=request_method,
-                args=request.args
-                if request_method in ["GET", "POST", "DELETE"]
-                else {},
+                args=(
+                    request.args if request_method in ["GET", "POST", "DELETE"] else {}
+                ),
                 json=(request.json if request.is_json else {}),
             )
             if kwargs_fn
@@ -125,6 +172,54 @@ class StarshipApi(BaseView):
             return "OK"
 
         return starship_route(get=ok)
+
+    @expose("/telescope", methods=["GET"])
+    @csrf.exempt
+    def telescope(self):
+        from socket import gethostname
+        import io
+        import runpy
+        from urllib.request import urlretrieve
+        from contextlib import redirect_stdout, redirect_stderr
+        from urllib.error import HTTPError
+        from datetime import datetime, timezone
+        import os
+
+        aero_version = os.getenv("TELESCOPE_REPORT_RELEASE_VERSION", "latest")
+        a = "airflow_report.pyz"
+        aero_url = (
+            "https://github.com/astronomer/telescope/releases/latest/download/airflow_report.pyz"
+            if aero_version == "latest"
+            else f"https://github.com/astronomer/telescope/releases/download/{aero_version}/airflow_report.pyz"
+        )
+        try:
+            urlretrieve(aero_url, a)
+        except HTTPError as e:
+            raise RuntimeError(
+                f"Error finding specified version:{aero_version} -- Reason:{e.reason}"
+            )
+
+        s = io.StringIO()
+        with redirect_stdout(s), redirect_stderr(s):
+            runpy.run_path(a)
+        report = {
+            "telescope_version": "aeroscope-latest",
+            "report_date": datetime.now(timezone.utc).isoformat()[:10],
+            "organization_name": request.args["organization"],
+            "local": {
+                gethostname(): {
+                    "airflow_report": clean_airflow_report_output(s.getvalue())
+                }
+            },
+        }
+        presigned_url = request.args.get("presigned_url", False)
+        if presigned_url:
+            try:
+                upload = requests.put(presigned_url, data=json.dumps(report))
+                return upload.content, upload.status_code
+            except requests.exceptions.ConnectionError as e:
+                return str(e), 400
+        return report
 
     @expose("/airflow_version", methods=["GET"])
     @csrf.exempt
@@ -408,26 +503,30 @@ class StarshipApi(BaseView):
 
         **Response**:
         ```json
-        [
-            {
-                "dag_id": "dag_0",
-                "queued_at": "1970-01-01T00:00:00+00:00",
-                "execution_date": "1970-01-01T00:00:00+00:00",
-                "start_date": "1970-01-01T00:00:00+00:00",
-                "end_date": "1970-01-01T00:00:00+00:00",
-                "state": "SUCCESS",
-                "run_id": "manual__1970-01-01T00:00:00+00:00",
-                "creating_job_id": 123,
-                "external_trigger": true,
-                "run_type": "manual",
-                "conf": None,
-                "data_interval_start": "1970-01-01T00:00:00+00:00",
-                "data_interval_end": "1970-01-01T00:00:00+00:00",
-                "last_scheduling_decision": "1970-01-01T00:00:00+00:00",
-                "dag_hash": "...."
-            },
-            ...
-        ]
+        {
+            "dag_run_count": 1,
+            "dag_runs":
+                [
+                    {
+                        "dag_id": "dag_0",
+                        "queued_at": "1970-01-01T00:00:00+00:00",
+                        "execution_date": "1970-01-01T00:00:00+00:00",
+                        "start_date": "1970-01-01T00:00:00+00:00",
+                        "end_date": "1970-01-01T00:00:00+00:00",
+                        "state": "SUCCESS",
+                        "run_id": "manual__1970-01-01T00:00:00+00:00",
+                        "creating_job_id": 123,
+                        "external_trigger": true,
+                        "run_type": "manual",
+                        "conf": None,
+                        "data_interval_start": "1970-01-01T00:00:00+00:00",
+                        "data_interval_end": "1970-01-01T00:00:00+00:00",
+                        "last_scheduling_decision": "1970-01-01T00:00:00+00:00",
+                        "dag_hash": "...."
+                    },
+                    ...
+                ]
+        }
         ```
 
         ### `POST /api/starship/dag_runs`
