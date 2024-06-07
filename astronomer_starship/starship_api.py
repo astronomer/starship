@@ -13,10 +13,11 @@ from astronomer_starship.compat.starship_compatability import (
     get_kwargs_fn,
 )
 
+from typing import Any, Dict, List, Union
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Callable, Any, Dict, List, Union
+    from typing import Callable
 
 
 def get_json_or_clean_str(o: str) -> Union[List[Any], Dict[Any, Any], Any]:
