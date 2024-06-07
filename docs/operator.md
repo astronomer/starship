@@ -15,7 +15,7 @@ to migrate data.
 Add the following line to your `requirements.txt` in your source environment:
 
    ```
-   astronomer-starship
+   astronomer-starship[provider]
    ```
 
 ## Setup
