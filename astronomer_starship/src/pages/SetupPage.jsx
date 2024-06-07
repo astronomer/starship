@@ -1,49 +1,34 @@
 import {
   Box,
-  Divider,
-  VStack,
-  Text,
-  InputGroup,
-  Input,
-  InputRightAddon,
-  InputLeftAddon,
-  FormLabel,
-  FormControl,
-  Switch,
-  HStack,
-  Link,
-  SlideFade,
   Button,
+  Divider,
   Fade,
+  FormControl,
   FormErrorMessage,
   FormHelperText,
-  InputRightElement, useColorMode, Spacer,
+  FormLabel,
+  HStack,
+  Input,
+  InputGroup,
+  InputLeftAddon,
+  InputRightAddon,
+  InputRightElement,
+  Link,
+  SlideFade,
+  Spacer,
+  Switch,
+  Text,
+  VStack,
 } from '@chakra-ui/react';
 import React, { useEffect } from 'react';
 import PropTypes from 'prop-types';
-import {
-  CheckIcon, ExternalLinkIcon, RepeatIcon,
-} from '@chakra-ui/icons';
+import { CheckIcon, ExternalLinkIcon, RepeatIcon, } from '@chakra-ui/icons';
 import { IoTelescopeOutline } from 'react-icons/io5';
 import { NavLink } from 'react-router-dom';
 import { getHoustonRoute, getTargetUrlFromParts, proxyHeaders, proxyUrl, tokenUrlFromAirflowUrl } from '../util';
 import ValidatedUrlCheckbox from '../component/ValidatedUrlCheckbox';
 import axios from "axios";
-
-const workspaceDeploymentsQuery = {
-  operationName: "workspaces",
-  query: `
-query workspaces {
-  workspaces {
-    id
-    deployments {
-      id
-      releaseName
-    }
-  }
-}`,
-  variables: {}
-};
+import { getWorkspaceDeploymentsQuery } from "../constants.js";
 
 export default function SetupPage({ state, dispatch }) {
   // Get the workspace ID & etc. if it's software and setup is completed
@@ -56,7 +41,11 @@ export default function SetupPage({ state, dispatch }) {
       ){
         axios.post(
           proxyUrl(getHoustonRoute(state.urlOrgPart)),
-          workspaceDeploymentsQuery,
+          {
+            operationName: "workspaces",
+            query: getWorkspaceDeploymentsQuery,
+            variables: {}
+          },
           {
             headers: proxyHeaders(state.token)
           }

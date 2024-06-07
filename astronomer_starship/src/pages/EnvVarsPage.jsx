@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
-import {
-  Text, Button, useToast, HStack, Spacer,
-} from '@chakra-ui/react';
+import { Button, HStack, Spacer, Text, useToast, } from '@chakra-ui/react';
 import PropTypes from 'prop-types';
 import axios from 'axios';
 import { MdErrorOutline } from 'react-icons/md';
@@ -11,38 +9,16 @@ import { GoUpload } from 'react-icons/go';
 import { RepeatIcon } from '@chakra-ui/icons';
 import StarshipPage from '../component/StarshipPage';
 import {
-  fetchData, getAstroEnvVarRoute, getHoustonRoute, localRoute, proxyHeaders, proxyUrl, remoteRoute,
+  fetchData,
+  getAstroEnvVarRoute,
+  getHoustonRoute,
+  localRoute,
+  proxyHeaders,
+  proxyUrl,
+  remoteRoute,
 } from '../util';
-import constants from '../constants';
+import constants, { getDeploymentsQuery, updateDeploymentVariablesMutation } from '../constants';
 import HiddenValue from "../component/HiddenValue.jsx";
-
-const getDeploymentsQuery = `query deploymentVariables($deploymentUuid: Uuid!, $releaseName: String!) {
-  deploymentVariables(
-    deploymentUuid: $deploymentUuid
-    releaseName: $releaseName
-  ) {
-    key
-    value
-    isSecret
-  }
-}`;
-
-const updateDeploymentVariablesMutation = `
-mutation UpdateDeploymentVariables(
-  $deploymentUuid:Uuid!,
-  $releaseName:String!,
-  $environmentVariables: [InputEnvironmentVariable!]!
-) {
-  updateDeploymentVariables(
-    deploymentUuid: $deploymentUuid,
-    releaseName: $releaseName,
-    environmentVariables: $environmentVariables
-  ) {
-    key
-    value
-    isSecret
-  }
-}`;
 
 
 function EnvVarMigrateButton({
