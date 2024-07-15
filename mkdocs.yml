@@ -76,3 +76,4 @@ plugins:
           parameter_headings: true
           summary: true
           group_by_category: true
+copyright: "Apache Airflow® is a trademark of the Apache Software Foundation"
