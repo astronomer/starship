@@ -35,7 +35,7 @@ IMAGES = [
     "apache/airflow:2.3.4",
     "apache/airflow:2.2.4",
     "apache/airflow:2.1.3",
-    # "apache/airflow:2.0.0",
+    "apache/airflow:2.0.2",
     # # "apache/airflow:1.10.15",
     # # "apache/airflow:1.10.10",
 ]

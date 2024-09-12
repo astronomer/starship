@@ -1,7 +1,7 @@
 """Operators, TaskGroups, and DAGs for interacting with the Starship migrations."""
 import logging
 from datetime import datetime
-from typing import Any, Union, List, TYPE_CHECKING
+from typing import Any, Union, List
 
 import airflow
 from airflow import DAG
@@ -14,9 +14,6 @@ from astronomer_starship.providers.starship.hooks.starship import (
     StarshipLocalHook,
     StarshipHttpHook,
 )
-
-if TYPE_CHECKING:
-    from airflow.utils.context import Context
 
 
 # Compatability Notes:
@@ -40,7 +37,7 @@ class StarshipVariableMigrationOperator(StarshipMigrationOperator):
         super().__init__(**kwargs)
         self.variable_key = variable_key
 
-    def execute(self, context: Context) -> Any:
+    def execute(self, context) -> Any:
         logging.info("Getting Variable", self.variable_key)
         variables = self.source_hook.get_variables()
         variable: Union[dict, None] = (
@@ -93,7 +90,7 @@ class StarshipPoolMigrationOperator(StarshipMigrationOperator):
         super().__init__(**kwargs)
         self.pool_name = pool_name
 
-    def execute(self, context: Context) -> Any:
+    def execute(self, context) -> Any:
         logging.info("Getting Pool", self.pool_name)
         pool: Union[dict, None] = (
             [v for v in self.source_hook.get_pools() if v["name"] == self.pool_name]
@@ -143,7 +140,7 @@ class StarshipConnectionMigrationOperator(StarshipMigrationOperator):
         super().__init__(**kwargs)
         self.connection_id = connection_id
 
-    def execute(self, context: Context) -> Any:
+    def execute(self, context) -> Any:
         logging.info("Getting Connection", self.connection_id)
         connection: Union[dict, None] = (
             [
