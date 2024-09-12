@@ -11,7 +11,7 @@ jobs:
         with:
           python-version: '3.10'
           cache: 'pip'
-      - uses: extractions/setup-just@v1
+      - uses: extractions/setup-just@v2
       - run: just install
       - run: |
           git fetch origin
@@ -29,7 +29,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
-      - uses: extractions/setup-just@v1
+      - uses: extractions/setup-just@v2
       - run: just install
       - run: just test-with-coverage
       - uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
