@@ -1,20 +1,23 @@
 """Operators, TaskGroups, and DAGs for interacting with the Starship migrations."""
 import logging
 from datetime import datetime
-from typing import Any, Union, List
+from typing import Any, Union, List, TYPE_CHECKING
 
 import airflow
 from airflow import DAG
 from airflow.decorators import task
 from airflow.exceptions import AirflowSkipException
 from airflow.models.baseoperator import BaseOperator
-from airflow.utils.context import Context
 from airflow.utils.task_group import TaskGroup
 
 from astronomer_starship.providers.starship.hooks.starship import (
     StarshipLocalHook,
     StarshipHttpHook,
 )
+
+if TYPE_CHECKING:
+    from airflow.utils.context import Context
+
 
 # Compatability Notes:
 # - @task() is >=AF2.0
