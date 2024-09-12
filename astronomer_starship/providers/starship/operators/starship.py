@@ -8,13 +8,13 @@ from airflow import DAG
 from airflow.decorators import task
 from airflow.exceptions import AirflowSkipException
 from airflow.models.baseoperator import BaseOperator
-from airflow.utils.context import Context
 from airflow.utils.task_group import TaskGroup
 
 from astronomer_starship.providers.starship.hooks.starship import (
     StarshipLocalHook,
     StarshipHttpHook,
 )
+
 
 # Compatability Notes:
 # - @task() is >=AF2.0
@@ -37,7 +37,7 @@ class StarshipVariableMigrationOperator(StarshipMigrationOperator):
         super().__init__(**kwargs)
         self.variable_key = variable_key
 
-    def execute(self, context: Context) -> Any:
+    def execute(self, context) -> Any:
         logging.info("Getting Variable", self.variable_key)
         variables = self.source_hook.get_variables()
         variable: Union[dict, None] = (
@@ -90,7 +90,7 @@ class StarshipPoolMigrationOperator(StarshipMigrationOperator):
         super().__init__(**kwargs)
         self.pool_name = pool_name
 
-    def execute(self, context: Context) -> Any:
+    def execute(self, context) -> Any:
         logging.info("Getting Pool", self.pool_name)
         pool: Union[dict, None] = (
             [v for v in self.source_hook.get_pools() if v["name"] == self.pool_name]
@@ -140,7 +140,7 @@ class StarshipConnectionMigrationOperator(StarshipMigrationOperator):
         super().__init__(**kwargs)
         self.connection_id = connection_id
 
-    def execute(self, context: Context) -> Any:
+    def execute(self, context) -> Any:
         logging.info("Getting Connection", self.connection_id)
         connection: Union[dict, None] = (
             [

@@ -994,6 +994,30 @@ class StarshipAirflow21(StarshipAirflow22):
             raise e
 
 
+class StarshipAirflow20(StarshipAirflow21):
+    """
+    - description does not exist in variables
+    - queued_at not on dag_run
+    """
+
+    def variable_attrs(self):
+        attrs = super().variable_attrs()
+        del attrs["description"]
+        return attrs
+
+    def dag_runs_attrs(self):
+        attrs = super().dag_runs_attrs()
+        if "queued_at" in attrs["dag_runs"]["test_value"][0]:
+            del attrs["dag_runs"]["test_value"][0]["queued_at"]
+        return attrs
+
+    def dag_run_attrs(self):
+        attrs = super().dag_run_attrs()
+        if "queued_at" in attrs:
+            del attrs["queued_at"]
+        return attrs
+
+
 class StarshipAirflow27(StarshipAirflow):
     """
     - include_deferred is required in pools
@@ -1078,8 +1102,10 @@ class StarshipCompatabilityLayer:
                 return StarshipAirflow27()
             if int(minor) == 2:
                 return StarshipAirflow22()
-            if int(minor) <= 1:
+            if int(minor) == 1:
                 return StarshipAirflow21()
+            if int(minor) == 0:
+                return StarshipAirflow20()
             return StarshipAirflow()
         else:
             raise RuntimeError(f"Unsupported Airflow Version: {airflow_version}")
