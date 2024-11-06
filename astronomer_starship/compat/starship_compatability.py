@@ -1037,7 +1037,7 @@ class StarshipAirflow27(StarshipAirflow):
         attrs["custom_operator_name"] = {
             "attr": "custom_operator_name",
             "methods": [("POST", True)],
-            "test_value": "@task",
+            "test_value": None,
         }
         return attrs
 
@@ -1080,6 +1080,7 @@ class StarshipAirflow29(StarshipAirflow28):
             "methods": [("POST", False)],
             "test_value": "task_display_name",
         }
+        return attrs
 
 
 class StarshipAirflow210(StarshipAirflow28):

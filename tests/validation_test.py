@@ -27,6 +27,8 @@ ASTRO_IMAGES = [
 ]
 
 IMAGES = [
+    "apache/airflow:slim-2.10.3",
+    "apache/airflow:slim-2.9.3",
     "apache/airflow:slim-2.8.1",
     "apache/airflow:slim-2.7.3",
     "apache/airflow:slim-2.6.0",
@@ -75,7 +77,7 @@ def run_in_container(
     volumes: list,
     environment: dict,
     platform: str,
-) -> (int, bytes):
+) -> tuple[int, bytes]:
     from docker.models.containers import Container
 
     container: Container = docker_client.containers.run(
