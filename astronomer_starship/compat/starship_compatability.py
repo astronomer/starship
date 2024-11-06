@@ -1032,6 +1032,15 @@ class StarshipAirflow27(StarshipAirflow):
         }
         return attrs
 
+    def task_instance_attrs(self):
+        attrs = super().task_instance_attrs()
+        attrs["custom_operator_name"] = {
+            "attr": "custom_operator_name",
+            "methods": [("POST", True)],
+            "test_value": "@task",
+        }
+        return attrs
+
 
 class StarshipAirflow28(StarshipAirflow27):
     """
