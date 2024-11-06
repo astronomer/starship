@@ -1062,9 +1062,30 @@ class StarshipAirflow28(StarshipAirflow27):
         return attrs
 
 
+class StarshipAirflow29(StarshipAirflow28):
+    """
+    - rendered_map_index in task_instance
+    - task_display_name in task_instance
+    """
+
+    def task_instance_attrs(self):
+        attrs = super().task_instance_attrs()
+        attrs["rendered_map_index"] = {
+            "attr": "rendered_map_index",
+            "methods": [("POST", False)],
+            "test_value": "rendered_map_index",
+        }
+        attrs["task_display_name"] = {
+            "attr": "task_display_name",
+            "methods": [("POST", False)],
+            "test_value": "task_display_name",
+        }
+
+
 class StarshipAirflow210(StarshipAirflow28):
     """
-    - Change `_try_number` to `try_number`
+    - _try_number to try_number in task_instance
+    - executor in task_instance
     """
 
     # TODO: Identify any other compat issues that exist between 2.8-2.10
@@ -1075,6 +1096,11 @@ class StarshipAirflow210(StarshipAirflow28):
             "attr": "try_number",
             "methods": [("POST", True)],
             "test_value": 0,
+        }
+        attrs["executor"] = {
+            "attr": "executor",
+            "methods": [("POST", True)],
+            "test_value": "executor",
         }
         return attrs
 
@@ -1093,7 +1119,8 @@ class StarshipCompatabilityLayer:
     - 2.6 https://github.com/apache/airflow/tree/2.6.3/airflow/models
     - 2.7 https://github.com/apache/airflow/tree/2.7.3/airflow/models
     - 2.8 https://github.com/apache/airflow/tree/2.8.3/airflow/models
-    - 2.9
+    - 2.9 https://github.com/apache/airflow/tree/2.9.3/airflow/models
+    - 2.10 https://github.com/apache/airflow/tree/2.10.3/airflow/models
 
     >>> isinstance(StarshipCompatabilityLayer("2.8.1"), StarshipAirflow28)
     True
@@ -1124,7 +1151,9 @@ class StarshipCompatabilityLayer:
         if int(major) == 2:
             if int(minor) == 10:
                 return StarshipAirflow210()
-            if int(minor) >= 8:
+            if int(minor) == 9:
+                return StarshipAirflow29()
+            if int(minor) == 8:
                 return StarshipAirflow28()
             if int(minor) == 7:
                 return StarshipAirflow27()
