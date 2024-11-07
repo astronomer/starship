@@ -1041,6 +1041,11 @@ class StarshipAirflow27(StarshipAirflow):
         }
         return attrs
 
+    def task_instances_attrs(self):
+        attrs = super().task_instances_attrs()
+        attrs["task_instances"]["test_value"][0]["custom_operator_name"] = None
+        return attrs
+
 
 class StarshipAirflow28(StarshipAirflow27):
     """
@@ -1072,14 +1077,24 @@ class StarshipAirflow29(StarshipAirflow28):
         attrs = super().task_instance_attrs()
         attrs["rendered_map_index"] = {
             "attr": "rendered_map_index",
-            "methods": [("POST", False)],
+            "methods": [("POST", True)],
             "test_value": "rendered_map_index",
         }
         attrs["task_display_name"] = {
             "attr": "task_display_name",
-            "methods": [("POST", False)],
+            "methods": [("POST", True)],
             "test_value": "task_display_name",
         }
+        return attrs
+
+    def task_instances_attrs(self):
+        attrs = super().task_instances_attrs()
+        attrs["task_instances"]["test_value"][0][
+            "rendered_map_index"
+        ] = "rendered_map_index"
+        attrs["task_instances"]["test_value"][0][
+            "task_display_name"
+        ] = "task_display_name"
         return attrs
 
 
@@ -1093,16 +1108,17 @@ class StarshipAirflow210(StarshipAirflow28):
 
     def task_instance_attrs(self):
         attrs = super().task_instance_attrs()
-        attrs["try_number"] = {
-            "attr": "try_number",
-            "methods": [("POST", True)],
-            "test_value": 0,
-        }
+        attrs["try_number"]["attr"] = "try_number"
         attrs["executor"] = {
             "attr": "executor",
             "methods": [("POST", True)],
             "test_value": "executor",
         }
+        return attrs
+
+    def task_instances_attrs(self):
+        attrs = super().task_instances_attrs()
+        attrs["task_instances"]["test_value"][0]["executor"] = "executor"
         return attrs
 
 
