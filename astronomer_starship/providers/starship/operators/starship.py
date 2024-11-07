@@ -1,4 +1,5 @@
 """Operators, TaskGroups, and DAGs for interacting with the Starship migrations."""
+import time
 import logging
 from datetime import datetime
 from typing import Any, Union, List
@@ -207,7 +208,9 @@ class StarshipDagHistoryMigrationOperator(StarshipMigrationOperator):
     def execute(self, context):
         logging.info("Pausing local DAG for", self.target_dag_id)
         self.source_hook.set_dag_is_paused(dag_id=self.target_dag_id, is_paused=True)
-        # TODO - Poll until all tasks are done
+        # Wait for all running DAG runs and task instances to complete
+        self._wait_for_dag_completion()
+
 
         logging.info("Getting local DAG Runs for", self.target_dag_id)
         dag_runs = self.source_hook.get_dag_runs(
@@ -234,10 +237,43 @@ class StarshipDagHistoryMigrationOperator(StarshipMigrationOperator):
         )
 
         if self.unpause_dag_in_target:
+            # Clear any pending DAG runs in the target before unpausing
+            self._clear_pending_dag_runs()
             logging.info("Unpausing target DAG for", self.target_dag_id)
             self.target_hook.set_dag_is_paused(
                 dag_id=self.target_dag_id, is_paused=False
             )
+
+    def _wait_for_dag_completion(self):
+        max_wait_time = 600  # 10 minutes
+        poll_interval = 10  # 10 seconds
+        start_time = time.time()
+
+        while time.time() - start_time < max_wait_time:
+            dag_runs = self.source_hook.get_dag_runs(
+                dag_id=self.target_dag_id,
+                state=["running", "queued"]
+            )
+            if not dag_runs["dag_runs"]:
+                logging.info("All DAG runs completed")
+                return
+            logging.info(f"Waiting for {len(dag_runs['dag_runs'])} DAG runs to complete")
+            time.sleep(poll_interval)
+
+        raise AirflowException("Timeout waiting for DAG runs to complete")
+
+    def _clear_pending_dag_runs(self):
+        dag_runs = self.target_hook.get_dag_runs(
+            dag_id=self.target_dag_id,
+            state=["scheduled", "queued"]
+        )
+        for dag_run in dag_runs["dag_runs"]:
+            self.target_hook.delete_dag_run(
+                dag_id=self.target_dag_id,
+                dag_run_id=dag_run["dag_run_id"]
+            )
+        logging.info(f"Cleared {len(dag_runs['dag_runs'])} pending DAG runs in target")
+
 
 
 def starship_dag_history_migration(dag_ids: List[str] = None, **kwargs):
