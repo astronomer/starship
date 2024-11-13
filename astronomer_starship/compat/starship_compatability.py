@@ -1032,6 +1032,20 @@ class StarshipAirflow27(StarshipAirflow):
         }
         return attrs
 
+    def task_instance_attrs(self):
+        attrs = super().task_instance_attrs()
+        attrs["custom_operator_name"] = {
+            "attr": "custom_operator_name",
+            "methods": [("POST", True)],
+            "test_value": None,
+        }
+        return attrs
+
+    def task_instances_attrs(self):
+        attrs = super().task_instances_attrs()
+        attrs["task_instances"]["test_value"][0]["custom_operator_name"] = None
+        return attrs
+
 
 class StarshipAirflow28(StarshipAirflow27):
     """
@@ -1053,6 +1067,61 @@ class StarshipAirflow28(StarshipAirflow27):
         return attrs
 
 
+class StarshipAirflow29(StarshipAirflow28):
+    """
+    - rendered_map_index in task_instance
+    - task_display_name in task_instance
+    """
+
+    def task_instance_attrs(self):
+        attrs = super().task_instance_attrs()
+        attrs["rendered_map_index"] = {
+            "attr": "rendered_map_index",
+            "methods": [("POST", True)],
+            "test_value": "rendered_map_index",
+        }
+        attrs["task_display_name"] = {
+            "attr": "task_display_name",
+            "methods": [("POST", True)],
+            "test_value": "task_display_name",
+        }
+        return attrs
+
+    def task_instances_attrs(self):
+        attrs = super().task_instances_attrs()
+        attrs["task_instances"]["test_value"][0][
+            "rendered_map_index"
+        ] = "rendered_map_index"
+        attrs["task_instances"]["test_value"][0][
+            "task_display_name"
+        ] = "task_display_name"
+        return attrs
+
+
+class StarshipAirflow210(StarshipAirflow28):
+    """
+    - _try_number to try_number in task_instance
+    - executor in task_instance
+    """
+
+    # TODO: Identify any other compat issues that exist between 2.8-2.10
+
+    def task_instance_attrs(self):
+        attrs = super().task_instance_attrs()
+        attrs["try_number"]["attr"] = "try_number"
+        attrs["executor"] = {
+            "attr": "executor",
+            "methods": [("POST", True)],
+            "test_value": "executor",
+        }
+        return attrs
+
+    def task_instances_attrs(self):
+        attrs = super().task_instances_attrs()
+        attrs["task_instances"]["test_value"][0]["executor"] = "executor"
+        return attrs
+
+
 class StarshipCompatabilityLayer:
     """StarshipCompatabilityLayer is a factory class that returns the correct StarshipAirflow class for a version
 
@@ -1067,7 +1136,8 @@ class StarshipCompatabilityLayer:
     - 2.6 https://github.com/apache/airflow/tree/2.6.3/airflow/models
     - 2.7 https://github.com/apache/airflow/tree/2.7.3/airflow/models
     - 2.8 https://github.com/apache/airflow/tree/2.8.3/airflow/models
-    - 2.9
+    - 2.9 https://github.com/apache/airflow/tree/2.9.3/airflow/models
+    - 2.10 https://github.com/apache/airflow/tree/2.10.3/airflow/models
 
     >>> isinstance(StarshipCompatabilityLayer("2.8.1"), StarshipAirflow28)
     True
@@ -1096,7 +1166,11 @@ class StarshipCompatabilityLayer:
             )
 
         if int(major) == 2:
-            if int(minor) >= 8:
+            if int(minor) == 10:
+                return StarshipAirflow210()
+            if int(minor) == 9:
+                return StarshipAirflow29()
+            if int(minor) == 8:
                 return StarshipAirflow28()
             if int(minor) == 7:
                 return StarshipAirflow27()
