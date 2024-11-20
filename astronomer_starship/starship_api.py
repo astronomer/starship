@@ -266,7 +266,7 @@ class StarshipApi(BaseView):
         return starship_route(get=starship_compat.get_env_vars)
 
     # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_POOL)])
-    @expose("/pools", methods=["GET", "POST"])
+    @expose("/pools", methods=["GET", "POST", "DELETE"])
     @csrf.exempt
     def pools(self):
         """
@@ -310,11 +310,12 @@ class StarshipApi(BaseView):
         return starship_route(
             get=starship_compat.get_pools,
             post=starship_compat.set_pool,
+            delete=starship_compat.delete_pool,
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.pool_attrs()),
         )
 
     # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_VARIABLE)])
-    @expose("/variables", methods=["GET", "POST"])
+    @expose("/variables", methods=["GET", "POST", "DELETE"])
     @csrf.exempt
     def variables(self):
         """
@@ -357,11 +358,12 @@ class StarshipApi(BaseView):
         return starship_route(
             get=starship_compat.get_variables,
             post=starship_compat.set_variable,
+            delete=starship_compat.delete_variable,
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.variable_attrs()),
         )
 
     # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONNECTION)])
-    @expose("/connections", methods=["GET", "POST"])
+    @expose("/connections", methods=["GET", "POST", "DELETE"])
     @csrf.exempt
     def connections(self):
         """
@@ -419,6 +421,7 @@ class StarshipApi(BaseView):
         return starship_route(
             get=starship_compat.get_connections,
             post=starship_compat.set_connection,
+            delete=starship_compat.delete_connection,
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.connection_attrs()),
         )
 
@@ -479,7 +482,7 @@ class StarshipApi(BaseView):
         )
 
     # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG_RUN)])
-    @expose("/dag_runs", methods=["GET", "POST"])
+    @expose("/dag_runs", methods=["GET", "POST", "DELETE"])
     @csrf.exempt
     def dag_runs(self):
         """
@@ -567,6 +570,7 @@ class StarshipApi(BaseView):
         return starship_route(
             get=starship_compat.get_dag_runs,
             post=starship_compat.set_dag_runs,
+            delete=starship_compat.delete_dag_runs,
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.dag_runs_attrs()),
         )
 

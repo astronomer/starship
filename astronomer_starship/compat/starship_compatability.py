@@ -1,6 +1,7 @@
 import json
+import logging
 import os
-from flask import jsonify
+from flask import jsonify, Response
 from sqlalchemy.orm import Session
 from typing import TYPE_CHECKING
 
@@ -10,6 +11,9 @@ else:
     TypedDict = object
 import datetime
 import pytz
+
+
+logger = logging.getLogger(__name__)
 
 
 def get_from_request(args, json, key, required: bool = False) -> "Any":
@@ -146,6 +150,24 @@ def generic_set_one(session: Session, qualname: str, attrs: dict, **kwargs):
         raise e
 
 
+def generic_delete(session: Session, qualname: str, **kwargs):
+    from http import HTTPStatus
+    from sqlalchemy import delete
+
+    (_, thing_cls) = import_from_qualname(qualname)
+
+    try:
+        filters = [getattr(thing_cls, attr) == val for attr, val in kwargs.items()]
+        deleted_rows = session.execute(delete(thing_cls).where(*filters)).rowcount
+        session.commit()
+        logger.info(f"Deleted {deleted_rows} rows for table {qualname}")
+        return Response(None, status=HTTPStatus.NO_CONTENT)
+    except Exception as e:
+        logger.error(f"Error deleting rows for table {qualname}: {e}")
+        session.rollback()
+        raise e
+
+
 def get_test_data(attrs: dict, method: "Union[str, None]" = None) -> "Dict[str, Any]":
     """
     >>> get_test_data(method="POST", attrs={"key": {"attr": "key", "methods": [("POST", True)], "test_value": "key"}})
@@ -196,9 +218,20 @@ class StarshipAirflow:
         raise NotImplementedError()
 
     @classmethod
+    def delete_env_vars(cls):
+        """This is not possible to do via API, so return an error"""
+        res = jsonify({"error": "Not implemented"})
+        res.status_code = 405
+        raise NotImplementedError()
+
+    @classmethod
     def variable_attrs(cls) -> "Dict[str, AttrDesc]":
         return {
-            "key": {"attr": "key", "methods": [("POST", True)], "test_value": "key"},
+            "key": {
+                "attr": "key",
+                "methods": [("POST", True), ("DELETE", True)],
+                "test_value": "key",
+            },
             "val": {"attr": "val", "methods": [("POST", True)], "test_value": "val"},
             "description": {
                 "attr": "description",
@@ -217,12 +250,15 @@ class StarshipAirflow:
             self.session, "airflow.models.Variable", self.variable_attrs(), **kwargs
         )
 
+    def delete_variable(self, **kwargs):
+        return generic_delete(self.session, "airflow.models.Variable", **kwargs)
+
     @classmethod
     def pool_attrs(cls) -> "Dict[str, AttrDesc]":
         return {
             "name": {
                 "attr": "pool",
-                "methods": [("POST", True)],
+                "methods": [("POST", True), ("DELETE", True)],
                 "test_value": "test_name",
             },
             "slots": {"attr": "slots", "methods": [("POST", True)], "test_value": 1},
@@ -241,12 +277,15 @@ class StarshipAirflow:
             self.session, "airflow.models.Pool", self.pool_attrs(), **kwargs
         )
 
+    def delete_pool(self, **kwargs):
+        return generic_delete(self.session, "airflow.models.Pool", **kwargs)
+
     @classmethod
     def connection_attrs(cls) -> "Dict[str, AttrDesc]":
         return {
             "conn_id": {
                 "attr": "conn_id",
-                "methods": [("POST", True)],
+                "methods": [("POST", True), ("DELETE", True)],
                 "test_value": "conn_id",
             },
             "conn_type": {
@@ -300,6 +339,9 @@ class StarshipAirflow:
         return generic_set_one(
             self.session, "airflow.models.Connection", self.connection_attrs(), **kwargs
         )
+
+    def delete_connection(self, **kwargs):
+        return generic_delete(self.session, "airflow.models.Connection", **kwargs)
 
     @classmethod
     def dag_attrs(cls) -> "Dict[str, AttrDesc]":
@@ -442,7 +484,7 @@ class StarshipAirflow:
         return {
             "dag_id": {
                 "attr": "dag_id",
-                "methods": [("GET", True)],
+                "methods": [("GET", True), ("DELETE", True)],
                 "test_value": "dag_0",
             },
             # Limit is the number of rows to return.
@@ -591,6 +633,9 @@ class StarshipAirflow:
         dag_runs = self.insert_directly("dag_run", dag_runs)
         return {"dag_runs": dag_runs, "dag_run_count": self._get_dag_run_count(dag_id)}
 
+    def delete_dag_runs(self, **kwargs):
+        return generic_delete(self.session, "airflow.models.DagRun", **kwargs)
+
     @classmethod
     def task_instances_attrs(cls) -> "Dict[str, AttrDesc]":
         epoch = datetime.datetime(1970, 1, 1, 0, 0)
@@ -600,7 +645,7 @@ class StarshipAirflow:
         return {
             "dag_id": {
                 "attr": "dag_id",
-                "methods": [("GET", True)],
+                "methods": [("GET", True), ("DELETE", True)],
                 "test_value": "dag_0",
             },
             # Limit is the number of rows to return.
@@ -852,6 +897,9 @@ class StarshipAirflow:
         """These need to be inserted directly to skip TaskInstance.__init__"""
         task_instances = self.insert_directly("task_instance", task_instances)
         return {"task_instances": task_instances}
+
+    def delete_task_instances(self, **kwargs):
+        return generic_delete(self.session, "airflow.models.TaskInstance", **kwargs)
 
     def insert_directly(self, table_name, items):
         from sqlalchemy.exc import InvalidRequestError
