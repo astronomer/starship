@@ -62,7 +62,7 @@ function DAGHistoryMigrateButton({
         method: 'delete',
         url: proxyUrl(url + constants.DAG_RUNS_ROUTE),
         headers: proxyHeaders(token),
-        data: { dag_id: dagId },
+        params: { dag_id: dagId },
       }).then((res) => {
         setExists(!(res.status === 204));
         dispatch({

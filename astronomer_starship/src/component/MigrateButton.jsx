@@ -25,7 +25,7 @@ export default function MigrateButton({
       method: exists ? 'delete' : 'post',
       url: route,
       headers,
-      data: sendData,
+      params: sendData,
     })
       .then((res) => {
         setLoading(false);
