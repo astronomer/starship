@@ -2,10 +2,15 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { Button, useToast } from '@chakra-ui/react';
-import { MdErrorOutline } from 'react-icons/md';
-import { FaCheck } from 'react-icons/fa';
+import { MdErrorOutline, MdDeleteForever } from 'react-icons/md';
 import { GoUpload } from 'react-icons/go';
 import PropTypes from 'prop-types';
+
+function checkStatus(status, exists) {
+  if (status === 204)
+    return false;
+  return status === 200 || exists;
+}
 
 export default function MigrateButton({
   route, headers, existsInRemote, sendData, isDisabled,
@@ -16,13 +21,23 @@ export default function MigrateButton({
   const [exists, setExists] = useState(existsInRemote);
   function handleClick() {
     setLoading(true);
-    axios.post(route, sendData, { headers })
+    axios({
+      method: exists ? 'delete' : 'post',
+      url: route,
+      headers,
+      data: sendData,
+    })
       .then((res) => {
         setLoading(false);
-        setExists(res.status === 200);
+        setExists(checkStatus(res.status, exists));
+        toast({
+          title: 'Success',
+          status: 'success',
+          isClosable: true,
+        })
       })
       .catch((err) => {
-        setExists(false);
+        setExists(exists);
         setLoading(false);
         toast({
           title: err.response?.data?.error || err.response?.data || err.message,
@@ -34,19 +49,19 @@ export default function MigrateButton({
   }
   return (
     <Button
-      isDisabled={loading || isDisabled || exists}
+      isDisabled={loading || isDisabled}
       isLoading={loading}
       loadingText="Loading"
       variant="solid"
       leftIcon={(
-          error ? <MdErrorOutline /> : exists ? <FaCheck /> : !loading ? <GoUpload /> : <span />
+        error ? <MdErrorOutline /> : exists ? <MdDeleteForever /> : !loading ? <GoUpload /> : <span />
         )}
       colorScheme={
-          exists ? 'green' : loading ? 'teal' : error ? 'red' : 'teal'
+        exists ? 'red' : loading ? 'teal' : error ? 'red' : 'teal'
         }
       onClick={() => handleClick()}
     >
-      {exists ? 'Ok' : loading ? '' : error ? 'Error!' : 'Migrate'}
+      {exists ? 'Delete' : loading ? '' : error ? 'Error!' : 'Migrate'}
     </Button>
   );
 }

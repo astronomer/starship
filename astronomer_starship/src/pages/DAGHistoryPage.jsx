@@ -19,9 +19,8 @@ import {
 } from '@chakra-ui/react';
 import PropTypes from 'prop-types';
 import axios from 'axios';
-import { MdErrorOutline } from 'react-icons/md';
+import { MdErrorOutline, MdDeleteForever } from 'react-icons/md';
 import { GrDocumentMissing } from 'react-icons/gr';
-import { FaCheck } from 'react-icons/fa';
 import { GoUpload } from 'react-icons/go';
 import humanFormat from 'human-format';
 import { ExternalLinkIcon, RepeatIcon } from '@chakra-ui/icons';
@@ -56,6 +55,44 @@ function DAGHistoryMigrateButton({
   const percent = 100;
 
   function handleClick() {
+
+    function deleteRuns() {
+      setLoadPerc(percent * 0.5);
+      axios({
+        method: 'delete',
+        url: proxyUrl(url + constants.DAG_RUNS_ROUTE),
+        headers: proxyHeaders(token),
+        data: { dag_id: dagId },
+      }).then((res) => {
+        setExists(!(res.status === 204));
+        dispatch({
+          type: 'set-dags-data',
+          dagsData: {
+            [dagId]: {
+              remote: {
+                dag_run_count: 0,
+              },
+            },
+          },
+        });
+        setLoadPerc(percent * 1);
+        setLoadPerc(0);
+      }).catch((err) => {
+        setExists(false);
+        setLoadPerc(percent * 0);
+        toast({
+          title: err.response?.data?.error || err.response?.data || err.message,
+          status: 'error',
+          isClosable: true,
+        });
+        setError(err);
+      });
+    }
+
+    if (exists) {
+      deleteRuns();
+      return;
+    }
     const errFn = (err) => {
       setExists(false);
       // noinspection PointlessArithmeticExpressionJS
@@ -117,23 +154,23 @@ function DAGHistoryMigrateButton({
   return (
     <WithTooltip isDisabled={isDisabled}>
       <Button
-        isDisabled={isDisabled || loadPerc || exists}
+        isDisabled={isDisabled || loadPerc}
         // isLoading={loading}
         // loadingText="Loading"
         variant="solid"
         leftIcon={(
           error ? <MdErrorOutline />
-            : exists ? <FaCheck />
+            : exists ? <MdDeleteForever />
               : isDisabled ? <GrDocumentMissing />
                 : !loadPerc ? <GoUpload />
                   : <span />
         )}
         colorScheme={
-          exists ? 'green' : isDisabled ? 'gray' : error ? 'red' : 'teal'
+          exists ? 'red' : isDisabled ? 'gray' : error ? 'red' : 'teal'
         }
         onClick={() => handleClick()}
       >
-        {exists ? 'Ok'
+        {exists ? 'Delete'
           : loadPerc ? (
             <CircularProgress thickness="20px" size="30px" value={loadPerc} />
           )
@@ -326,8 +363,7 @@ export default function DAGHistoryPage({ state, dispatch }) {
           isDisabled={
             !info.row.original.remote?.dag_id ? 'DAG not found in remote'
               : !info.row.original.local.dag_run_count ? 'No DAG Runs to migrate'
-                : info.row.original.remote?.dag_run_count ? 'DAG Runs already exist in remote'
-                  : false
+                : false
           }
           dispatch={dispatch}
         />
