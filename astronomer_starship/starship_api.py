@@ -306,6 +306,16 @@ class StarshipApi(BaseView):
         | include_deferred*   | >=2.7   | bool | True    |
 
         **Response:** List of Pools, as `GET` Response
+
+        ### DELETE /api/starship/pools
+
+        **Parameters:** Args
+
+        | Field (*=Required) | Version | Type | Example |
+        |---------------------|---------|------|---------|
+        | name*               |         | str  | my_pool |
+
+        **Response:** None
         """
         return starship_route(
             get=starship_compat.get_pools,
@@ -354,6 +364,16 @@ class StarshipApi(BaseView):
         | description         |         | str  | My Var  |
 
         **Response:** List of Variables, as `GET` Response
+
+        ### `DELETE /api/starship/variable`
+
+        **Parameters:** Args
+
+        | Field (*=Required) | Version | Type | Example |
+        |---------------------|---------|------|---------|
+        | key*                |         | str  | key     |
+
+        **Response:** None
         """
         return starship_route(
             get=starship_compat.get_variables,
@@ -417,6 +437,16 @@ class StarshipApi(BaseView):
         | description        |         | str  | My Conn   |
 
         **Response:** List of Connections, as `GET` Response
+
+        ### DELETE /api/starship/connections
+
+        **Parameters:** Args
+
+        | Field (*=Required) | Version | Type | Example |
+        |---------------------|---------|------|---------|
+        | conn_id*            |         | str  | my_conn |
+
+        **Response:** None
         """
         return starship_route(
             get=starship_compat.get_connections,
@@ -566,6 +596,16 @@ class StarshipApi(BaseView):
         | last_scheduling_decision |         | date | 1970-01-01T00:00:00+00:00         |
         | dag_hash                 |         | str  | ...                               |
         | clear_number             | >=2.8   | int  | 0                                 |
+
+        ### DELETE /api/starship/dag_runs
+
+        **Parameters:** Args
+
+        | Field (*=Required)       | Version | Type               | Example                           |
+        |--------------------------|---------|--------------------|-----------------------------------|
+        | dag_id*                  |         | str                | dag_0                             |
+
+        **Response:** None
         """
         return starship_route(
             get=starship_compat.get_dag_runs,
