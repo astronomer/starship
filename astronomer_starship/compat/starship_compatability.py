@@ -150,7 +150,7 @@ def generic_set_one(session: Session, qualname: str, attrs: dict, **kwargs):
         raise e
 
 
-def generic_delete(session: Session, qualname: str, **kwargs):
+def generic_delete(session: Session, qualname: str, **kwargs) -> Response:
     from http import HTTPStatus
     from sqlalchemy import delete
 
@@ -161,9 +161,9 @@ def generic_delete(session: Session, qualname: str, **kwargs):
         deleted_rows = session.execute(delete(thing_cls).where(*filters)).rowcount
         session.commit()
         logger.info(f"Deleted {deleted_rows} rows for table {qualname}")
-        return Response(None, status=HTTPStatus.NO_CONTENT)
+        return Response(status=HTTPStatus.NO_CONTENT)
     except Exception as e:
-        logger.error(f"Error deleting rows for table {qualname}: {e}")
+        logger.error(f"Error deleting row(s) for table {qualname}: {e}")
         session.rollback()
         raise e
 
@@ -251,7 +251,8 @@ class StarshipAirflow:
         )
 
     def delete_variable(self, **kwargs):
-        return generic_delete(self.session, "airflow.models.Variable", **kwargs)
+        attrs = {self.variable_attrs()[k]["attr"]: v for k, v in kwargs.items()}
+        return generic_delete(self.session, "airflow.models.Variable", **attrs)
 
     @classmethod
     def pool_attrs(cls) -> "Dict[str, AttrDesc]":
@@ -278,7 +279,12 @@ class StarshipAirflow:
         )
 
     def delete_pool(self, **kwargs):
-        return generic_delete(self.session, "airflow.models.Pool", **kwargs)
+        attrs = {
+            self.pool_attrs()[k]["attr"]: v
+            for k, v in kwargs.items()
+            if k in self.pool_attrs()
+        }
+        return generic_delete(self.session, "airflow.models.Pool", **attrs)
 
     @classmethod
     def connection_attrs(cls) -> "Dict[str, AttrDesc]":
@@ -341,7 +347,8 @@ class StarshipAirflow:
         )
 
     def delete_connection(self, **kwargs):
-        return generic_delete(self.session, "airflow.models.Connection", **kwargs)
+        attrs = {self.connection_attrs()[k]["attr"]: v for k, v in kwargs.items()}
+        return generic_delete(self.session, "airflow.models.Connection", **attrs)
 
     @classmethod
     def dag_attrs(cls) -> "Dict[str, AttrDesc]":
@@ -634,7 +641,8 @@ class StarshipAirflow:
         return {"dag_runs": dag_runs, "dag_run_count": self._get_dag_run_count(dag_id)}
 
     def delete_dag_runs(self, **kwargs):
-        return generic_delete(self.session, "airflow.models.DagRun", **kwargs)
+        attrs = {self.dag_runs_attrs()[k]["attr"]: v for k, v in kwargs.items()}
+        return generic_delete(self.session, "airflow.models.DagRun", **attrs)
 
     @classmethod
     def task_instances_attrs(cls) -> "Dict[str, AttrDesc]":
@@ -899,7 +907,8 @@ class StarshipAirflow:
         return {"task_instances": task_instances}
 
     def delete_task_instances(self, **kwargs):
-        return generic_delete(self.session, "airflow.models.TaskInstance", **kwargs)
+        attrs = {self.task_instances_attrs()[k]["attr"]: v for k, v in kwargs.items()}
+        return generic_delete(self.session, "airflow.models.TaskInstance", **attrs)
 
     def insert_directly(self, table_name, items):
         from sqlalchemy.exc import InvalidRequestError
