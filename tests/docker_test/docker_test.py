@@ -3,6 +3,8 @@ import json
 import os
 import pytest
 
+from http import HTTPStatus
+
 from astronomer_starship.compat.starship_compatability import (
     StarshipCompatabilityLayer,
     get_test_data,
@@ -27,6 +29,10 @@ def test_variables(starship):
     actual = starship.get_variables()
     assert test_input in actual, actual
 
+    test_input = get_test_data(method="DELETE", attrs=starship.variable_attrs())
+    actual = starship.delete_variable(**test_input)
+    assert actual.status_code == HTTPStatus.NO_CONTENT, actual
+
 
 @docker_test
 def test_pools(starship):
@@ -45,6 +51,10 @@ def test_pools(starship):
     actual = starship.get_pools()
     assert expected in actual, actual
 
+    test_input = get_test_data(method="DELETE", attrs=starship.pool_attrs())
+    actual = starship.delete_pool(**test_input)
+    assert actual.status_code == HTTPStatus.NO_CONTENT, actual
+
 
 @docker_test
 def test_connections(starship):
@@ -54,6 +64,10 @@ def test_connections(starship):
 
     actual = starship.get_connections()
     assert test_input in actual, actual
+
+    test_input = get_test_data(method="DELETE", attrs=starship.connection_attrs())
+    actual = starship.delete_connection(**test_input)
+    assert actual.status_code == HTTPStatus.NO_CONTENT, actual
 
 
 @docker_test
@@ -118,3 +132,7 @@ def test_dag_runs_and_task_instances(starship):
     assert json.dumps(actual_task_instances, default=str) in json.dumps(
         test_input["task_instances"], default=str
     ), actual_task_instances
+
+    test_input = get_test_data(method="DELETE", attrs=starship.dag_runs_attrs())
+    actual = starship.delete_dag_runs(**test_input)
+    assert actual.status_code == HTTPStatus.NO_CONTENT, actual

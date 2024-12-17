@@ -46,6 +46,13 @@ def set_and_get(route, test_input, token, url):
     assert test_input in actual.json(), actual.text
 
 
+def delete(route, test_input, token, url):
+    actual = requests.post(
+        f"{url}/{route}", params=test_input, **get_extras(url, token)
+    )
+    assert actual.status_code == 204, actual.text
+
+
 @pytest.fixture(
     params=list(URLS_AND_TOKENS.values()),
     ids=list(URLS_AND_TOKENS.keys()),
@@ -64,6 +71,7 @@ def test_integration_variables(url_and_token_and_starship):
     route = "api/starship/variables"
     test_input = get_test_data(method="POST", attrs=starship.variable_attrs())
     set_and_get(route, test_input, token, url)
+    delete(route, test_input, token, url)
 
 
 @manual_tests
@@ -72,6 +80,7 @@ def test_integration_pools(url_and_token_and_starship):
     route = "api/starship/pools"
     test_input = get_test_data(method="POST", attrs=starship.pool_attrs())
     set_and_get(route, test_input, token, url)
+    delete(route, test_input, token, url)
 
 
 @manual_tests
@@ -80,6 +89,7 @@ def test_integration_connections(url_and_token_and_starship):
     route = "api/starship/connections"
     test_input = get_test_data(method="POST", attrs=starship.connection_attrs())
     set_and_get(route, test_input, token, url)
+    delete(route, test_input, token, url)
 
 
 @manual_tests
@@ -160,8 +170,10 @@ def test_integration_dag_runs_and_task_instances(url_and_token_and_starship):
     }
     assert test_input["dag_runs"][0] == actual_dag_run, actual_dag_run
 
+    # Delete test
+    delete(route, test_input, token, url)
+
     route = "api/starship/task_instances"
-    requests.delete(f"{url}/api/v1/dags/{dag_id}", **get_extras(url, token))
 
     test_input = get_test_data(method="POST", attrs=starship.task_instances_attrs())
     test_input = json.loads(json.dumps(test_input, default=str))

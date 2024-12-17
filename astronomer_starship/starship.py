@@ -13,7 +13,7 @@ from flask_appbuilder import expose
 from airflow.security import permissions
 from airflow.www import auth
 
-ALLOWED_PROXY_METHODS = ["GET", "POST", "PATCH"]
+ALLOWED_PROXY_METHODS = ["GET", "POST", "PATCH", "DELETE"]
 
 
 class Starship(BaseView):

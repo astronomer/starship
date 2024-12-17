@@ -266,7 +266,7 @@ class StarshipApi(BaseView):
         return starship_route(get=starship_compat.get_env_vars)
 
     # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_POOL)])
-    @expose("/pools", methods=["GET", "POST"])
+    @expose("/pools", methods=["GET", "POST", "DELETE"])
     @csrf.exempt
     def pools(self):
         """
@@ -306,15 +306,26 @@ class StarshipApi(BaseView):
         | include_deferred*   | >=2.7   | bool | True    |
 
         **Response:** List of Pools, as `GET` Response
+
+        ### DELETE /api/starship/pools
+
+        **Parameters:** Args
+
+        | Field (*=Required) | Version | Type | Example |
+        |---------------------|---------|------|---------|
+        | name*               |         | str  | my_pool |
+
+        **Response:** None
         """
         return starship_route(
             get=starship_compat.get_pools,
             post=starship_compat.set_pool,
+            delete=starship_compat.delete_pool,
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.pool_attrs()),
         )
 
     # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_VARIABLE)])
-    @expose("/variables", methods=["GET", "POST"])
+    @expose("/variables", methods=["GET", "POST", "DELETE"])
     @csrf.exempt
     def variables(self):
         """
@@ -353,15 +364,26 @@ class StarshipApi(BaseView):
         | description         |         | str  | My Var  |
 
         **Response:** List of Variables, as `GET` Response
+
+        ### `DELETE /api/starship/variable`
+
+        **Parameters:** Args
+
+        | Field (*=Required) | Version | Type | Example |
+        |---------------------|---------|------|---------|
+        | key*                |         | str  | key     |
+
+        **Response:** None
         """
         return starship_route(
             get=starship_compat.get_variables,
             post=starship_compat.set_variable,
+            delete=starship_compat.delete_variable,
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.variable_attrs()),
         )
 
     # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONNECTION)])
-    @expose("/connections", methods=["GET", "POST"])
+    @expose("/connections", methods=["GET", "POST", "DELETE"])
     @csrf.exempt
     def connections(self):
         """
@@ -415,10 +437,21 @@ class StarshipApi(BaseView):
         | description        |         | str  | My Conn   |
 
         **Response:** List of Connections, as `GET` Response
+
+        ### DELETE /api/starship/connections
+
+        **Parameters:** Args
+
+        | Field (*=Required) | Version | Type | Example |
+        |---------------------|---------|------|---------|
+        | conn_id*            |         | str  | my_conn |
+
+        **Response:** None
         """
         return starship_route(
             get=starship_compat.get_connections,
             post=starship_compat.set_connection,
+            delete=starship_compat.delete_connection,
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.connection_attrs()),
         )
 
@@ -479,7 +512,7 @@ class StarshipApi(BaseView):
         )
 
     # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG_RUN)])
-    @expose("/dag_runs", methods=["GET", "POST"])
+    @expose("/dag_runs", methods=["GET", "POST", "DELETE"])
     @csrf.exempt
     def dag_runs(self):
         """
@@ -563,10 +596,21 @@ class StarshipApi(BaseView):
         | last_scheduling_decision |         | date | 1970-01-01T00:00:00+00:00         |
         | dag_hash                 |         | str  | ...                               |
         | clear_number             | >=2.8   | int  | 0                                 |
+
+        ### DELETE /api/starship/dag_runs
+
+        **Parameters:** Args
+
+        | Field (*=Required)       | Version | Type               | Example                           |
+        |--------------------------|---------|--------------------|-----------------------------------|
+        | dag_id*                  |         | str                | dag_0                             |
+
+        **Response:** None
         """
         return starship_route(
             get=starship_compat.get_dag_runs,
             post=starship_compat.set_dag_runs,
+            delete=starship_compat.delete_dag_runs,
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.dag_runs_attrs()),
         )
 
