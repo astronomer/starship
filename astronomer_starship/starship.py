@@ -60,6 +60,7 @@ class Starship(BaseView):
             request_method,
             url,
             headers=request_headers,
+            params=request.args if request.args else None,
             **({"data": request.data} if request.data else {}),
         )
         response_headers = dict(response.headers)
