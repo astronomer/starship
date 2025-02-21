@@ -233,6 +233,7 @@ export default function SetupPage({ state, dispatch }) {
                 <FormLabel>Token</FormLabel>
                 <InputGroup>
                   <Input
+                    type="password"
                     value={state.token || ''}
                     isInvalid={state.isTokenTouched && !state.token}
                     placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMj..."
