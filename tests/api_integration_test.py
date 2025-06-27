@@ -146,8 +146,6 @@ def test_integration_dag_runs_and_task_instances(url_and_token_and_starship):
             actual.json()["error"] == "Integrity Error (Duplicate Record?)"
         ), actual.text
     else:
-        # This key gets deleted
-        del test_input["dag_runs"][0]["conf"]
         assert actual.json()["dag_runs"] == test_input["dag_runs"], actual.text
 
     # Get DAG Runs
@@ -157,8 +155,6 @@ def test_integration_dag_runs_and_task_instances(url_and_token_and_starship):
         dag_run for dag_run in actual.json()["dag_runs"] if dag_run["run_id"] == run_id
     ]
     assert len(actual_dag_runs) == 1, actual.json()
-    if "conf" in actual_dag_runs[0]:
-        del actual_dag_runs[0]["conf"]
     actual_dag_run = actual_dag_runs[0]
     actual_dag_run = {
         k: (
