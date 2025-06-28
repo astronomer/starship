@@ -1166,13 +1166,13 @@ class StarshipAirflow29(StarshipAirflow28):
         return attrs
 
 
-class StarshipAirflow210(StarshipAirflow28):
+class StarshipAirflow210(StarshipAirflow29):
     """
     - _try_number to try_number in task_instance
     - executor in task_instance
     """
 
-    # TODO: Identify any other compat issues that exist between 2.8-2.10
+    # TODO: Identify any other compat issues that exist between 2.9-2.10
 
     def task_instance_attrs(self):
         attrs = super().task_instance_attrs()
