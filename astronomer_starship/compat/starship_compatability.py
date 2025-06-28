@@ -940,7 +940,12 @@ class StarshipAirflow:
             table = metadata.tables[table_name]
             self.session.execute(table.insert().values(items))
             self.session.commit()
-            return [item for item in items if item not in ["executor_config"]]
+            for item in items:
+                if "conf" in item:
+                    # we don't want to return conf in pickled form
+                    # this also makes tests happy
+                    item["conf"] = pickle.loads(item["conf"])
+            return items
         except (InvalidRequestError, KeyError):
             return self.insert_directly(f"airflow.{table_name}", items)
         except Exception as e:
