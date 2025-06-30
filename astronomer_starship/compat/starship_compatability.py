@@ -521,7 +521,7 @@ class StarshipAirflow:
                         "creating_job_id": 123,
                         "external_trigger": True,
                         "run_type": "manual",
-                        "conf": None,
+                        "conf": {"my_param": "my_value"},
                         "data_interval_start": epoch,
                         "data_interval_end": epoch,
                         "last_scheduling_decision": epoch,
@@ -590,7 +590,7 @@ class StarshipAirflow:
             "conf": {
                 "attr": "conf",
                 "methods": [("POST", False)],
-                "test_value": None,
+                "test_value": {"my_param": "my_value"},
             },
             "data_interval_start": {
                 "attr": "data_interval_start",
@@ -920,13 +920,19 @@ class StarshipAirflow:
 
         # Clean data before inserting
         for item in items:
-            # Dropping conf and executor_config because they are pickle objects
             for k in ["conf", "id", "executor_config"]:
-                if k in item:
-                    if k == "executor_config":
-                        item[k] = pickle.dumps({})
-                    else:
-                        del item[k]
+                if k not in item:
+                    continue
+                # drop executor_config, because its original type may have gotten lost
+                # and pickling it will not recover it
+                if k == "executor_config":
+                    item[k] = pickle.dumps({})
+                # use pickle to insert conf as binary JSONB
+                # this works because the dagrun conf is always a JSON-serializable dict
+                elif k == "conf":
+                    item[k] = pickle.dumps(item[k])
+                else:
+                    del item[k]
         try:
             engine = self.session.get_bind()
             metadata = MetaData(bind=engine)
@@ -934,7 +940,12 @@ class StarshipAirflow:
             table = metadata.tables[table_name]
             self.session.execute(table.insert().values(items))
             self.session.commit()
-            return [item for item in items if item not in ["executor_config"]]
+            for item in items:
+                if "conf" in item:
+                    # we don't want to return conf in pickled form
+                    # this also makes tests happy
+                    item["conf"] = pickle.loads(item["conf"])
+            return items
         except (InvalidRequestError, KeyError):
             return self.insert_directly(f"airflow.{table_name}", items)
         except Exception as e:

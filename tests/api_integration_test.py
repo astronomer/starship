@@ -47,7 +47,7 @@ def set_and_get(route, test_input, token, url):
 
 
 def delete(route, test_input, token, url):
-    actual = requests.post(
+    actual = requests.delete(
         f"{url}/{route}", params=test_input, **get_extras(url, token)
     )
     assert actual.status_code == 204, actual.text
@@ -128,37 +128,35 @@ def test_integration_dags(url_and_token_and_starship):
 @manual_tests
 def test_integration_dag_runs_and_task_instances(url_and_token_and_starship):
     (url, token, starship) = url_and_token_and_starship
-    route = "api/starship/dag_runs"
+    dr_route = "api/starship/dag_runs"
     run_id = "manual__1970-01-01T00:00:00+00:00"
     dag_id = "dag_0"
 
     # delete dag
     requests.delete(f"{url}/api/v1/dags/{dag_id}", **get_extras(url, token))
 
-    test_input = get_test_data(method="POST", attrs=starship.dag_runs_attrs())
-    test_input = json.loads(json.dumps(test_input, default=str))
+    dr_test_input = get_test_data(method="POST", attrs=starship.dag_runs_attrs())
+    dr_test_input = json.loads(json.dumps(dr_test_input, default=str))
 
     # Set DAG Runs
-    actual = requests.post(f"{url}/{route}", json=test_input, **get_extras(url, token))
+    actual = requests.post(
+        f"{url}/{dr_route}", json=dr_test_input, **get_extras(url, token)
+    )
     assert actual.status_code in [200, 409], actual.text
     if actual.status_code == 409:
         assert (
             actual.json()["error"] == "Integrity Error (Duplicate Record?)"
         ), actual.text
     else:
-        # This key gets deleted
-        del test_input["dag_runs"][0]["conf"]
-        assert actual.json()["dag_runs"] == test_input["dag_runs"], actual.text
+        assert actual.json()["dag_runs"] == dr_test_input["dag_runs"], actual.text
 
     # Get DAG Runs
-    actual = requests.get(f"{url}/{route}?dag_id={dag_id}", **get_extras(url, token))
+    actual = requests.get(f"{url}/{dr_route}?dag_id={dag_id}", **get_extras(url, token))
     assert actual.status_code == 200, actual.text
     actual_dag_runs = [
         dag_run for dag_run in actual.json()["dag_runs"] if dag_run["run_id"] == run_id
     ]
     assert len(actual_dag_runs) == 1, actual.json()
-    if "conf" in actual_dag_runs[0]:
-        del actual_dag_runs[0]["conf"]
     actual_dag_run = actual_dag_runs[0]
     actual_dag_run = {
         k: (
@@ -168,18 +166,17 @@ def test_integration_dag_runs_and_task_instances(url_and_token_and_starship):
         )
         for k, v in actual_dag_run.items()
     }
-    assert test_input["dag_runs"][0] == actual_dag_run, actual_dag_run
+    assert dr_test_input["dag_runs"][0] == actual_dag_run, actual_dag_run
 
-    # Delete test
-    delete(route, test_input, token, url)
+    ti_route = "api/starship/task_instances"
 
-    route = "api/starship/task_instances"
-
-    test_input = get_test_data(method="POST", attrs=starship.task_instances_attrs())
-    test_input = json.loads(json.dumps(test_input, default=str))
+    ti_test_input = get_test_data(method="POST", attrs=starship.task_instances_attrs())
+    ti_test_input = json.loads(json.dumps(ti_test_input, default=str))
 
     # Set Task Instances
-    actual = requests.post(f"{url}/{route}", json=test_input, **get_extras(url, token))
+    actual = requests.post(
+        f"{url}/{ti_route}", json=ti_test_input, **get_extras(url, token)
+    )
     assert actual.status_code in [200, 409], actual.text
     if actual.status_code == 409:
         assert (
@@ -187,16 +184,16 @@ def test_integration_dag_runs_and_task_instances(url_and_token_and_starship):
         ), actual.text
     else:
         assert (
-            actual.json()["task_instances"] == test_input["task_instances"]
+            actual.json()["task_instances"] == ti_test_input["task_instances"]
         ), actual.text
 
     # Get Task Instances
-    actual = requests.get(f"{url}/{route}?dag_id={dag_id}", **get_extras(url, token))
+    actual = requests.get(f"{url}/{ti_route}?dag_id={dag_id}", **get_extras(url, token))
     assert actual.status_code == 200, actual.text
     actual_task_instances = [
         task_instance
         for task_instance in actual.json()["task_instances"]
-        if task_instance["run_id"] == test_input["task_instances"][0]["run_id"]
+        if task_instance["run_id"] == ti_test_input["task_instances"][0]["run_id"]
     ]
     assert len(actual_task_instances) == 1, actual.json()
     actual_task_instance = actual_task_instances[0]
@@ -209,11 +206,16 @@ def test_integration_dag_runs_and_task_instances(url_and_token_and_starship):
         for k, v in actual_task_instance.items()
     }
     # gets blanked out
-    test_input["task_instances"][0]["executor_config"] = None
+    ti_test_input["task_instances"][0]["executor_config"] = None
 
     if "trigger_timeout" in actual_task_instance:
         del actual_task_instance["trigger_timeout"]
-    if "trigger_timeout" in test_input["task_instances"][0]:
-        del test_input["task_instances"][0]["trigger_timeout"]
+    if "trigger_timeout" in ti_test_input["task_instances"][0]:
+        del ti_test_input["task_instances"][0]["trigger_timeout"]
 
-    assert actual_task_instance == test_input["task_instances"][0], actual_task_instance
+    assert (
+        actual_task_instance == ti_test_input["task_instances"][0]
+    ), actual_task_instance
+
+    # Delete test
+    delete(dr_route, dr_test_input["dag_runs"][0], token, url)

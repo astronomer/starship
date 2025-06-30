@@ -109,8 +109,6 @@ def test_dag_runs_and_task_instances(starship):
         dag_run for dag_run in actual["dag_runs"] if dag_run["run_id"] == run_id
     ]
     assert len(actual_dag_runs) == 1, actual
-    if "conf" in actual_dag_runs[0]:
-        del actual_dag_runs[0]["conf"]
     assert json.dumps(actual_dag_runs[0], default=str) in json.dumps(
         test_input["dag_runs"], default=str
     ), actual_dag_runs
