@@ -12,7 +12,7 @@ RUN apt-get update && cat packages.txt | xargs apt-get install -y && \
 COPY dev/requirements.txt .
 RUN pip install --no-cache-dir --root-user-action=ignore -r requirements.txt
 
-COPY --chown=astro:astro dist/*.whl /usr/local/airflow/
-RUN pip install --no-cache-dir ./*.whl
+COPY --chown=astro:astro --chmod=777 ./ /usr/local/airflow/starship
+RUN pip install --no-cache-dir -e /usr/local/airflow/starship
 
 USER astro
