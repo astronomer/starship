@@ -715,6 +715,107 @@ class StarshipApi(BaseView):
             ),
         )
 
+    # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_TASK_INSTANCE)])
+    @expose("/task_log", methods=["GET", "POST", "DELETE"])
+    @csrf.exempt
+    def task_logs(self):
+        """
+        **EXPERIMENTAL**
+
+        Get, set or delete task logs.
+
+        **Requirements:**
+
+        - Airflow 2.8+
+        - Astro hosted deployments or local astro dev environment
+
+        ---
+
+        ### `GET /api/starship/task_log`
+
+        **Parameters:** Args
+
+        | Field (*=Required)       | Version | Type               | Example                              |
+        |--------------------------|---------|--------------------|--------------------------------------|
+        | dag_id*                  |         | str                | dag_0                                |
+        | run_id*                  |         | str                | scheduled__2025-06-30T20:00:00+00:00 |
+        | task_id*                 |         | str                | task_0                               |
+        | map_index*               |         | int                | -1                                   |
+        | try_number*              |         | int                | 1                                    |
+
+
+        **Response**:
+
+        ```json
+        {
+            "dag_id": "example_dag2",
+            "log": "[2025-06-30T21:02:11.417+0000] ... Task exited with return code 0\\n",
+            "map_index": "0",
+            "run_id": "scheduled__2025-06-30T20:00:00+00:00",
+            "task_id": "example_task",
+            "try_number": "1"
+        }
+        ```
+
+        ### `POST /api/starship/task_log`
+
+        **Parameters:** JSON
+
+        | Field (*=Required)       | Version | Type               | Example                              |
+        |--------------------------|---------|--------------------|--------------------------------------|
+        | dag_id*                  |         | str                | dag_0                                |
+        | run_id*                  |         | str                | scheduled__2025-06-30T20:00:00+00:00 |
+        | task_id*                 |         | str                | task_0                               |
+        | map_index*               |         | int                | -1                                   |
+        | try_number*              |         | int                | 1                                    |
+        | log*                     |         | str                | [2025-06-30] This is a task log.     |
+
+        **Request**:
+
+        ```json
+        {
+            "dag_id": "example_dag2",
+            "log": "[2025-06-30T21:02:11.417+0000] ... Task exited with return code 0\\n",
+            "map_index": "0",
+            "run_id": "scheduled__2025-06-30T20:00:00+00:00",
+            "task_id": "example_task",
+            "try_number": "1"
+        }
+        ```
+
+        **Response**:
+
+        ```json
+        {
+            "dag_id": "example_dag2",
+            "map_index": "0",
+            "run_id": "scheduled__2025-06-30T20:00:00+00:00",
+            "task_id": "example_task",
+            "try_number": "1"
+        }
+        ```
+
+        ### DELETE /api/starship/task_log
+
+        **Parameters:** Args
+
+        | Field (*=Required)       | Version | Type               | Example                              |
+        |--------------------------|---------|--------------------|--------------------------------------|
+        | dag_id*                  |         | str                | dag_0                                |
+        | run_id*                  |         | str                | scheduled__2025-06-30T20:00:00+00:00 |
+        | task_id*                 |         | str                | task_0                               |
+        | map_index*               |         | int                | -1                                   |
+        | try_number*              |         | int                | 1                                    |
+
+        **Response:** None
+        """
+        return starship_route(
+            get=starship_compat.get_task_log,
+            post=starship_compat.set_task_log,
+            delete=starship_compat.delete_task_log,
+            kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.task_log_attrs()),
+        )
+
 
 starship_compat = StarshipCompatabilityLayer()
 
