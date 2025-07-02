@@ -1190,6 +1190,13 @@ class StarshipAirflow210(StarshipAirflow29):
         return attrs
 
 
+class StarshipAirflow211(StarshipAirflow210):
+    """
+    There have been no changes to the DB in Airflow 2.11.
+    https://github.com/apache/airflow/tree/2.11.0/airflow/migrations/versions
+    """
+
+
 class StarshipCompatabilityLayer:
     """StarshipCompatabilityLayer is a factory class that returns the correct StarshipAirflow class for a version
 
@@ -1206,6 +1213,7 @@ class StarshipCompatabilityLayer:
     - 2.8 https://github.com/apache/airflow/tree/2.8.3/airflow/models
     - 2.9 https://github.com/apache/airflow/tree/2.9.3/airflow/models
     - 2.10 https://github.com/apache/airflow/tree/2.10.3/airflow/models
+    - 2.11 https://github.com/apache/airflow/tree/2.11.0/airflow/models
 
     >>> isinstance(StarshipCompatabilityLayer("2.8.1"), StarshipAirflow28)
     True
@@ -1234,6 +1242,8 @@ class StarshipCompatabilityLayer:
             )
 
         if int(major) == 2:
+            if int(minor) == 11:
+                return StarshipAirflow211()
             if int(minor) == 10:
                 return StarshipAirflow210()
             if int(minor) == 9:

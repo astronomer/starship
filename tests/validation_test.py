@@ -27,6 +27,7 @@ ASTRO_IMAGES = [
 ]
 
 IMAGES = [
+    "apache/airflow:slim-2.11.0",
     "apache/airflow:slim-2.10.3",
     "apache/airflow:slim-2.9.3",
     "apache/airflow:slim-2.8.1",
