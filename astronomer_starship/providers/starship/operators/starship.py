@@ -2,6 +2,7 @@
 import logging
 from datetime import datetime
 from typing import Any, Union, List
+from packaging.version import Version
 
 import airflow
 from airflow import DAG
@@ -69,7 +70,7 @@ def starship_variables_migration(variables: List[str] = None, **kwargs):
             return _variables
 
         variables_results = get_variables()
-        if airflow.__version__ >= "2.3.0":
+        if Version(airflow.__version__) >= Version("2.3.0"):
             StarshipVariableMigrationOperator.partial(
                 task_id="migrate_variables", **kwargs
             ).expand(variable_key=variables_results)
@@ -121,7 +122,7 @@ def starship_pools_migration(pools: List[str] = None, **kwargs):
             return _pools
 
         pools_result = get_pools()
-        if airflow.__version__ >= "2.3.0":
+        if Version(airflow.__version__) >= Version("2.3.0"):
             StarshipPoolMigrationOperator.partial(
                 task_id="migrate_pools", **kwargs
             ).expand(pool_name=pools_result)
@@ -175,7 +176,7 @@ def starship_connections_migration(connections: List[str] = None, **kwargs):
             return _connections
 
         connections_result = get_connections()
-        if airflow.__version__ >= "2.3.0":
+        if Version(airflow.__version__) >= Version("2.3.0"):
             StarshipConnectionMigrationOperator.partial(
                 task_id="migrate_connections", **kwargs
             ).expand(connection_id=connections_result)
@@ -267,12 +268,12 @@ def starship_dag_history_migration(dag_ids: List[str] = None, **kwargs):
             return _dags
 
         dags_result = get_dags()
-        if airflow.__version__ >= "2.3.0":
+        if Version(airflow.__version__) >= Version("2.3.0"):
             StarshipDagHistoryMigrationOperator.partial(
                 task_id="migrate_dag_ids",
                 **(
                     {"map_index_template": "{{ task.target_dag_id }}"}
-                    if airflow.__version__ >= "2.9.0"
+                    if Version(airflow.__version__) >= Version("2.9.0")
                     else {}
                 ),
                 **kwargs,
