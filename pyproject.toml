@@ -53,7 +53,7 @@ dev = [
     "build",
 
     # test
-    "apache-airflow<2.11",     # Starship only supports Airflow version up to 2.10 at the moment
+    "apache-airflow<3",        # Starship only supports Airflow version up to 2.11 at the moment
     "pytest>=7",
     "pytest-cov>=4.0",
     "pytest-integration>=0.2",
