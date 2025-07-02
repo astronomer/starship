@@ -1,0 +1,17 @@
+# Ignore everything
+**
+
+!astronomer_starship
+!dev/.astro/
+!dev/dags/
+!dev/include/
+!dev/plugins/
+!dev/tests/
+
+!dev/packages.txt
+!dev/requirements.txt
+!dist/*.whl
+!pyproject.toml
+
+**/__pycache__/
+**/node_modules/

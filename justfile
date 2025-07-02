@@ -207,3 +207,7 @@ build-docs: clean
 # Deploy the documentation to GitHub Pages
 deploy-docs UPSTREAM="origin": clean
     mkdocs gh-deploy -r {{UPSTREAM}}
+
+# run just commands from the dev project for running the local version of Starship in Airflow
+dev *ARGS:
+    @just dev/{{ARGS}}
