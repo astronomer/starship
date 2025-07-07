@@ -7,6 +7,7 @@
 !dev/include/
 !dev/plugins/
 !dev/tests/
+!tests/
 
 !dev/packages.txt
 !dev/requirements.txt
