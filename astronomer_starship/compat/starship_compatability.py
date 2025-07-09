@@ -1225,7 +1225,7 @@ class StarshipAirflow28(StarshipAirflow27):
         map_index,
         try_number,
         **_,
-    ) -> tuple[str, str | None]:
+    ) -> "Tuple[str, str | None]":
         """Get the path to the task log file and the connection ID for remote storage."""
         ASTRONOMER_ENVIRONMENT = os.getenv("ASTRONOMER_ENVIRONMENT")
 
@@ -1257,6 +1257,9 @@ class StarshipAirflow28(StarshipAirflow27):
             res.status_code = 409
             raise NotImplementedError()
 
+        # ObjectStoragePath could be used to build the full path, but there seems to be a problem
+        # where the connection ID duplicates with each path segment.
+        # We also want to have access to the path only for logging purposes.
         path = os.path.join(
             base_folder,
             f"dag_id={dag_id}",
