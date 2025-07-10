@@ -1257,17 +1257,26 @@ class StarshipAirflow28(StarshipAirflow27):
             res.status_code = 409
             raise NotImplementedError()
 
+        path_components = (
+            [
+                f"dag_id={dag_id}",
+                f"run_id={run_id}",
+                f"task_id={task_id}",
+                f"attempt={try_number}.log",
+            ]
+            if map_index == "-1"
+            else [
+                f"dag_id={dag_id}",
+                f"run_id={run_id}",
+                f"task_id={task_id}",
+                f"map_index={map_index}",
+                f"attempt={try_number}.log",
+            ]
+        )
         # ObjectStoragePath could be used to build the full path, but there seems to be a problem
         # where the connection ID duplicates with each path segment.
         # We also want to have access to the path only for logging purposes.
-        path = os.path.join(
-            base_folder,
-            f"dag_id={dag_id}",
-            f"run_id={run_id}",
-            f"task_id={task_id}",
-            f"map_index={map_index}",
-            f"attempt={try_number}.log",
-        )
+        path = os.path.join(base_folder, *path_components)
         return path, conn_id
 
     def get_task_log(self, **kwargs):
