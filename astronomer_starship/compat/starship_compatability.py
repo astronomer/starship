@@ -1,4 +1,3 @@
-from http import HTTPStatus
 import json
 import logging
 import os
@@ -937,6 +936,28 @@ class StarshipAirflow:
         res.status_code = 409
         raise NotImplementedError()
 
+    @classmethod
+    def xcom_attrs(cls) -> "Dict[str, AttrDesc]":
+        return {}
+
+    def get_xcom(self, **kwargs):
+        """Get XCom for a task instance"""
+        res = jsonify({"error": "XComs require Airflow 2.8 or later"})
+        res.status_code = 409
+        raise NotImplementedError()
+
+    def set_xcom(self, **kwargs):
+        """Set the XCom for a task instance"""
+        res = jsonify({"error": "XComs require Airflow 2.8 or later"})
+        res.status_code = 409
+        raise NotImplementedError()
+
+    def delete_xcom(self, **kwargs):
+        """Delete the XCom for a task instance"""
+        res = jsonify({"error": "XComs require Airflow 2.8 or later"})
+        res.status_code = 409
+        raise NotImplementedError()
+
     def insert_directly(self, table_name, items):
         from sqlalchemy.exc import InvalidRequestError
         from sqlalchemy import MetaData
@@ -1319,6 +1340,7 @@ class StarshipAirflow28(StarshipAirflow27):
     def delete_task_log(self, **kwargs):
         """Delete the log for a task instance"""
         from airflow.io.path import ObjectStoragePath
+        from http import HTTPStatus
 
         try:
             path, conn_id = self._task_log_path(**kwargs)
@@ -1330,6 +1352,130 @@ class StarshipAirflow28(StarshipAirflow27):
             res = jsonify({"error": f"Task log at {path} not found: {e}"})
             res.status_code = 404
             return res
+
+    @classmethod
+    def xcom_attrs(cls) -> "Dict[str, AttrDesc]":
+        return {
+            "dag_id": {
+                "attr": "dag_id",
+                "methods": [
+                    ("GET", True),
+                    ("POST", True),
+                    ("DELETE", True),
+                ],
+                "test_value": "dag_0",
+            },
+            "run_id": {
+                "attr": "run_id",
+                "methods": [
+                    ("GET", True),
+                    ("POST", True),
+                    ("DELETE", True),
+                ],
+                "test_value": "manual__1970-01-01T00:00:00+00:00",
+            },
+            "task_id": {
+                "attr": "task_id",
+                "methods": [
+                    ("GET", True),
+                    ("POST", True),
+                    ("DELETE", True),
+                ],
+                "test_value": "task_id",
+            },
+            "map_index": {
+                "attr": "map_index",
+                "methods": [
+                    ("GET", True),
+                    ("POST", True),
+                    ("DELETE", True),
+                ],
+                "test_value": -1,
+            },
+            "key": {
+                "attr": "key",
+                "methods": [("POST", True)],
+                "test_value": "return_value",
+            },
+            "value": {
+                "attr": "value",
+                "methods": [("POST", True)],
+                "test_value": "airflow.io.path.ObjectStoragePath@version=1(path=s3://example_conn@my-bucket/example/object.txt,conn_id=example_conn,kwargs={})",  # TODO string? binary?
+            },
+        }
+
+    def get_xcom(self, *, dag_id: str, run_id: str, task_id: str, map_index: int):
+        from airflow.models import XCom
+        import base64
+
+        try:
+            results = (
+                self.session.query(XCom)
+                .filter(XCom.dag_id == dag_id)
+                .filter(XCom.run_id == run_id)
+                .filter(XCom.task_id == task_id)
+                .filter(XCom.map_index == map_index)
+                .all()
+            )
+
+            for result in results:
+                # we serialize the value back to bytes and return it as base64 encoded string
+                # this will allow us to handle pickled and non-pickled values the same way.
+                # ideally we'd take the binary from the DB, but that's more low-level.
+                value_serialized = XCom.serialize_value(
+                    result.value,
+                    key=result.key,
+                    task_id=task_id,
+                    dag_id=dag_id,
+                    run_id=run_id,
+                    map_index=map_index,
+                )
+                result.value = base64.b64encode(value_serialized).decode("utf-8")
+
+            return results_to_list_via_attrs(results, self.xcom_attrs())
+        finally:
+            # if we don't rollback here, the `value` modifications will stay in memory and may leak into the request
+            self.session.rollback()
+
+    def set_xcom(self, *, dag_id, run_id, value=None, **kwargs):
+        from airflow.models import DagRun, XCom
+        import base64
+
+        dag_run = (
+            self.session.query(DagRun)
+            .filter(DagRun.dag_id == dag_id)
+            .filter(DagRun.run_id == run_id)
+            .first()
+        )
+
+        if dag_run is None:
+            # TODO: this should be a 404
+            raise ValueError(
+                f"DagRun with dag_id={dag_id} and run_id={run_id} not found"
+            )
+
+        try:
+            # we only have to base64 decode the value and commit the result as binary
+            # the model will handle the serialization
+            xcom = XCom(
+                dag_run_id=dag_run.id,
+                dag_id=dag_id,
+                run_id=run_id,
+                value=base64.b64decode(value),
+                **kwargs,
+            )
+
+            self.session.add(xcom)
+            self.session.commit()
+
+            # TODO don't return `value`
+            return results_to_list_via_attrs([xcom], self.xcom_attrs())[0]
+        except Exception as e:
+            self.session.rollback()
+            raise e
+
+    def delete_xcom(self, **kwargs):
+        return generic_delete(self.session, "airflow.models.XCom", **kwargs)
 
 
 class StarshipAirflow29(StarshipAirflow28):

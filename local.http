@@ -1,0 +1,173 @@
+@baseUrl = http://localhost:8080
+@execution_date = 2025-06-25 22:15:40+00:00
+@run_id = scheduled__2025-07-11T18%3A00%3A00%2B00%3A00
+@task_id = example_task
+@dag_id = example_xcom
+@map_index = -1
+@try_number = 1
+
+
+
+### GET XCom
+GET {{baseUrl}}/api/starship/xcom?dag_id={{dag_id}}&run_id={{run_id}}&task_id={{task_id}}&map_index={{map_index}}
+
+### DELETE XCom
+DELETE {{baseUrl}}/api/starship/xcom?dag_id={{dag_id}}&run_id={{run_id}}&task_id={{task_id}}&map_index={{map_index}}
+
+
+### POST XCom object storage
+POST {{baseUrl}}/api/starship/xcom
+Content-Type: application/json
+
+{
+  "dag_id": "example_xcom",
+  "key": "return_value",
+  "map_index": -1,
+  "run_id": "scheduled__2025-07-11T18:00:00+00:00",
+  "task_id": "example_task",
+  "value": "ImFpcmZsb3cuaW8ucGF0aC5PYmplY3RTdG9yYWdlUGF0aEB2ZXJzaW9uPTEocGF0aD1zMzovL2V4YW1wbGVfY29ubkBteS1idWNrZXQvZXhhbXBsZS9vYmplY3QudHh0LGNvbm5faWQ9ZXhhbXBsZV9jb25uLGt3YXJncz17fSki"
+}
+
+### POST XCom none
+POST {{baseUrl}}/api/starship/xcom
+Content-Type: application/json
+
+{
+  "dag_id": "example_xcom",
+  "key": "example_none",
+  "map_index": -1,
+  "run_id": "scheduled__2025-07-11T18:00:00+00:00",
+  "task_id": "example_task",
+  "value": "bnVsbA=="
+}
+
+### POST XCom int
+POST {{baseUrl}}/api/starship/xcom
+Content-Type: application/json
+
+{
+  "dag_id": "example_xcom",
+  "key": "example_int",
+  "map_index": -1,
+  "run_id": "scheduled__2025-07-11T18:00:00+00:00",
+  "task_id": "example_task",
+  "value": "NDI="
+}
+
+### POST XCom str
+POST {{baseUrl}}/api/starship/xcom
+Content-Type: application/json
+
+{
+  "dag_id": "example_xcom",
+  "key": "example_str",
+  "map_index": -1,
+  "run_id": "scheduled__2025-07-11T18:00:00+00:00",
+  "task_id": "example_task",
+  "value": "IlRoaXMgaXMgYW4gZXhhbXBsZSBzdHJpbmcgdmFsdWUgZm9yIFhDb20uIg=="
+}
+
+
+###
+GET {{baseUrl}}/api/starship/dag_runs?dag_id=example_dag
+
+###
+
+POST {{baseUrl}}/api/starship/dag_runs
+Content-Type: application/json
+
+{
+  "dag_runs": [
+    {
+      "clear_number": 0,
+      "conf": {},
+      "creating_job_id": null,
+      "dag_hash": "706aea5a654ea97b956fd6bc76f2def7",
+      "dag_id": "example_dag",
+      "data_interval_end": "2025-06-25 21:00:00+00:00",
+      "data_interval_start": "2025-06-25 20:00:00+00:00",
+      "end_date": "2025-06-25 21:09:20.974349+00:00",
+      "execution_date": "{{execution_date}}",
+      "external_trigger": true,
+      "last_scheduling_decision": "2025-06-25 21:09:20.971728+00:00",
+      "queued_at": "2025-06-25 21:09:19.408804+00:00",
+      "run_id": "{{run_id}}",
+      "run_type": "manual",
+      "start_date": "2025-06-25 21:09:19.873579+00:00",
+      "state": "success"
+    }
+  ] 
+}
+
+### 
+
+GET {{baseUrl}}/api/starship/task_instances?dag_id=example_dag
+
+###
+
+POST {{baseUrl}}/api/starship/task_instances
+Content-Type: application/json
+
+{
+  "task_instances": [
+    {
+      "custom_operator_name": null,
+      "dag_id": "example_dag",
+      "duration": 0.107117,
+      "end_date": "2025-06-25 23:09:04.446692+00:00",
+      "executor_config": {"hello": "world"},
+      "external_executor_id": null,
+      "hostname": "22b89ad5ec6d",
+      "job_id": 18,
+      "map_index": -1,
+      "max_tries": 0,
+      "operator": "BashOperator",
+      "pid": 176,
+      "pool": "default_pool",
+      "pool_slots": 1,
+      "priority_weight": 1,
+      "queue": "default",
+      "queued_by_job_id": 17,
+      "queued_dttm": "2025-06-25 23:09:04.209908+00:00",
+      "rendered_map_index": null,
+      "run_id": "{{run_id}}",
+      "start_date": "2025-06-25 23:09:04.339575+00:00",
+      "state": "success",
+      "task_display_name": "print_message",
+      "task_id": "print_message",
+      "trigger_id": null,
+      "trigger_timeout": null,
+      "try_number": 1,
+      "unixname": "astro"
+    }
+  ]
+}
+
+
+###
+
+GET {{baseUrl}}/api/starship/task_log?dag_id=example&task_id=example_task&run_id={{run_id}}&map_index=-1&try_number=1
+
+# /usr/local/airflow/logs/dag_id=example_dag/run_id=scheduled__2025-06-30T20:00:00 00:00/task_id=example_task/map_index=0/attempt=1.log
+# /usr/local/airflow/logs/dag_id=example_dag/run_id=scheduled__2025-06-30T20:00:00+00:00/task_id=example_task/map_index=0/attempt=1.log
+
+### 
+
+POST {{baseUrl}}/api/starship/task_log
+Content-Type: application/json
+
+{
+  "dag_id": "example_dag2",
+  "log": "[2025-06-30T21:02:11.407+0000] {local_task_job_runner.py:123} INFO - ::group::Pre task execution logs\n[2025-06-30T21:02:11.417+0000] {taskinstance.py:2631} INFO - Dependencies all met for dep_context=non-requeueable deps ti=<TaskInstance: example_dag.example_task scheduled__2025-06-30T20:00:00+00:00 map_index=0 [queued]>\n[2025-06-30T21:02:11.420+0000] {taskinstance.py:2631} INFO - Dependencies all met for dep_context=requeueable deps ti=<TaskInstance: example_dag.example_task scheduled__2025-06-30T20:00:00+00:00 map_index=0 [queued]>\n[2025-06-30T21:02:11.420+0000] {taskinstance.py:2884} INFO - Starting attempt 1 of 1\n[2025-06-30T21:02:11.427+0000] {taskinstance.py:2907} INFO - Executing <Mapped(_PythonDecoratedOperator): example_task> on 2025-06-30 20:00:00+00:00\n[2025-06-30T21:02:11.432+0000] {logging_mixin.py:190} WARNING - /usr/local/lib/python3.12/site-packages/airflow/task/task_runner/standard_task_runner.py:70 DeprecationWarning: This process (pid=188) is multi-threaded, use of fork() may lead to deadlocks in the child.\n[2025-06-30T21:02:11.433+0000] {standard_task_runner.py:72} INFO - Started process 189 to run task\n[2025-06-30T21:02:11.433+0000] {standard_task_runner.py:104} INFO - Running: ['airflow', 'tasks', 'run', 'example_dag', 'example_task', 'scheduled__2025-06-30T20:00:00+00:00', '--job-id', '5', '--raw', '--subdir', 'DAGS_FOLDER/example_dag.py', '--cfg-path', '/tmp/tmpre0r97kp', '--map-index', '0']\n[2025-06-30T21:02:11.434+0000] {standard_task_runner.py:105} INFO - Job 5: Subtask example_task\n[2025-06-30T21:02:11.465+0000] {task_command.py:467} INFO - Running <TaskInstance: example_dag.example_task scheduled__2025-06-30T20:00:00+00:00 map_index=0 [running]> on host db5cc09d4723\n[2025-06-30T21:02:11.640+0000] {taskinstance.py:3157} INFO - Exporting env vars: AIRFLOW_CTX_DAG_OWNER='airflow' AIRFLOW_CTX_DAG_ID='example_dag' AIRFLOW_CTX_TASK_ID='example_task' AIRFLOW_CTX_EXECUTION_DATE='2025-06-30T20:00:00+00:00' AIRFLOW_CTX_TRY_NUMBER='1' AIRFLOW_CTX_DAG_RUN_ID='scheduled__2025-06-30T20:00:00+00:00'\n[2025-06-30T21:02:11.641+0000] {taskinstance.py:740} INFO - ::endgroup::\n[2025-06-30T21:02:11.642+0000] {python.py:240} INFO - Done. Returned value was: Hello, Airflow!\n[2025-06-30T21:02:11.651+0000] {taskinstance.py:349} INFO - ::group::Post task execution logs\n[2025-06-30T21:02:11.651+0000] {taskinstance.py:361} INFO - Marking task as SUCCESS. dag_id=example_dag, task_id=example_task, run_id=scheduled__2025-06-30T20:00:00+00:00, map_index=0, execution_date=20250630T200000, start_date=20250630T210211, end_date=20250630T210211\n[2025-06-30T21:02:11.667+0000] {local_task_job_runner.py:266} INFO - Task exited with return code 0\n[2025-06-30T21:02:11.673+0000] {taskinstance.py:3924} INFO - 0 downstream tasks scheduled from follow-on schedule check\n[2025-06-30T21:02:11.674+0000] {local_task_job_runner.py:245} INFO - ::endgroup::\n",
+  "map_index": "0",
+  "run_id": "scheduled__2025-06-30T20:00:00+00:00",
+  "task_id": "example_task",
+  "try_number": "1"
+}
+
+###
+
+GET {{baseUrl}}/api/starship/task_log?dag_id=example_dag2&task_id=example_task&run_id={{run_id}}&map_index=0&try_number=1
+
+### 
+DELETE {{baseUrl}}/api/starship/task_log?dag_id=example_dag2&task_id=example_task&run_id={{run_id}}&map_index=0&try_number=1
