@@ -26,7 +26,7 @@ def example_task(name: str, rendered: str):
         )
     },
 )
-def example_dag():
+def example_mapped():
     example_task.partial(
         rendered="{{ params.example_param }}",
     ).expand(
@@ -34,4 +34,4 @@ def example_dag():
     )
 
 
-example_dag()
+example_mapped()
