@@ -1,4 +1,5 @@
 """NOTE: These tests run _inside docker containers_ generated from the validation_test.py file."""
+
 import json
 import os
 import pytest
@@ -13,6 +14,20 @@ from astronomer_starship.compat.starship_compatability import (
 docker_test = pytest.mark.skipif(
     not bool(os.getenv("DOCKER_TEST")), reason="Not inside Docker container under test"
 )
+
+
+@pytest.fixture()
+def app():
+    from airflow.www.app import create_app
+
+    app = create_app(testing=True)
+    yield app
+
+
+@pytest.fixture(autouse=True)
+def app_context(app):
+    with app.app_context():
+        yield
 
 
 @pytest.fixture(scope="session")
