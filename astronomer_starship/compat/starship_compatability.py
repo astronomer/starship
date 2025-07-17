@@ -17,6 +17,12 @@ import pytz
 logger = logging.getLogger(__name__)
 
 
+def get_session() -> Session:
+    from airflow.settings import Session
+
+    return Session()
+
+
 def get_from_request(args, json, key, required: bool = False) -> "Any":
     val = json.get(key, args.get(key))
     if val is None and required:
@@ -198,11 +204,6 @@ class StarshipAirflow:
     and get created directly by StarshipCompatabilityLayer
     """
 
-    def __init__(self):
-        from airflow.settings import Session
-
-        self.session = Session()
-
     @classmethod
     def get_airflow_version(cls):
         from airflow import __version__
@@ -245,17 +246,20 @@ class StarshipAirflow:
 
     def get_variables(self):
         return generic_get_all(
-            self.session, "airflow.models.Variable", self.variable_attrs()
+            get_session(), "airflow.models.Variable", self.variable_attrs()
         )
 
     def set_variable(self, **kwargs):
         return generic_set_one(
-            self.session, "airflow.models.Variable", self.variable_attrs(), **kwargs
+            get_session(),
+            "airflow.models.Variable",
+            self.variable_attrs(),
+            **kwargs,
         )
 
     def delete_variable(self, **kwargs):
         attrs = {self.variable_attrs()[k]["attr"]: v for k, v in kwargs.items()}
-        return generic_delete(self.session, "airflow.models.Variable", **attrs)
+        return generic_delete(get_session(), "airflow.models.Variable", **attrs)
 
     @classmethod
     def pool_attrs(cls) -> "Dict[str, AttrDesc]":
@@ -274,11 +278,11 @@ class StarshipAirflow:
         }
 
     def get_pools(self):
-        return generic_get_all(self.session, "airflow.models.Pool", self.pool_attrs())
+        return generic_get_all(get_session(), "airflow.models.Pool", self.pool_attrs())
 
     def set_pool(self, **kwargs):
         return generic_set_one(
-            self.session, "airflow.models.Pool", self.pool_attrs(), **kwargs
+            get_session(), "airflow.models.Pool", self.pool_attrs(), **kwargs
         )
 
     def delete_pool(self, **kwargs):
@@ -287,7 +291,7 @@ class StarshipAirflow:
             for k, v in kwargs.items()
             if k in self.pool_attrs()
         }
-        return generic_delete(self.session, "airflow.models.Pool", **attrs)
+        return generic_delete(get_session(), "airflow.models.Pool", **attrs)
 
     @classmethod
     def connection_attrs(cls) -> "Dict[str, AttrDesc]":
@@ -341,17 +345,20 @@ class StarshipAirflow:
 
     def get_connections(self):
         return generic_get_all(
-            self.session, "airflow.models.Connection", self.connection_attrs()
+            get_session(), "airflow.models.Connection", self.connection_attrs()
         )
 
     def set_connection(self, **kwargs):
         return generic_set_one(
-            self.session, "airflow.models.Connection", self.connection_attrs(), **kwargs
+            get_session(),
+            "airflow.models.Connection",
+            self.connection_attrs(),
+            **kwargs,
         )
 
     def delete_connection(self, **kwargs):
         attrs = {self.connection_attrs()[k]["attr"]: v for k, v in kwargs.items()}
-        return generic_delete(self.session, "airflow.models.Connection", **attrs)
+        return generic_delete(get_session(), "airflow.models.Connection", **attrs)
 
     @classmethod
     def dag_attrs(cls) -> "Dict[str, AttrDesc]":
@@ -402,6 +409,7 @@ class StarshipAirflow:
         """Get all DAGs"""
         from airflow.models import DagModel
 
+        session = get_session()
         try:
             fields = [
                 getattr(DagModel, attr_desc["attr"])
@@ -426,13 +434,13 @@ class StarshipAirflow:
                             )
                             for attr, attr_desc in self.dag_attrs().items()
                         }
-                        for result in self.session.query(*fields).all()
+                        for result in session.query(*fields).all()
                     ],
                     default=str,
                 )
             )
         except Exception as e:
-            self.session.rollback()
+            session.rollback()
             raise e
 
     def set_dag_is_paused(self, dag_id: str, is_paused: bool):
@@ -440,36 +448,38 @@ class StarshipAirflow:
         from airflow.models import DagModel
         from sqlalchemy import update
 
+        session = get_session()
         try:
-            self.session.execute(
+            session.execute(
                 update(DagModel)
                 .where(DagModel.dag_id == dag_id)
                 .values(is_paused=is_paused)
             )
-            self.session.commit()
+            session.commit()
             return {
                 "dag_id": dag_id,
                 "is_paused": is_paused,
             }
         except Exception as e:
-            self.session.rollback()
+            session.rollback()
             raise e
 
     def _get_tags(self, dag_id: str):
+        session = get_session()
         try:
             from airflow.models import DagTag
 
             # noinspection PyTypeChecker
             return [
                 tag[0]
-                for tag in self.session.query(DagTag.name)
+                for tag in session.query(DagTag.name)
                 .filter(DagTag.dag_id == dag_id)
                 .all()
             ]
         except ImportError:
             return []
         except Exception as e:
-            self.session.rollback()
+            session.rollback()
             raise e
 
     def _get_dag_run_count(self, dag_id: str):
@@ -477,16 +487,17 @@ class StarshipAirflow:
         from sqlalchemy.sql.functions import count
         from sqlalchemy import distinct
 
+        session = get_session()
         try:
             # py36/sqlalchemy1.3 doesn't like label?
             # noinspection PyTypeChecker
             return (
-                self.session.query(count(distinct(DagRun.run_id)))
+                session.query(count(distinct(DagRun.run_id)))
                 .filter(DagRun.dag_id == dag_id)
                 .one()[0]
             )
         except Exception as e:
-            self.session.rollback()
+            session.rollback()
             raise e
 
     @classmethod
@@ -623,9 +634,10 @@ class StarshipAirflow:
         from sqlalchemy import desc
         from airflow.models import DagRun
 
+        session = get_session()
         try:
             query = (
-                self.session.query(DagRun)
+                session.query(DagRun)
                 .filter(DagRun.dag_id == dag_id)
                 .order_by(desc(DagRun.start_date))
             )
@@ -637,7 +649,7 @@ class StarshipAirflow:
                 "dag_run_count": self._get_dag_run_count(dag_id),
             }
         except Exception as e:
-            self.session.rollback()
+            session.rollback()
             raise e
 
     def set_dag_runs(self, dag_runs: list):
@@ -647,7 +659,7 @@ class StarshipAirflow:
 
     def delete_dag_runs(self, **kwargs):
         attrs = {self.dag_runs_attrs()[k]["attr"]: v for k, v in kwargs.items()}
-        return generic_delete(self.session, "airflow.models.DagRun", **attrs)
+        return generic_delete(get_session(), "airflow.models.DagRun", **attrs)
 
     @classmethod
     def task_instances_attrs(cls) -> "Dict[str, AttrDesc]":
@@ -865,11 +877,12 @@ class StarshipAirflow:
         from airflow.models import DagRun, TaskInstance
         from sqlalchemy.orm import load_only
 
+        session = get_session()
         try:
             # py36/sqlalchemy1.3 doesn't query(Table.column)
             # noinspection PyTypeChecker
             sub_query = (
-                self.session.query(DagRun.run_id)
+                session.query(DagRun.run_id)
                 .filter(DagRun.dag_id == dag_id)
                 .order_by(desc(DagRun.start_date))
                 .limit(limit)
@@ -881,7 +894,7 @@ class StarshipAirflow:
             # .in_ doesn't seem to get recognized by type checkers
             # noinspection PyUnresolvedReferences
             results = (
-                self.session.query(TaskInstance)
+                session.query(TaskInstance)
                 .filter(TaskInstance.dag_id == dag_id)
                 .filter(TaskInstance.run_id.in_(sub_query))
                 .options(
@@ -903,7 +916,7 @@ class StarshipAirflow:
                 "dag_run_count": self._get_dag_run_count(dag_id),
             }
         except Exception as e:
-            self.session.rollback()
+            session.rollback()
             raise e
 
     def set_task_instances(self, task_instances: list):
@@ -913,7 +926,7 @@ class StarshipAirflow:
 
     def delete_task_instances(self, **kwargs):
         attrs = {self.task_instances_attrs()[k]["attr"]: v for k, v in kwargs.items()}
-        return generic_delete(self.session, "airflow.models.TaskInstance", **attrs)
+        return generic_delete(get_session(), "airflow.models.TaskInstance", **attrs)
 
     @classmethod
     def task_log_attrs(cls) -> "Dict[str, AttrDesc]":
@@ -945,6 +958,7 @@ class StarshipAirflow:
         if not items:
             return []
 
+        session = get_session()
         # Clean data before inserting
         for item in items:
             for k in ["conf", "id", "executor_config"]:
@@ -961,12 +975,12 @@ class StarshipAirflow:
                 else:
                     del item[k]
         try:
-            engine = self.session.get_bind()
+            engine = session.get_bind()
             metadata = MetaData(bind=engine)
             metadata.reflect(engine, only=[table_name])
             table = metadata.tables[table_name]
-            self.session.execute(table.insert().values(items))
-            self.session.commit()
+            session.execute(table.insert().values(items))
+            session.commit()
             for item in items:
                 if "conf" in item:
                     # we don't want to return conf in pickled form
@@ -976,7 +990,7 @@ class StarshipAirflow:
         except (InvalidRequestError, KeyError):
             return self.insert_directly(f"airflow.{table_name}", items)
         except Exception as e:
-            self.session.rollback()
+            session.rollback()
             raise e
 
 
@@ -1049,10 +1063,11 @@ class StarshipAirflow21(StarshipAirflow22):
         from airflow.models import DagRun, TaskInstance
         from sqlalchemy.orm import load_only
 
+        session = get_session()
         try:
             # noinspection PyTypeChecker
             sub_query = (
-                self.session.query(DagRun.execution_date)
+                session.query(DagRun.execution_date)
                 .filter(DagRun.dag_id == dag_id)
                 .order_by(desc(DagRun.start_date))
                 .limit(limit)
@@ -1063,7 +1078,7 @@ class StarshipAirflow21(StarshipAirflow22):
 
             # noinspection PyUnresolvedReferences
             results = (
-                self.session.query(TaskInstance)
+                session.query(TaskInstance)
                 .filter(TaskInstance.dag_id == dag_id)
                 .filter(TaskInstance.execution_date.in_(sub_query))
                 .options(
@@ -1085,7 +1100,7 @@ class StarshipAirflow21(StarshipAirflow22):
                 "dag_run_count": self._get_dag_run_count(dag_id),
             }
         except Exception as e:
-            self.session.rollback()
+            session.rollback()
             raise e
 
 
