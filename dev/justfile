@@ -13,7 +13,7 @@ _build-image-local:
 
 # build an image suitable for deployment with starship installed as a wheel
 _build-image-remote: _build-wheel
-     @docker build -t starship-dev-remote -f Dockerfile --build-arg RUNTIME_VERSION={{RUNTIME_VERSION}} ../
+     @docker build -t starship-dev-remote --platform linux/amd64 -f Dockerfile --build-arg RUNTIME_VERSION={{RUNTIME_VERSION}} ../
 
 # build the wheel of local starship
 _build-wheel:
