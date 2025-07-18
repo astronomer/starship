@@ -742,24 +742,20 @@ class StarshipApi(BaseView):
         | task_id*                 |         | str                | task_0                               |
         | map_index*               |         | int                | -1                                   |
         | try_number*              |         | int                | 1                                    |
+        | block_size               |         | int                | 1048576                              |
 
 
         **Response**:
 
-        ```json
-        {
-            "dag_id": "example_dag2",
-            "log": "[2025-06-30T21:02:11.417+0000] ... Task exited with return code 0\\n",
-            "map_index": "0",
-            "run_id": "scheduled__2025-06-30T20:00:00+00:00",
-            "task_id": "example_task",
-            "try_number": "1"
-        }
+        ```txt
+        [2025-06-30T21:02:11.417+0000] ...
+
+        ... Task exited with return code 0
         ```
 
         ### `POST /api/starship/task_log`
 
-        **Parameters:** JSON
+        **Parameters:** Args
 
         | Field (*=Required)       | Version | Type               | Example                              |
         |--------------------------|---------|--------------------|--------------------------------------|
@@ -768,32 +764,17 @@ class StarshipApi(BaseView):
         | task_id*                 |         | str                | task_0                               |
         | map_index*               |         | int                | -1                                   |
         | try_number*              |         | int                | 1                                    |
-        | log*                     |         | str                | [2025-06-30] This is a task log.     |
+        | block_size               |         | int                | 1048576                              |
 
         **Request**:
 
-        ```json
-        {
-            "dag_id": "example_dag2",
-            "log": "[2025-06-30T21:02:11.417+0000] ... Task exited with return code 0\\n",
-            "map_index": "0",
-            "run_id": "scheduled__2025-06-30T20:00:00+00:00",
-            "task_id": "example_task",
-            "try_number": "1"
-        }
+        ```txt
+        [2025-06-30T21:02:11.417+0000] ...
+
+        ... Task exited with return code 0
         ```
 
-        **Response**:
-
-        ```json
-        {
-            "dag_id": "example_dag2",
-            "map_index": "0",
-            "run_id": "scheduled__2025-06-30T20:00:00+00:00",
-            "task_id": "example_task",
-            "try_number": "1"
-        }
-        ```
+        **Response:** None
 
         ### DELETE /api/starship/task_log
 

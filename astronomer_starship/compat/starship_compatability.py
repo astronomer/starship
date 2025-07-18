@@ -1,5 +1,5 @@
-from http import HTTPStatus
 import json
+from http import HTTPStatus
 import logging
 import os
 from flask import jsonify, Response
@@ -154,7 +154,6 @@ def generic_set_one(session: Session, qualname: str, attrs: dict, **kwargs):
 
 
 def generic_delete(session: Session, qualname: str, **kwargs) -> Response:
-    from http import HTTPStatus
     from sqlalchemy import delete
 
     (_, thing_cls) = import_from_qualname(qualname)
@@ -1213,10 +1212,13 @@ class StarshipAirflow28(StarshipAirflow27):
                 ],
                 "test_value": 0,
             },
-            "log": {
-                "attr": "log",
-                "methods": [("POST", True)],
-                "test_value": "This is a test task log.",
+            "block_size": {
+                "attr": "block_size",
+                "methods": [
+                    ("GET", False),
+                    ("POST", False),
+                ],
+                "test_value": 1024 * 1024,
             },
         }
 
@@ -1291,11 +1293,22 @@ class StarshipAirflow28(StarshipAirflow27):
         try:
             path, conn_id = self._task_log_path(**kwargs)
             remote_path = ObjectStoragePath(path, conn_id=conn_id)
+            size = remote_path.size()
+            logger.debug("Task log at %s has %d bytes", path, size)
+            block_size = int(kwargs.get("block_size", 1024 * 1024))
 
-            with remote_path.open("r") as f:
-                kwargs["log"] = f.read()
+            def generator():
+                offset = 0
 
-            return kwargs
+                with remote_path.open("rb") as f:
+                    while offset < size:
+                        data = f.read(block_size)
+                        logger.info("Yielding %d bytes at offset %d", len(data), offset)
+                        yield data
+
+                        offset += block_size
+
+            return Response(generator(), mimetype="text/plain")
         except FileNotFoundError as e:
             res = jsonify({"error": f"Task log at {path} not found: {e}"})
             res.status_code = 404
@@ -1304,9 +1317,11 @@ class StarshipAirflow28(StarshipAirflow27):
     def set_task_log(self, **kwargs):
         """Set the log for a task instance"""
         from airflow.io.path import ObjectStoragePath
+        from flask import request
 
         path, conn_id = self._task_log_path(**kwargs)
         remote_path = ObjectStoragePath(path, conn_id=conn_id)
+        block_size = int(kwargs.get("block_size", 1024 * 1024))
 
         # If local file system, ensure the parent directories exist.
         # Causes problems with remote storage (where it is not needed),
@@ -1314,12 +1329,15 @@ class StarshipAirflow28(StarshipAirflow27):
         if conn_id is None:
             remote_path.parent.mkdir(exist_ok=True, parents=True)
 
-        with remote_path.open("w") as f:
-            f.write(kwargs["log"])
+        with remote_path.open("wb") as f:
+            while True:
+                data = request.stream.read(block_size)
+                logger.debug("Read %d bytes", len(data))
+                if not data:
+                    break
+                f.write(data)
 
-        # avoid the overhead of returning the log as a response
-        del kwargs["log"]
-        return kwargs
+        return Response(status=HTTPStatus.NO_CONTENT)
 
     def delete_task_log(self, **kwargs):
         """Delete the log for a task instance"""
