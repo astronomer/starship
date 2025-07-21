@@ -1197,8 +1197,9 @@ class StarshipAirflow211(StarshipAirflow210):
     """
 
 
-class StarshipAirflow30(StarshipAirflow211):
+class StarshipAirflow3(StarshipAirflow211):
     """
+    Base class for Airflow 3.x
     - schedule_interval to timetable_summary in dag
     - bundle_name in dag
     - bundle_version in dag
@@ -1337,6 +1338,12 @@ class StarshipAirflow30(StarshipAirflow211):
         return attrs
 
 
+class StarshipAirflow30(StarshipAirflow3):
+    """
+    Uses the base StarshipAirflow3 class.
+    """
+
+
 class StarshipCompatabilityLayer:
     """StarshipCompatabilityLayer is a factory class that returns the correct StarshipAirflow class for a version
 
@@ -1401,6 +1408,8 @@ class StarshipCompatabilityLayer:
                 return StarshipAirflow20()
             return StarshipAirflow()
         elif int(major) == 3:
-            return StarshipAirflow30()
+            if int(minor) == 0:
+                return StarshipAirflow30()
+            return StarshipAirflow3()
         else:
             raise RuntimeError(f"Unsupported Airflow Version: {airflow_version}")
