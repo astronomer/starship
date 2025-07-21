@@ -1,4 +1,5 @@
 import json
+from http import HTTPStatus
 import logging
 import os
 from flask import jsonify, Response
@@ -114,9 +115,11 @@ def results_to_list_via_attrs(
         json.dumps(
             [
                 {
-                    attr: getattr(result, attr_desc["attr"], None)
-                    if attr_desc["attr"]
-                    else None
+                    attr: (
+                        getattr(result, attr_desc["attr"], None)
+                        if attr_desc["attr"]
+                        else None
+                    )
                     for attr, attr_desc in attrs.items()
                 }
                 for result in results
@@ -151,7 +154,6 @@ def generic_set_one(session: Session, qualname: str, attrs: dict, **kwargs):
 
 
 def generic_delete(session: Session, qualname: str, **kwargs) -> Response:
-    from http import HTTPStatus
     from sqlalchemy import delete
 
     (_, thing_cls) = import_from_qualname(qualname)
@@ -195,10 +197,15 @@ class StarshipAirflow:
     and get created directly by StarshipCompatabilityLayer
     """
 
-    def __init__(self):
+    @property
+    def session(self) -> Session:
+        from flask import g
         from airflow.settings import Session
 
-        self.session = Session()
+        if "airflow_session" not in g:
+            g.airflow_session = Session()
+
+        return g.airflow_session
 
     @classmethod
     def get_airflow_version(cls):
@@ -414,9 +421,11 @@ class StarshipAirflow:
                             attr: (
                                 self._get_tags(result.dag_id)
                                 if attr == "tags"
-                                else self._get_dag_run_count(result.dag_id)
-                                if attr == "dag_run_count"
-                                else getattr(result, attr_desc["attr"], None)
+                                else (
+                                    self._get_dag_run_count(result.dag_id)
+                                    if attr == "dag_run_count"
+                                    else getattr(result, attr_desc["attr"], None)
+                                )
                                 # e.g. result.dag_id
                             )
                             for attr, attr_desc in self.dag_attrs().items()
@@ -910,6 +919,28 @@ class StarshipAirflow:
         attrs = {self.task_instances_attrs()[k]["attr"]: v for k, v in kwargs.items()}
         return generic_delete(self.session, "airflow.models.TaskInstance", **attrs)
 
+    @classmethod
+    def task_log_attrs(cls) -> "Dict[str, AttrDesc]":
+        return {}
+
+    def get_task_log(self, **kwargs):
+        """Get the log for a task instance"""
+        res = jsonify({"error": "Task logs require Airflow 2.8 or later"})
+        res.status_code = 409
+        raise NotImplementedError()
+
+    def set_task_log(self, **kwargs):
+        """Set the log for a task instance"""
+        res = jsonify({"error": "Task logs require Airflow 2.8 or later"})
+        res.status_code = 409
+        raise NotImplementedError()
+
+    def delete_task_log(self, **kwargs):
+        """Delete the log for a task instance"""
+        res = jsonify({"error": "Task logs require Airflow 2.8 or later"})
+        res.status_code = 409
+        raise NotImplementedError()
+
     def insert_directly(self, table_name, items):
         from sqlalchemy.exc import InvalidRequestError
         from sqlalchemy import MetaData
@@ -1133,6 +1164,195 @@ class StarshipAirflow28(StarshipAirflow27):
             "test_value": 0,
         }
         return attrs
+
+    def task_log_attrs(cls) -> "Dict[str, AttrDesc]":
+        return {
+            "dag_id": {
+                "attr": "dag_id",
+                "methods": [
+                    ("GET", True),
+                    ("POST", True),
+                    ("DELETE", True),
+                ],
+                "test_value": "dag_0",
+            },
+            "run_id": {
+                "attr": "run_id",
+                "methods": [
+                    ("GET", True),
+                    ("POST", True),
+                    ("DELETE", True),
+                ],
+                "test_value": "manual__1970-01-01T00:00:00+00:00",
+            },
+            "task_id": {
+                "attr": "task_id",
+                "methods": [
+                    ("GET", True),
+                    ("POST", True),
+                    ("DELETE", True),
+                ],
+                "test_value": "task_id",
+            },
+            "map_index": {
+                "attr": "map_index",
+                "methods": [
+                    ("GET", True),
+                    ("POST", True),
+                    ("DELETE", True),
+                ],
+                "test_value": -1,
+            },
+            "try_number": {
+                "attr": "try_number",
+                "methods": [
+                    ("GET", True),
+                    ("POST", True),
+                    ("DELETE", True),
+                ],
+                "test_value": 0,
+            },
+            "block_size": {
+                "attr": "block_size",
+                "methods": [
+                    ("GET", False),
+                    ("POST", False),
+                ],
+                "test_value": 1024 * 1024,
+            },
+        }
+
+    @classmethod
+    def _task_log_path(
+        cls,
+        *,
+        dag_id,
+        run_id,
+        task_id,
+        map_index,
+        try_number,
+        **_,
+    ) -> "Tuple[str, str | None]":
+        """Get the path to the task log file and the connection ID for remote storage."""
+        ASTRONOMER_ENVIRONMENT = os.getenv("ASTRONOMER_ENVIRONMENT")
+
+        if ASTRONOMER_ENVIRONMENT == "cloud":
+            # Astro Hosted
+            base_folder = os.getenv("AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER")
+            conn_id = None
+            for key in [
+                "AIRFLOW_CONN_ASTRO_GCS_LOGGING",
+                "AIRFLOW_CONN_ASTRO_AZURE_LOGS",
+                "AIRFLOW_CONN_ASTRO_S3_LOGGING",
+            ]:
+                conn_id = os.getenv(key)
+                if conn_id is not None:
+                    break
+
+            if conn_id is None:
+                res = jsonify({"error": "No remote logging connection found."})
+                res.status_code = 409
+                raise NotImplementedError()
+        elif ASTRONOMER_ENVIRONMENT == "local":
+            # Local astro dev environment
+            base_folder = "/usr/local/airflow/logs"
+            conn_id = None
+        else:
+            res = jsonify(
+                {"error": "Task logs are only supported on Astronomer environments."}
+            )
+            res.status_code = 409
+            raise NotImplementedError()
+
+        path_components = (
+            [
+                f"dag_id={dag_id}",
+                f"run_id={run_id}",
+                f"task_id={task_id}",
+                f"attempt={try_number}.log",
+            ]
+            if map_index == "-1"
+            else [
+                f"dag_id={dag_id}",
+                f"run_id={run_id}",
+                f"task_id={task_id}",
+                f"map_index={map_index}",
+                f"attempt={try_number}.log",
+            ]
+        )
+        # ObjectStoragePath could be used to build the full path, but there seems to be a problem
+        # where the connection ID duplicates with each path segment.
+        # We also want to have access to the path only for logging purposes.
+        path = os.path.join(base_folder, *path_components)
+        return path, conn_id
+
+    def get_task_log(self, **kwargs):
+        """Get the log for a task instance"""
+        from airflow.io.path import ObjectStoragePath
+
+        try:
+            path, conn_id = self._task_log_path(**kwargs)
+            remote_path = ObjectStoragePath(path, conn_id=conn_id)
+            size = remote_path.size()
+            logger.debug("Task log at %s has %d bytes", path, size)
+            block_size = int(kwargs.get("block_size", 1024 * 1024))
+
+            def generator():
+                offset = 0
+
+                with remote_path.open("rb") as f:
+                    while offset < size:
+                        data = f.read(block_size)
+                        logger.info("Yielding %d bytes at offset %d", len(data), offset)
+                        yield data
+
+                        offset += block_size
+
+            return Response(generator(), mimetype="text/plain")
+        except FileNotFoundError as e:
+            res = jsonify({"error": f"Task log at {path} not found: {e}"})
+            res.status_code = 404
+            return res
+
+    def set_task_log(self, **kwargs):
+        """Set the log for a task instance"""
+        from airflow.io.path import ObjectStoragePath
+        from flask import request
+
+        path, conn_id = self._task_log_path(**kwargs)
+        remote_path = ObjectStoragePath(path, conn_id=conn_id)
+        block_size = int(kwargs.get("block_size", 1024 * 1024))
+
+        # If local file system, ensure the parent directories exist.
+        # Causes problems with remote storage (where it is not needed),
+        # as it requires bucket level permissions.
+        if conn_id is None:
+            remote_path.parent.mkdir(exist_ok=True, parents=True)
+
+        with remote_path.open("wb") as f:
+            while True:
+                data = request.stream.read(block_size)
+                logger.debug("Read %d bytes", len(data))
+                if not data:
+                    break
+                f.write(data)
+
+        return Response(status=HTTPStatus.NO_CONTENT)
+
+    def delete_task_log(self, **kwargs):
+        """Delete the log for a task instance"""
+        from airflow.io.path import ObjectStoragePath
+
+        try:
+            path, conn_id = self._task_log_path(**kwargs)
+            remote_path = ObjectStoragePath(path, conn_id=conn_id)
+
+            remote_path.unlink()
+            return Response(status=HTTPStatus.NO_CONTENT)
+        except FileNotFoundError as e:
+            res = jsonify({"error": f"Task log at {path} not found: {e}"})
+            res.status_code = 404
+            return res
 
 
 class StarshipAirflow29(StarshipAirflow28):

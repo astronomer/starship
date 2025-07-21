@@ -14,7 +14,9 @@ This project welcomes contributions. All Pull Requests should include proper tes
 - [Other helpful commands](#other-helpful-commands)
 - [Test](#test)
 - [Developing CICD](#developing-cicd)
-- [Easily test the plugin in a local astro project](#easily-test-the-plugin-in-a-local-astro-project)
+- [Run current code](#run-current-code)
+  - [Local](#local)
+  - [Astro](#astro)
 - [Alternatively](#alternatively)
 - [Issues](#issues)
   - [SSL CERTIFICATE_VERIFY_FAILED](#ssl-certificate_verify_failed)
@@ -22,11 +24,12 @@ This project welcomes contributions. All Pull Requests should include proper tes
 
 <!--TOC-->
 # Project Structure
+
 - [`astronomer_starship/index.html`](astronomer_starship/index.html) is used for development,
 and `vite build` uses it to compile the Javascript and CSS into the `static` folder
 - [`astronomer_starship/src`](astronomer_starship/src) contains the React App
 - [`astronomer_starship/starship.py`](astronomer_starship/starship.py) contains the Airflow Plugin to inject the React App
-    - [`astronomer_starship/template/index.html`](astronomer_starship/templates/index.html) contains the Flask View HTML
+- [`astronomer_starship/template/index.html`](astronomer_starship/templates/index.html) contains the Flask View HTML
 - [`astronomer_starship/starship_api.py`](astronomer_starship/starship_api.py) contains the Airflow Plugin to that provides
 the Starship API Routes
 
@@ -38,9 +41,11 @@ the Starship API Routes
 4. Create a PR, get approval
 5. Merge the PR to `main`
 6. On `main`: Create a tag
+
     ```shell
     VERSION="v$(python -c 'import astronomer_starship; print(astronomer_starship.__version__)')"; git tag -d $VERSION; git tag $VERSION
     ```
+
 7. Do any manual or integration testing
 8. Push the tag to GitHub `git push origin --tag`, which will create
    a `Draft` [release](https://github.com/astronomer/astronomer-starship/releases) and upload
@@ -49,6 +54,7 @@ the Starship API Routes
    will upload to [pypi.org](https://pypi.org/project/astronomer-starship/) via CICD
 
 ## Versioning
+
 This project follows [Semantic Versioning](https://semver.org/)
 
 ## Linting
@@ -136,50 +142,50 @@ airflow:
 
 # Developing CICD
 
-Use https://github.com/nektos/act to run and test CICD changes locally.
+Use <https://github.com/nektos/act> to run and test CICD changes locally.
 
-# Easily test the plugin in a local astro project
+# Run current code
 
-1. Make a new project `astro dev init`
-2. Symlink in starship `ln -s /path/to/starship starship`
-3. add the file `docker-compose.override.yml`
-    ```yaml
-    version: "3.1"
-    services:
-      webserver:
-        volumes:
-          - ./starship:/usr/local/airflow/starship:rw
-        command: >
-          bash -c 'if [[ -z "$$AIRFLOW__API__AUTH_BACKEND" ]] && [[ $$(pip show -f apache-airflow | grep basic_auth.py) ]];
-            then export AIRFLOW__API__AUTH_BACKEND=airflow.api.auth.backend.basic_auth ;
-            else export AIRFLOW__API__AUTH_BACKEND=airflow.api.auth.backend.default ; fi &&
-            { airflow users create "$$@" || airflow create_user "$$@" ; } &&
-            { airflow sync-perm || airflow sync_perm ;} &&
-            airflow webserver -d' -- -r Admin -u admin -e admin@example.com -f admin -l user -p admin
-    ```
-4. Edit the file `Dockerfile`
-    ```Dockerfile
-    FROM quay.io/astronomer/astro-runtime:8.4.0
+Checkout [dev](./dev) for options of running the local version of Starship in Airflow.
 
-    COPY --chown=astro:astro --chmod=777 starship starship
-    USER root
-    RUN pip install --upgrade pip && pip install ./starship
-    USER astro
-    ```
-5. Build with your symlink starship `tar -czh . | docker build -t local -`
-6. Start (or restart) the astro project `astro dev <re>start -i local`
-    1. Quickly restart just the webserver with `docker restart $(docker container ls --filter name=webserver --format="{{.ID}}")`
+```bash
+just dev
+```
+
+## Local
+
+Spin up a local astro dev environment with the local version of Starship installed.
+
+```bash
+just dev start
+```
+
+Quickly reload the webserver with refreshed assets and plugin code.
+
+```bash
+just dev reload
+```
+
+## Astro
+
+Deploy to a deployment in Astro with the local version of Starship installed.
+
+```bash
+just dev deploy mydeploymentid
+```
 
 # Alternatively
 
 you may be able to run flask directly,
 see [this](https://airflow.apache.org/docs/apache-airflow/stable/authoring-and-scheduling/plugins.html#troubleshooting)
 
-
 # Issues
+
 ## SSL CERTIFICATE_VERIFY_FAILED
-If you see a message like `E   jwt.exceptions.PyJWKClientConnectionError: Fail to fetch data from the url, err: "<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:992)>"`, do this: https://stackoverflow.com/a/58525755
+
+If you see a message like `E   jwt.exceptions.PyJWKClientConnectionError: Fail to fetch data from the url, err: "<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:992)>"`, do this: <https://stackoverflow.com/a/58525755>
 
 ## Pytest Debugging
+
 `pytest-xdist` can prevent a debugger from attaching correctly due to it's distributed/non-local behavior
 You can fix this by commenting out `--num-processes=auto` from `pyproject.toml` or running with `--dist no` to return to normal sequential pytest behavior
