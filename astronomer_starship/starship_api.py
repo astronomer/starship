@@ -235,10 +235,29 @@ class StarshipApi(BaseView):
 
         **Response**:
         ```
-        OK
+        2.11.0+astro.1
         ```
         """
         return starship_route(get=starship_compat.get_airflow_version)
+
+    @expose("/starship_version", methods=["GET"])
+    @csrf.exempt
+    def starship_version(self) -> str:
+        """
+        Returns the version of Starship installed in the Airflow deployment.
+
+        ---
+
+        ### `GET /api/starship/starship_version`
+
+        **Parameters:** None
+
+        **Response**:
+        ```
+        2.5.0
+        ```
+        """
+        return starship_route(get=starship_compat.get_starship_version)
 
     # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
     @expose("/env_vars", methods=["GET"])

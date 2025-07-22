@@ -214,6 +214,12 @@ class StarshipAirflow:
         return __version__
 
     @classmethod
+    def get_starship_version(cls):
+        from astronomer_starship import __version__
+
+        return __version__
+
+    @classmethod
     def get_env_vars(cls):
         return dict(os.environ)
 
