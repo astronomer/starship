@@ -855,12 +855,12 @@ class StarshipApi(BaseView):
 
         ```json
         {
-            "dag_id": "example_dag2",
-            "log": "[2025-06-30T21:02:11.417+0000] ... Task exited with return code 0\\n",
-            "map_index": "0",
-            "run_id": "scheduled__2025-06-30T20:00:00+00:00",
-            "task_id": "example_task",
-            "try_number": "1"
+            "dag_id": "example_xcom",
+            "key": "example_str",
+            "map_index": -1,
+            "run_id": "scheduled__2025-07-17T00:00:00+00:00",
+            "task_id": "run",
+            "value": "bnVsbA=="
         }
         ```
 
