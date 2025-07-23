@@ -103,3 +103,12 @@ and an HTTP `status_code`. The `error` key will contain a message describing the
         show_root_heading: false
         show_source: false
         show_header: false
+
+## XCom
+
+::: astronomer_starship.starship_api.StarshipApi.xcom
+    options:
+        show_root_toc_entry: false
+        show_root_heading: false
+        show_source: false
+        show_header: false
