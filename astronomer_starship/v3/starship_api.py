@@ -6,7 +6,7 @@ from astronomer_starship.compat.starship_compatability import (
     StarshipCompatabilityLayer,
     get_kwargs_fn,
 )
-from fastapi import Depends, FastAPI, Request, APIRouter
+from fastapi import FastAPI, Request, APIRouter
 from fastapi.responses import JSONResponse
 from typing import Any, Dict, List, Union
 from typing import TYPE_CHECKING
@@ -69,7 +69,7 @@ async def get_json(request: Request):
     return await request.json()
 
 
-def starship_route(
+async def starship_route(
     request: Request,
     get=None,
     post=None,
@@ -77,10 +77,15 @@ def starship_route(
     delete=None,
     patch=None,
     kwargs_fn=None,
-    body=Depends(get_json),
 ):
     try:
+        request_json = await request.json()
+    except json.JSONDecodeError:
+        # TODO log the error
+        request_json = {}
+    try:
         request_method = request.method
+
         kwargs = (
             kwargs_fn(
                 request_method=request_method,
@@ -89,7 +94,7 @@ def starship_route(
                     if request_method in ["GET", "POST", "DELETE"]
                     else {}
                 ),
-                json=body,
+                json=request_json,
             )
             if kwargs_fn
             else {}
@@ -180,7 +185,7 @@ async def health(request: Request):
     def ok():
         return "OK"
 
-    return starship_route(request=request, get=ok)
+    return await starship_route(request=request, get=ok)
 
 
 @router.get("/telescope")
@@ -245,7 +250,9 @@ async def airflow_version(request: Request):
     3.0.3+astro.1
     ```
     """
-    return starship_route(request=request, get=starship_compat.get_airflow_version)
+    return await starship_route(
+        request=request, get=starship_compat.get_airflow_version
+    )
 
 
 @router.get("/env_vars")
@@ -269,7 +276,7 @@ async def env_vars(request: Request):
     ```
 
     """
-    return starship_route(request=request, get=starship_compat.get_env_vars)
+    return await starship_route(request=request, get=starship_compat.get_env_vars)
 
 
 @router.get("/pools")
@@ -325,7 +332,7 @@ async def pools(request: Request):
 
     **Response:** None
     """
-    return starship_route(
+    return await starship_route(
         request=request,
         get=starship_compat.get_pools,
         post=starship_compat.set_pool,
@@ -385,7 +392,7 @@ async def variables(request: Request):
 
     **Response:** None
     """
-    return starship_route(
+    return await starship_route(
         request=request,
         get=starship_compat.get_variables,
         post=starship_compat.set_variable,
@@ -457,7 +464,7 @@ async def connections(request: Request):
 
     **Response:** None
     """
-    return starship_route(
+    return await starship_route(
         request=request,
         get=starship_compat.get_connections,
         post=starship_compat.set_connection,
@@ -518,7 +525,7 @@ async def dags(request: Request):
     }
     ```
     """
-    return starship_route(
+    return await starship_route(
         request=request,
         get=starship_compat.get_dags,
         patch=starship_compat.set_dag_is_paused,
@@ -631,7 +638,7 @@ async def dag_runs(request: Request):
 
     **Response:** None
     """
-    return starship_route(
+    return await starship_route(
         request=request,
         get=starship_compat.get_dag_runs,
         post=starship_compat.set_dag_runs,
@@ -745,7 +752,7 @@ async def task_instances(request: Request):
     | dag_version_id           | >=3.0   | UUID |                                   |
     | scheduled_dttm           | >=3.0   | date | 1970-01-01T00:00:00+00:00         |
     """
-    return starship_route(
+    return await starship_route(
         request=request,
         get=starship_compat.get_task_instances,
         post=starship_compat.set_task_instances,
@@ -828,7 +835,7 @@ async def task_log(request: Request):
 
     **Response:** None
     """
-    return starship_route(
+    return await starship_route(
         request=request,
         get=starship_compat.get_task_log,
         post=starship_compat.set_task_log,
