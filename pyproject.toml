@@ -13,7 +13,7 @@ authors = [
 ]
 readme = "README.md"
 license = { text = "PROPRIETARY" }
-requires-python = ">=3.6"
+requires-python = ">=3.6, <3.13"
 dependencies = []
 
 [project.urls]
@@ -44,7 +44,8 @@ exclude = [
 
 [project.optional-dependencies]
 provider = [
-    "apache-airflow-providers-http"
+    "apache-airflow-providers-http",
+    "apache-airflow-providers-fab"
 ]
 
 dev = [
@@ -53,7 +54,7 @@ dev = [
     "build",
 
     # test
-    "apache-airflow<3",        # Starship only supports Airflow version up to 2.11 at the moment
+    "apache-airflow>=2",        # Starship only supports Airflow version up to 2.11 at the moment
     "pytest>=7",
     "pytest-cov>=4.0",
     "pytest-integration>=0.2",

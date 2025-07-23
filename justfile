@@ -150,9 +150,10 @@ create-test TESTPATH:
       echo "# ALTERNATIVELY, COMMENT THIS OUT AND ADD TO REQUIREMENTS.TXT" >> Dockerfile
       echo "# --extra-index-url=https://test.pypi.org/simple/" >> requirements.txt
       echo "# astronomer-starship==?.?.?" >> requirements.txt
+      echo "apache-airflow-providers-fab>2" >> requirements.txt
       echo "version: \"3.1\"" >> docker-compose.override.yml
       echo "services:" >> docker-compose.override.yml
-      echo "  webserver:" >> docker-compose.override.yml
+      echo "  api-server:" >> docker-compose.override.yml
       echo "    volumes:" >> docker-compose.override.yml
       echo "      - ./starship:/usr/local/starship:rw" >> docker-compose.override.yml
     fi
