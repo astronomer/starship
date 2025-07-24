@@ -156,7 +156,7 @@ class StarshipApi(BaseView):
         """
         Returns the health of the Starship API
 
-        DEPRECATED: Instead use `/api/starship/info` which provides the same functionality
+        DEPRECATED: Instead use [`/api/starship/info`](./#starship-info) which provides the same functionality
         and additional information about Airflow and Starship.
 
         ---
@@ -230,7 +230,7 @@ class StarshipApi(BaseView):
         """
         Returns the version of Airflow that the Starship API is connected to.
 
-        DEPRECATED: Instead use `/api/starship/info` to get both Airflow and Starship versions
+        DEPRECATED: Instead use [`/api/starship/info`](./#starship-info) to get both Airflow and Starship versions
         plus additional information.
 
         ---
