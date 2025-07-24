@@ -156,6 +156,9 @@ class StarshipApi(BaseView):
         """
         Returns the health of the Starship API
 
+        DEPRECATED: Instead use `/api/starship/info` which provides the same functionality
+        and additional information about Airflow and Starship.
+
         ---
 
         ### `GET /api/starship/health`
