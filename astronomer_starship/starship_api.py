@@ -227,6 +227,9 @@ class StarshipApi(BaseView):
         """
         Returns the version of Airflow that the Starship API is connected to.
 
+        DEPRECATED: Instead use `/api/starship/info` to get both Airflow and Starship versions
+        plus additional information.
+
         ---
 
         ### `GET /api/starship/airflow_version`
@@ -240,24 +243,27 @@ class StarshipApi(BaseView):
         """
         return starship_route(get=starship_compat.get_airflow_version)
 
-    @expose("/starship_version", methods=["GET"])
+    @expose("/info", methods=["GET"])
     @csrf.exempt
-    def starship_version(self) -> str:
+    def info(self) -> str:
         """
-        Returns the version of Starship installed in the Airflow deployment.
+        Returns relevant information related to Starship and the Airflow deployment.
 
         ---
 
-        ### `GET /api/starship/starship_version`
+        ### `GET /api/starship/info`
 
         **Parameters:** None
 
         **Response**:
         ```
-        2.5.0
+        {
+          "airflow_version": "2.11.0+astro.1",
+          "starship_version": "2.5.0",
+        }
         ```
         """
-        return starship_route(get=starship_compat.get_starship_version)
+        return starship_route(get=starship_compat.get_info)
 
     # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
     @expose("/env_vars", methods=["GET"])

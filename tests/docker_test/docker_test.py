@@ -45,12 +45,16 @@ def test_airflow_version(starship):
 
 
 @docker_test
-def test_starship_version(starship):
-    """Test the Starship version endpoint."""
-    from astronomer_starship import __version__
+def test_info(starship):
+    """Test the info endpoint."""
+    from airflow import __version__ as airflow_version
+    from astronomer_starship import __version__ as starship_version
 
-    actual = starship.get_starship_version()
-    assert actual == __version__
+    actual = starship.get_info()
+    assert actual == {
+        "airflow_version": airflow_version,
+        "starship_version": starship_version,
+    }
 
 
 @docker_test
