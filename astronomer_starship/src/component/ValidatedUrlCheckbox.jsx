@@ -17,7 +17,7 @@ export default function ValidatedUrlCheckbox({
         const isValid = (
           res.status === 200 &&
           res.data &&
-          (res.headers['content-type'] === 'application/json' || res.data === "OK")
+          res.headers['content-type'] === 'application/json'
         );
         setValid(isValid);
       })

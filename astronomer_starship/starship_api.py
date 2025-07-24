@@ -156,6 +156,9 @@ class StarshipApi(BaseView):
         """
         Returns the health of the Starship API
 
+        DEPRECATED: Instead use [`/api/starship/info`](./#starship-info) which provides the same functionality
+        and additional information about Airflow and Starship.
+
         ---
 
         ### `GET /api/starship/health`
@@ -227,6 +230,9 @@ class StarshipApi(BaseView):
         """
         Returns the version of Airflow that the Starship API is connected to.
 
+        DEPRECATED: Instead use [`/api/starship/info`](./#starship-info) to get both Airflow and Starship versions
+        plus additional information.
+
         ---
 
         ### `GET /api/starship/airflow_version`
@@ -235,10 +241,32 @@ class StarshipApi(BaseView):
 
         **Response**:
         ```
-        OK
+        2.11.0+astro.1
         ```
         """
         return starship_route(get=starship_compat.get_airflow_version)
+
+    @expose("/info", methods=["GET"])
+    @csrf.exempt
+    def info(self) -> str:
+        """
+        Returns relevant information related to Starship and the Airflow deployment.
+
+        ---
+
+        ### `GET /api/starship/info`
+
+        **Parameters:** None
+
+        **Response**:
+        ```
+        {
+          "airflow_version": "2.11.0+astro.1",
+          "starship_version": "2.5.0",
+        }
+        ```
+        """
+        return starship_route(get=starship_compat.get_info)
 
     # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
     @expose("/env_vars", methods=["GET"])

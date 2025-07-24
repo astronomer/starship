@@ -342,7 +342,7 @@ export default function SetupPage({ state, dispatch }) {
                         text="Starship"
                         valid={state.isStarship}
                         setValid={(value) => dispatch({ type: 'set-is-starship', isStarship: value })}
-                        url={`${state.targetUrl}/api/starship/health`}
+                        url={`${state.targetUrl}/api/starship/info`}
                         token={state.token}
                       />
                     </HStack>

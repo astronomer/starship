@@ -36,6 +36,28 @@ def starship():
 
 
 @docker_test
+def test_airflow_version(starship):
+    """Test the Airflow version endpoint."""
+    from airflow import __version__
+
+    actual = starship.get_airflow_version()
+    assert actual == __version__
+
+
+@docker_test
+def test_info(starship):
+    """Test the info endpoint."""
+    from airflow import __version__ as airflow_version
+    from astronomer_starship import __version__ as starship_version
+
+    actual = starship.get_info()
+    assert actual == {
+        "airflow_version": airflow_version,
+        "starship_version": starship_version,
+    }
+
+
+@docker_test
 def test_variables(starship):
     test_input = get_test_data(method="POST", attrs=starship.variable_attrs())
     actual = starship.set_variable(**test_input)
