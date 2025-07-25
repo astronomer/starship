@@ -121,10 +121,11 @@ function DAGHistoryMigrateButton({
     }
 
     function migrateBatch(limit, batchSize, offset = 0) {
+      const appliedBatchSize = Math.min(limit - offset, batchSize);
       Promise.all([
         // Get both DAG Runs and Task Instances locally
-        axios.get(localRoute(constants.DAG_RUNS_ROUTE), { params: { dag_id: dagId, limit: batchSize, offset } }),
-        axios.get(localRoute(constants.TASK_INSTANCE_ROUTE), { params: { dag_id: dagId, limit: batchSize, offset } }),
+        axios.get(localRoute(constants.DAG_RUNS_ROUTE), { params: { dag_id: dagId, limit: appliedBatchSize, offset } }),
+        axios.get(localRoute(constants.TASK_INSTANCE_ROUTE), { params: { dag_id: dagId, limit: appliedBatchSize, offset } }),
       ]).then(
         axios.spread((dagRunsRes, taskInstanceRes) => {
           // the total number of DAG Runs to migrate
