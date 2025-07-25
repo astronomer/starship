@@ -43,6 +43,7 @@ function DAGHistoryMigrateButton({
   token,
   dagId,
   limit,
+  batchSize,
   existsInRemote,
   isDisabled,
   dispatch,
@@ -93,6 +94,7 @@ function DAGHistoryMigrateButton({
       deleteRuns();
       return;
     }
+
     const errFn = (err) => {
       setExists(false);
       // noinspection PointlessArithmeticExpressionJS
@@ -104,51 +106,80 @@ function DAGHistoryMigrateButton({
       });
       setError(err);
     };
-    setLoadPerc(percent * 0.05);
-    Promise.all([
-      // Get both DAG Runs and Task Instances locally
-      axios.get(localRoute(constants.DAG_RUNS_ROUTE), { params: { dag_id: dagId, limit } }),
-      axios.get(localRoute(constants.TASK_INSTANCE_ROUTE), { params: { dag_id: dagId, limit } }),
-    ]).then(
-      axios.spread((dagRunsRes, taskInstanceRes) => {
-        setLoadPerc(percent * 0.5);
-        // Then create DAG Runs
-        axios.post(
-          proxyUrl(url + constants.DAG_RUNS_ROUTE),
-          { dag_runs: dagRunsRes.data.dag_runs },
-          { params: { dag_id: dagId }, headers: proxyHeaders(token) },
-        ).then((dagRunCreateRes) => {
-          if (dagRunCreateRes.status !== 200) {
-            errFn({ err: { response: dagRunCreateRes } });
+
+    function setDagsData(dagRunCount) {
+      dispatch({
+        type: 'set-dags-data',
+        dagsData: {
+          [dagId]: {
+            remote: {
+              dag_run_count: dagRunCount,
+            },
+          },
+        },
+      });
+    }
+
+    function migrateBatch(limit, batchSize, offset = 0) {
+      const appliedBatchSize = Math.min(limit - offset, batchSize);
+      Promise.all([
+        // Get both DAG Runs and Task Instances locally
+        axios.get(localRoute(constants.DAG_RUNS_ROUTE), { params: { dag_id: dagId, limit: appliedBatchSize, offset } }),
+        axios.get(localRoute(constants.TASK_INSTANCE_ROUTE), { params: { dag_id: dagId, limit: appliedBatchSize, offset } }),
+      ]).then(
+        axios.spread((dagRunsRes, taskInstanceRes) => {
+          // the total number of DAG Runs to migrate
+          const dagRunsToMigrateCount = Math.min(dagRunsRes.data.dag_run_count, limit);
+
+          // Stop if empty response
+          if (dagRunsRes.data.dag_runs.length === 0) {
+            // noinspection PointlessArithmeticExpressionJS
+            setLoadPerc(percent * 1);
+            setDagsData(dagRunsToMigrateCount);
+            setExists(offset > 0);
             return;
           }
-          dispatch({
-            type: 'set-dags-data',
-            dagsData: {
-              [dagId]: {
-                remote: {
-                  dag_run_count: dagRunCreateRes.data.dag_run_count,
-                },
-              },
-            },
-          });
-          setLoadPerc(percent * 0.75);
-          // Then create Task Instances
+          // Then create DAG Runs
           axios.post(
-            proxyUrl(url + constants.TASK_INSTANCE_ROUTE),
-            { task_instances: taskInstanceRes.data.task_instances },
+            proxyUrl(url + constants.DAG_RUNS_ROUTE),
+            { dag_runs: dagRunsRes.data.dag_runs },
             { params: { dag_id: dagId }, headers: proxyHeaders(token) },
-          ).then(
-            (taskInstanceCreateRes) => {
-              // noinspection PointlessArithmeticExpressionJS
-              setLoadPerc(percent * 1);
-              setLoadPerc(0);
-              setExists(taskInstanceCreateRes.status === 200);
-            },
-          ).catch(errFn);
-        }).catch(errFn);
-      }),
-    ).catch(errFn);
+          ).then((dagRunCreateRes) => {
+            if (dagRunCreateRes.status !== 200) {
+              errFn({ err: { response: dagRunCreateRes } });
+              return;
+            }
+            // Then create Task Instances
+            axios.post(
+              proxyUrl(url + constants.TASK_INSTANCE_ROUTE),
+              { task_instances: taskInstanceRes.data.task_instances },
+              { params: { dag_id: dagId }, headers: proxyHeaders(token) },
+            ).then(
+              (taskInstanceCreateRes) => {
+                if (taskInstanceCreateRes.status !== 200) {
+                  errFn({ err: { response: taskInstanceCreateRes } });
+                  return;
+                }
+                // continue with next batch if there are more DAG Runs to migrate
+                if (dagRunCreateRes.data.dag_run_count < dagRunsToMigrateCount) {
+                  setLoadPerc(percent * dagRunCreateRes.data.dag_run_count / dagRunsToMigrateCount);
+                  migrateBatch(limit, batchSize, offset + batchSize);
+                  return;
+                }
+                // noinspection PointlessArithmeticExpressionJS
+                setLoadPerc(percent * 1);
+                setDagsData(dagRunsToMigrateCount);
+                setExists(true);
+              },
+            ).catch(errFn);
+          }).catch(errFn);
+        }),
+      ).catch(errFn);
+    }
+
+    // start migration
+    setLoadPerc(percent * 0.01);
+    migrateBatch(limit, batchSize);
   }
 
   return (
@@ -192,7 +223,8 @@ DAGHistoryMigrateButton.propTypes = {
   dispatch: PropTypes.func.isRequired,
 };
 DAGHistoryMigrateButton.defaultProps = {
-  limit: 10,
+  limit: 1000,
+  batchSize: 100,
   existsInRemote: false,
   isDisabled: false,
 };
@@ -237,7 +269,7 @@ export default function DAGHistoryPage({ state, dispatch }) {
     axios
       .patch(url, { dag_id: dagId, is_paused: isPaused }, { headers: proxyHeaders(token) })
       .then((res) => {
-      // update global state
+        // update global state
         dispatch({
           type: 'set-dags-data',
           dagsData: {
@@ -359,6 +391,7 @@ export default function DAGHistoryPage({ state, dispatch }) {
           token={state.token}
           dagId={info.row.original.local.dag_id}
           limit={Number(state.limit)}
+          batchSize={Number(state.batchSize)}
           existsInRemote={!!info.row.original.remote?.dag_run_count || false}
           isDisabled={
             !info.row.original.remote?.dag_id ? 'DAG not found in remote'
@@ -432,13 +465,30 @@ export default function DAGHistoryPage({ state, dispatch }) {
             DAGs can be paused or un-paused on either Airflow instance.
           </Text>
           <Spacer />
-          <Tooltip hasArrow label="The number of DAG Runs (and associated Task Instances) to migrate">
+          <Tooltip hasArrow label="The total number of DAG Runs (and associated Task Instances) to migrate">
             <FormControl width="20%" minWidth="200px">
               <InputGroup size="sm">
                 <InputLeftAddon># DAG Runs</InputLeftAddon>
                 <NumberInput
                   value={state.limit}
                   onChange={(e) => dispatch({ type: 'set-limit', limit: Number(e) })}
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              </InputGroup>
+            </FormControl>
+          </Tooltip>
+          <Tooltip hasArrow label="The number of DAG Runs (and associated Task Instances) to migrate per batch">
+            <FormControl width="20%" minWidth="200px">
+              <InputGroup size="sm">
+                <InputLeftAddon>Batch Size</InputLeftAddon>
+                <NumberInput
+                  value={state.batchSize}
+                  onChange={(e) => dispatch({ type: 'set-batch-size', batchSize: Number(e) })}
                 >
                   <NumberInputField />
                   <NumberInputStepper>

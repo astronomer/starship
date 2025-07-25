@@ -64,7 +64,8 @@ export const initialState = {
   dagsData: {},
   dagsLoading: false,
   dagsError: null,
-  limit: 10,
+  limit: 100,
+  batchSize: 10,
 };
 
 /**
@@ -297,6 +298,12 @@ export const reducer = (state, action) => {
       return {
         ...state,
         limit: action.limit,
+      };
+    }
+    case 'set-batch-size': {
+      return {
+        ...state,
+        batchSize: action.batchSize,
       };
     }
 
