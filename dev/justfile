@@ -1,4 +1,4 @@
-RUNTIME_VERSION := "13.0.0"
+RUNTIME_VERSION := "13.2.0"
 
 default:
   @just --list

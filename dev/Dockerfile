@@ -1,4 +1,4 @@
-ARG RUNTIME_VERSION=13.0.0
+ARG RUNTIME_VERSION=13.2.0
 FROM quay.io/astronomer/astro-runtime:${RUNTIME_VERSION}-base
 
 WORKDIR /usr/local/airflow
