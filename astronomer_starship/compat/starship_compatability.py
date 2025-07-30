@@ -1795,6 +1795,8 @@ class StarshipCompatabilityLayer:
                 return StarshipAirflow21()
             if int(minor) == 0:
                 return StarshipAirflow20()
+            if int(minor) in [3, 4, 5, 6]:
+                return StarshipAirflow()
             raise RuntimeError(f"Unsupported Airflow Version: {airflow_version}")
         elif int(major) == 3:
             if int(minor) == 0:
