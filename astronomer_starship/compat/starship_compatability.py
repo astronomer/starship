@@ -1677,9 +1677,9 @@ class StarshipAirflow3(StarshipAirflow211):
         epoch_tz = epoch.replace(tzinfo=pytz.utc)
         attrs = super().dag_runs_attrs()
         if "execution_date" in attrs["dag_runs"]["test_value"][0]:
-            attrs["logical_date"] = attrs["dag_runs"]["test_value"][0].pop(
-                "execution_date"
-            )
+            attrs["dag_runs"]["test_value"][0]["logical_date"] = attrs["dag_runs"][
+                "test_value"
+            ][0].pop("execution_date")
         if "external_trigger" in attrs["dag_runs"]["test_value"][0]:
             del attrs["dag_runs"]["test_value"][0]["external_trigger"]
         if "dag_hash" in attrs["dag_runs"]["test_value"][0]:

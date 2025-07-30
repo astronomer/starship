@@ -4,7 +4,11 @@ from functools import partial
 import flask
 import requests
 from airflow.plugins_manager import AirflowPlugin
-from airflow.www.app import csrf
+
+try:
+    from airflow.www.app import csrf
+except ImportError:
+    from airflow.providers.fab.www.app import csrf
 from flask import Blueprint, request, jsonify
 from flask_appbuilder import expose, BaseView
 

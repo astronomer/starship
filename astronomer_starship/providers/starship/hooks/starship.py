@@ -8,7 +8,7 @@ from typing import List
 from airflow.providers.http.hooks.http import HttpHook
 from airflow.hooks.base import BaseHook
 
-from astronomer_starship.starship_api import starship_compat
+from astronomer_starship.v3.starship_api import starship_compat
 
 POOLS_ROUTE = "/api/starship/pools"
 CONNECTIONS_ROUTE = "/api/starship/connections"

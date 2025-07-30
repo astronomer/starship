@@ -1,11 +1,11 @@
+import pendulum
 from airflow.decorators import dag
 from airflow.operators.bash import BashOperator
-from airflow.utils.dates import days_ago
 
 
 @dag(
     schedule="@daily",
-    start_date=days_ago(365),
+    start_date=pendulum.now().subtract(days=365),
     catchup=True,
     tags=["history"],
 )

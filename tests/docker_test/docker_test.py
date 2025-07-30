@@ -5,7 +5,7 @@ import os
 import pytest
 
 from http import HTTPStatus
-
+from airflow import __version__
 from astronomer_starship.compat.starship_compatability import (
     StarshipCompatabilityLayer,
     get_test_data,
@@ -15,19 +15,20 @@ docker_test = pytest.mark.skipif(
     not bool(os.getenv("DOCKER_TEST")), reason="Not inside Docker container under test"
 )
 
+[major, _] = __version__.split(".", maxsplit=1)
+if int(major) == 2:
 
-@pytest.fixture()
-def app():
-    from airflow.www.app import create_app
+    @pytest.fixture()
+    def app():
+        from airflow.www.app import create_app
 
-    app = create_app(testing=True)
-    yield app
+        app = create_app(testing=True)
+        yield app
 
-
-@pytest.fixture(autouse=True)
-def app_context(app):
-    with app.app_context():
-        yield
+    @pytest.fixture(autouse=True)
+    def app_context(app):
+        with app.app_context():
+            yield
 
 
 @pytest.fixture(scope="session")
