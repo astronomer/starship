@@ -12,7 +12,7 @@ just test-run-container-test <image>
 ## The Tests
 Docker containers are spawned in parallel with different images,
 - `starship` is volume-mounted into the container (and a unique `./build` directory)
-- [./run_container_test.sh](./run_container_test.sh) is called with the image name as an argument
+- [./run_container_test.sh](run_container_test_v2.sh) is called with the image name as an argument
   - The script upgrades pip (sometimes required), installs pytest, and installs starship from the volume mount, exiting unsuccessfully if that didn't succeed
   - it copies a DAG to what it thinks is the `/dag` folder, and exits unsuccessfully if it can't
   - it runs `airflow db init`, and exits unsuccessfully if it can't

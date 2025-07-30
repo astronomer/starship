@@ -1,7 +1,4 @@
-{% extends base_template %}
-
 {% block head_js %}
-{{ super() }}
 {#<script>#}
 {#  const airflow_version = "{{ airflow_version }}"#}
 {#  const airflow_base_url = "{{ airflow_base_url }}"#}
@@ -10,7 +7,6 @@
 {% endblock %}
 
 {% block head_css %}
-{{ super() }}
 <link rel="stylesheet" crossorigin href="static/assets/index.css">
 {% endblock %}
 

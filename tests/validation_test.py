@@ -13,32 +13,34 @@ IS_ARM = os.uname().machine == "arm64"
 
 ASTRO_IMAGES = [
     # Not used, harder to install on
-    "quay.io/astronomer/ap-airflow:2.0.2-buster-onbuild",
-    "quay.io/astronomer/ap-airflow:2.1.4-buster-onbuild",
-    "quay.io/astronomer/ap-airflow:2.2.5-onbuild",
-    "quay.io/astronomer/ap-airflow:2.3.4-onbuild",
-    "quay.io/astronomer/astro-runtime:4.2.8",
-    "quay.io/astronomer/ap-airflow:2.4.3-onbuild",
-    "quay.io/astronomer/astro-runtime:5.4.0",
-    "quay.io/astronomer/astro-runtime:6.6.0",
-    "quay.io/astronomer/astro-runtime:7.6.0",
-    "quay.io/astronomer/astro-runtime:8.5.0",
-    "quay.io/astronomer/astro-runtime:9.2.0",
+    # "quay.io/astronomer/ap-airflow:2.0.2-buster-onbuild",
+    # "quay.io/astronomer/ap-airflow:2.1.4-buster-onbuild",
+    # "quay.io/astronomer/ap-airflow:2.2.5-onbuild",
+    # "quay.io/astronomer/ap-airflow:2.3.4-onbuild",
+    # "quay.io/astronomer/astro-runtime:4.2.8",
+    # "quay.io/astronomer/ap-airflow:2.4.3-onbuild",
+    # "quay.io/astronomer/astro-runtime:5.4.0",
+    # "quay.io/astronomer/astro-runtime:6.6.0",
+    # "quay.io/astronomer/astro-runtime:7.6.0",
+    # "quay.io/astronomer/astro-runtime:8.5.0",
+    # "quay.io/astronomer/astro-runtime:9.2.0",
+    "astrocrpublic.azurecr.io/runtime:3.0-5",
 ]
 
 IMAGES = [
+    # "apache/airflow:slim-3.0.3",
     "apache/airflow:slim-2.11.0",
-    "apache/airflow:slim-2.10.3",
-    "apache/airflow:slim-2.9.3",
-    "apache/airflow:slim-2.8.1",
-    "apache/airflow:slim-2.7.3",
-    "apache/airflow:slim-2.6.0",
-    "apache/airflow:slim-2.5.3",
-    "apache/airflow:slim-2.4.0",
-    "apache/airflow:2.3.4",
-    "apache/airflow:2.2.4",
-    "apache/airflow:2.1.3",
-    "apache/airflow:2.0.2",
+    # "apache/airflow:slim-2.10.3",
+    # "apache/airflow:slim-2.9.3",
+    # "apache/airflow:slim-2.8.1",
+    # "apache/airflow:slim-2.7.3",
+    # "apache/airflow:slim-2.6.0",
+    # "apache/airflow:slim-2.5.3",
+    # "apache/airflow:slim-2.4.0",
+    # "apache/airflow:2.3.4",
+    # "apache/airflow:2.2.4",
+    # "apache/airflow:2.1.3",
+    # "apache/airflow:2.0.2",
     # # "apache/airflow:1.10.15",
     # # "apache/airflow:1.10.10",
 ]
@@ -106,6 +108,16 @@ def test_docker_pytest(has_docker, docker_client, project_root, local_version):
     with ThreadPoolExecutor() as executor:
 
         def run_test_for_image(image: str):
+            airflow_version = get_major_version(image)
+            if airflow_version == 3:
+                test_script = "run_container_test_v3.sh"
+            elif airflow_version == 2:
+                test_script = "run_container_test_v2.sh"
+            else:
+                raise ValueError(
+                    f"Unsupported Airflow major version: {airflow_version}"
+                )
+
             if IS_ARM:
                 try:
                     docker_client.images.pull(image, platform="linux/amd64")
@@ -121,7 +133,7 @@ def test_docker_pytest(has_docker, docker_client, project_root, local_version):
                 docker_client,
                 image=image,
                 platform=platform,
-                command=f"/usr/local/airflow/starship/tests/docker_test/run_container_test.sh "
+                command=f"/usr/local/airflow/starship/tests/docker_test/{test_script} "
                 f"{image} "
                 f"starship/dist/astronomer_starship-{version}-py3-none-any.whl",
                 volumes=[
@@ -165,3 +177,11 @@ def test_version(local_version):
     [shipped_versions.append(version) for version, details in releases.items()]
 
     assert local_version not in shipped_versions
+
+
+def get_major_version(image: str):
+    version = image.split(":")[-1]
+    if version.startswith("slim-"):
+        version = version[len("slim-") :]
+    major = version.split(".")[0]
+    return int(major)

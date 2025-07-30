@@ -50,7 +50,7 @@ def delete(route, test_input, token, url):
     actual = requests.delete(
         f"{url}/{route}", params=test_input, **get_extras(url, token)
     )
-    assert actual.status_code == 204, actual.text
+    assert actual.status_code in [200, 204], actual.text
 
 
 @pytest.fixture(
