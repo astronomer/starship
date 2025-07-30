@@ -233,6 +233,16 @@ class StarshipAirflow:
         return __version__
 
     @classmethod
+    def get_info(cls):
+        from airflow import __version__ as airflow_version
+        from astronomer_starship import __version__ as starship_version
+
+        return {
+            "airflow_version": airflow_version,
+            "starship_version": starship_version,
+        }
+
+    @classmethod
     def get_env_vars(cls):
         return dict(os.environ)
 
@@ -353,7 +363,7 @@ class StarshipAirflow:
             "extra": {
                 "attr": "extra",
                 "methods": [("POST", False)],
-                "test_value": "extra",
+                "test_value": "{}",
             },
             "description": {
                 "attr": "description",
@@ -1556,8 +1566,6 @@ class StarshipAirflow210(StarshipAirflow29):
     - executor in task_instance
     """
 
-    # TODO: Identify any other compat issues that exist between 2.9-2.10
-
     def task_instance_attrs(self):
         attrs = super().task_instance_attrs()
         attrs["try_number"]["attr"] = "try_number"
@@ -1761,13 +1769,17 @@ class StarshipCompatabilityLayer:
     """
 
     def __new__(cls, airflow_version: "Union[str, None]" = None) -> StarshipAirflow:
+        import re
+
         if airflow_version is None:
             from airflow import __version__
 
             airflow_version = __version__
             print("Got Airflow Version: " + airflow_version)
         try:
-            [major, minor, _] = airflow_version.split(".", maxsplit=2)
+            [major, minor, _] = re.sub(r"[^0-9.]", "", airflow_version).split(
+                ".", maxsplit=2
+            )
         except ValueError:
             raise RuntimeError(
                 f"Unsupported Airflow Version - must be semver x.y.z: {airflow_version}"
