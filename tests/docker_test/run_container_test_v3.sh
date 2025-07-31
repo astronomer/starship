@@ -37,8 +37,10 @@ echo -e "[STARSHIP-DB-INIT-SUCCESS image=$IMAGE]"
 echo "[STARSHIP-AIRFLOW-STARTUP-START image=$IMAGE]"
 touch airflow.log
 touch airflow.scheduler.log
+touch airflow-dag-processor.log
 airflow api-server --workers 1 2>&1 | tee -a airflow.log &
 airflow scheduler 2>&1 | tee -a airflow-scheduler.log &
+airflow dag-processor 2>&1 | tee -a airflow-dag-processor.log &
 
 ( timeout --signal=SIGINT 300 tail -f -n0 airflow.log & ) | grep -q "Uvicorn running on http://0.0.0.0:8080"
 if [ $? -eq 0 ]; then

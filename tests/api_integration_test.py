@@ -125,7 +125,6 @@ def test_integration_dags(url_and_token_and_starship):
             assert sorted(dag["tags"]) == sorted(expected_get["tags"]), actual.text
 
 
-@manual_tests
 def test_integration_dag_runs_and_task_instances(url_and_token_and_starship):
     (url, token, starship) = url_and_token_and_starship
     dr_route = "api/starship/dag_runs"
@@ -142,6 +141,7 @@ def test_integration_dag_runs_and_task_instances(url_and_token_and_starship):
     actual = requests.post(
         f"{url}/{dr_route}", json=dr_test_input, **get_extras(url, token)
     )
+    print(actual.text)
     assert actual.status_code in [200, 409], actual.text
     if actual.status_code == 409:
         assert (

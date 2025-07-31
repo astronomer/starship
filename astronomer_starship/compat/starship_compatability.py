@@ -941,7 +941,9 @@ class StarshipAirflow:
 
     def set_task_instances(self, task_instances: list):
         """These need to be inserted directly to skip TaskInstance.__init__"""
-        task_instances = self.insert_directly("task_instance", task_instances)
+        task_instances = self.insert_directly(
+            "task_instance", task_instances, should_remove_id_field=False
+        )
         return {"task_instances": task_instances}
 
     def delete_task_instances(self, **kwargs):
@@ -992,7 +994,7 @@ class StarshipAirflow:
         res.status_code = 409
         raise NotImplementedError()
 
-    def insert_directly(self, table_name, items):
+    def insert_directly(self, table_name, items, should_remove_id_field: bool = True):
         from sqlalchemy.exc import InvalidRequestError
         from sqlalchemy import MetaData
         import pickle
@@ -1014,7 +1016,8 @@ class StarshipAirflow:
                 elif k == "conf":
                     item[k] = pickle.dumps(item[k])
                 else:
-                    del item[k]
+                    if should_remove_id_field:
+                        del item[k]
         try:
             engine = self.session.get_bind()
             metadata = MetaData(bind=engine)
@@ -1620,12 +1623,12 @@ class StarshipAirflow3(StarshipAirflow211):
         attrs["bundle_name"] = {
             "attr": "bundle_name",
             "methods": [],
-            "test_value": "bundle_name",
+            "test_value": "dags-folder",
         }
         attrs["bundle_version"] = {
             "attr": "bundle_version",
             "methods": [],
-            "test_value": "bundle_version",
+            "test_value": None,
         }
         attrs["relative_fileloc"] = {
             "attr": "relative_fileloc",
@@ -1645,21 +1648,10 @@ class StarshipAirflow3(StarshipAirflow211):
             del attrs["external_trigger"]
         if "dag_hash" in attrs:
             del attrs["dag_hash"]
-        attrs["triggered_by"] = {
-            "attr": "triggered_by",
-            "methods": [("POST", False)],
-            "test_value": "triggered_by",
-        }
-        attrs["backfill_id"] = {
-            "attr": "backfill_id",
-            "methods": [("POST", False)],
-            "test_value": 1,
-        }
-        attrs["created_dag_version_id"] = {
-            "attr": "created_dag_version_id",
-            "methods": [("POST", False)],
-            "test_value": "f81d4fae-7dec-11d0-a765-00a0c91e6bf6",
-        }
+        if "conf" in attrs:
+            del attrs["conf"]
+        if "creating_job_id" in attrs:
+            del attrs["creating_job_id"]
         attrs["bundle_version"] = {
             "attr": "bundle_version",
             "methods": [("POST", False)],
@@ -1684,11 +1676,10 @@ class StarshipAirflow3(StarshipAirflow211):
             del attrs["dag_runs"]["test_value"][0]["external_trigger"]
         if "dag_hash" in attrs["dag_runs"]["test_value"][0]:
             del attrs["dag_runs"]["test_value"][0]["dag_hash"]
-        attrs["dag_runs"]["test_value"][0]["triggered_by"] = "triggered_by"
-        attrs["dag_runs"]["test_value"][0]["backfill_id"] = 1
-        attrs["dag_runs"]["test_value"][0][
-            "created_dag_version_id"
-        ] = "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
+        if "conf" in attrs["dag_runs"]["test_value"][0]:
+            del attrs["dag_runs"]["test_value"][0]["conf"]
+        if "creating_job_id" in attrs["dag_runs"]["test_value"][0]:
+            del attrs["dag_runs"]["test_value"][0]["creating_job_id"]
         attrs["dag_runs"]["test_value"][0]["bundle_version"] = "bundle_version"
         attrs["dag_runs"]["test_value"][0]["run_after"] = epoch_tz
         return attrs
@@ -1699,15 +1690,15 @@ class StarshipAirflow3(StarshipAirflow211):
         attrs = super().task_instance_attrs()
         if "job_id" in attrs:
             del attrs["job_id"]
+        attrs["id"] = {
+            "attr": "id",
+            "methods": [("POST", False)],
+            "test_value": "f81d4fae-7dec-11d0-a765-00a0c91e6bf6",
+        }
         attrs["last_heartbeat_at"] = {
             "attr": "last_heartbeat_at",
             "methods": [("POST", False)],
             "test_value": epoch_tz,
-        }
-        attrs["dag_version_id"] = {
-            "attr": "dag_version_id",
-            "methods": [("POST", False)],
-            "test_value": "f81d4fae-7dec-11d0-a765-00a0c91e6bf6",
         }
         attrs["scheduled_dttm"] = {
             "attr": "scheduled_dttm",
@@ -1722,10 +1713,10 @@ class StarshipAirflow3(StarshipAirflow211):
         attrs = super().task_instances_attrs()
         if "job_id" in attrs["task_instances"]["test_value"][0]:
             del attrs["task_instances"]["test_value"][0]["job_id"]
-        attrs["task_instances"]["test_value"][0]["last_heartbeat_at"] = epoch_tz
         attrs["task_instances"]["test_value"][0][
-            "dag_version_id"
+            "id"
         ] = "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
+        attrs["task_instances"]["test_value"][0]["last_heartbeat_at"] = epoch_tz
         attrs["task_instances"]["test_value"][0]["scheduled_dttm"] = epoch_tz
         return attrs
 
@@ -1785,27 +1776,19 @@ class StarshipCompatabilityLayer:
                 f"Unsupported Airflow Version - must be semver x.y.z: {airflow_version}"
             )
 
-        if int(major) == 2:
-            if int(minor) == 11:
-                return StarshipAirflow211()
-            if int(minor) == 10:
-                return StarshipAirflow210()
-            if int(minor) == 9:
-                return StarshipAirflow29()
-            if int(minor) == 8:
-                return StarshipAirflow28()
-            if int(minor) == 7:
-                return StarshipAirflow27()
-            if int(minor) == 2:
-                return StarshipAirflow22()
-            if int(minor) == 1:
-                return StarshipAirflow21()
-            if int(minor) == 0:
-                return StarshipAirflow20()
-            return StarshipAirflow()
-        elif int(major) == 3:
-            if int(minor) == 0:
-                return StarshipAirflow30()
-            return StarshipAirflow3()
-        else:
+        version_map = {
+            (3, 0): StarshipAirflow30(),
+            (2, 11): StarshipAirflow211(),
+            (2, 10): StarshipAirflow210(),
+            (2, 9): StarshipAirflow29(),
+            (2, 8): StarshipAirflow28(),
+            (2, 7): StarshipAirflow27(),
+            (2, 2): StarshipAirflow22(),
+            (2, 1): StarshipAirflow21(),
+            (2, 0): StarshipAirflow20(),
+        }
+
+        compat_layer = version_map.get((int(major), int(minor)))
+        if compat_layer is None:
             raise RuntimeError(f"Unsupported Airflow Version: {airflow_version}")
+        return compat_layer
