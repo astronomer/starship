@@ -199,19 +199,37 @@ class StarshipAirflow:
 
     @property
     def session(self) -> Session:
-        from flask import g
-        from airflow.settings import Session
+        major_version = self.get_major_version()
+        if major_version == 2:
+            from flask import g
+            from airflow.settings import Session
 
-        if "airflow_session" not in g:
-            g.airflow_session = Session()
+            if "airflow_session" not in g:
+                g.airflow_session = Session()
 
-        return g.airflow_session
+            return g.airflow_session
+        elif major_version == 3:
+            from airflow.settings import Session
+
+            if not hasattr(self, "_session"):
+                self._session = Session()
+            return self._session
+        else:
+            raise NotImplementedError(
+                f"Unsupported Airflow major version: {major_version}"
+            )
 
     @classmethod
     def get_airflow_version(cls):
         from airflow import __version__
 
         return __version__
+
+    @classmethod
+    def get_major_version(cls):
+        from packaging.version import Version
+
+        return Version(cls.get_airflow_version()).major
 
     @classmethod
     def get_info(cls):
@@ -344,7 +362,7 @@ class StarshipAirflow:
             "extra": {
                 "attr": "extra",
                 "methods": [("POST", False)],
-                "test_value": "extra",
+                "test_value": "{}",
             },
             "description": {
                 "attr": "description",
@@ -716,7 +734,7 @@ class StarshipAirflow:
                         "external_executor_id": "external_executor_id",
                         "trigger_id": None,
                         "trigger_timeout": epoch_tz,
-                        "executor_config": "\x80\x04}\x94.",
+                        "executor_config": None,
                         # "next_method": "next_method",
                         # "next_kwargs": {},
                     }
@@ -854,7 +872,7 @@ class StarshipAirflow:
             "executor_config": {
                 "attr": None,  # "executor_config",
                 "methods": [("POST", False)],
-                "test_value": "\x80\x04}\x94.",
+                "test_value": None,
             },
             # Exception:
             # /airflow/serialization/serialized_objects.py\", line 521, in deserialize
@@ -922,7 +940,9 @@ class StarshipAirflow:
 
     def set_task_instances(self, task_instances: list):
         """These need to be inserted directly to skip TaskInstance.__init__"""
-        task_instances = self.insert_directly("task_instance", task_instances)
+        task_instances = self.insert_directly(
+            "task_instance", task_instances, should_remove_id_field=False
+        )
         return {"task_instances": task_instances}
 
     def delete_task_instances(self, **kwargs):
@@ -973,29 +993,28 @@ class StarshipAirflow:
         res.status_code = 409
         raise NotImplementedError()
 
-    def insert_directly(self, table_name, items):
+    def insert_directly(self, table_name, items, should_remove_id_field: bool = True):
         from sqlalchemy.exc import InvalidRequestError
         from sqlalchemy import MetaData
         import pickle
 
+        major_version = self.get_major_version()
         if not items:
             return []
 
         # Clean data before inserting
         for item in items:
-            for k in ["conf", "id", "executor_config"]:
+            for k in ["conf", "id"]:
                 if k not in item:
                     continue
-                # drop executor_config, because its original type may have gotten lost
-                # and pickling it will not recover it
-                if k == "executor_config":
-                    item[k] = pickle.dumps({})
                 # use pickle to insert conf as binary JSONB
                 # this works because the dagrun conf is always a JSON-serializable dict
-                elif k == "conf":
-                    item[k] = pickle.dumps(item[k])
+                if k == "conf":
+                    if major_version == 2:
+                        item[k] = pickle.dumps(item[k])
                 else:
-                    del item[k]
+                    if should_remove_id_field:
+                        del item[k]
         try:
             engine = self.session.get_bind()
             metadata = MetaData(bind=engine)
@@ -1004,7 +1023,7 @@ class StarshipAirflow:
             self.session.execute(table.insert().values(items))
             self.session.commit()
             for item in items:
-                if "conf" in item:
+                if "conf" in item and major_version == 2:
                     # we don't want to return conf in pickled form
                     # this also makes tests happy
                     item["conf"] = pickle.loads(item["conf"])
@@ -1547,8 +1566,6 @@ class StarshipAirflow210(StarshipAirflow29):
     - executor in task_instance
     """
 
-    # TODO: Identify any other compat issues that exist between 2.9-2.10
-
     def task_instance_attrs(self):
         attrs = super().task_instance_attrs()
         attrs["try_number"]["attr"] = "try_number"
@@ -1572,6 +1589,128 @@ class StarshipAirflow211(StarshipAirflow210):
     """
 
 
+class StarshipAirflow30(StarshipAirflow211):
+    """
+    - schedule_interval to timetable_summary in dag
+    - bundle_name in dag
+    - bundle_version in dag
+    - relative_fileloc in dag
+
+    - execution_date to logical_date in dag_run
+    - external_trigger not in dag_run
+    - dag_hash not in dag_run
+    - creating_job_id not in dag_run
+    - bundle_version in dag_run
+    - run_after in dag_run
+
+    - job_id not in task_instance
+    - id in task_instance
+    - last_heartbeat_at in task_instance
+    - scheduled_dttm in task_instance
+    """
+
+    def dag_attrs(self):
+        attrs = super().dag_attrs()
+        if "schedule_interval" in attrs:
+            attrs["timetable_summary"] = attrs.pop("schedule_interval")
+            attrs["timetable_summary"]["attr"] = "timetable_summary"
+        attrs["bundle_name"] = {
+            "attr": "bundle_name",
+            "methods": [],
+            "test_value": "dags-folder",
+        }
+        attrs["bundle_version"] = {
+            "attr": "bundle_version",
+            "methods": [],
+            "test_value": None,
+        }
+        attrs["relative_fileloc"] = {
+            "attr": "relative_fileloc",
+            "methods": [],
+            "test_value": "relative_fileloc",
+        }
+        return attrs
+
+    def dag_run_attrs(self):
+        epoch = datetime.datetime(1970, 1, 1, 0, 0)
+        epoch_tz = epoch.replace(tzinfo=pytz.utc)
+        attrs = super().dag_run_attrs()
+        if "execution_date" in attrs:
+            attrs["logical_date"] = attrs.pop("execution_date")
+            attrs["logical_date"]["attr"] = "logical_date"
+        if "external_trigger" in attrs:
+            del attrs["external_trigger"]
+        if "dag_hash" in attrs:
+            del attrs["dag_hash"]
+        if "creating_job_id" in attrs:
+            del attrs["creating_job_id"]
+        attrs["bundle_version"] = {
+            "attr": "bundle_version",
+            "methods": [("POST", False)],
+            "test_value": "bundle_version",
+        }
+        attrs["run_after"] = {
+            "attr": "run_after",
+            "methods": [("POST", False)],
+            "test_value": epoch_tz,
+        }
+        return attrs
+
+    def dag_runs_attrs(self):
+        epoch = datetime.datetime(1970, 1, 1, 0, 0)
+        epoch_tz = epoch.replace(tzinfo=pytz.utc)
+        attrs = super().dag_runs_attrs()
+        if "execution_date" in attrs["dag_runs"]["test_value"][0]:
+            attrs["dag_runs"]["test_value"][0]["logical_date"] = attrs["dag_runs"][
+                "test_value"
+            ][0].pop("execution_date")
+        if "external_trigger" in attrs["dag_runs"]["test_value"][0]:
+            del attrs["dag_runs"]["test_value"][0]["external_trigger"]
+        if "dag_hash" in attrs["dag_runs"]["test_value"][0]:
+            del attrs["dag_runs"]["test_value"][0]["dag_hash"]
+        if "creating_job_id" in attrs["dag_runs"]["test_value"][0]:
+            del attrs["dag_runs"]["test_value"][0]["creating_job_id"]
+        attrs["dag_runs"]["test_value"][0]["bundle_version"] = "bundle_version"
+        attrs["dag_runs"]["test_value"][0]["run_after"] = epoch_tz
+        return attrs
+
+    def task_instance_attrs(self):
+        epoch = datetime.datetime(1970, 1, 1, 0, 0)
+        epoch_tz = epoch.replace(tzinfo=pytz.utc)
+        attrs = super().task_instance_attrs()
+        if "job_id" in attrs:
+            del attrs["job_id"]
+        attrs["id"] = {
+            "attr": "id",
+            "methods": [("POST", False)],
+            "test_value": "f81d4fae-7dec-11d0-a765-00a0c91e6bf6",
+        }
+        attrs["last_heartbeat_at"] = {
+            "attr": "last_heartbeat_at",
+            "methods": [("POST", False)],
+            "test_value": epoch_tz,
+        }
+        attrs["scheduled_dttm"] = {
+            "attr": "scheduled_dttm",
+            "methods": [("POST", False)],
+            "test_value": epoch_tz,
+        }
+        return attrs
+
+    def task_instances_attrs(self):
+        epoch = datetime.datetime(1970, 1, 1, 0, 0)
+        epoch_tz = epoch.replace(tzinfo=pytz.utc)
+        attrs = super().task_instances_attrs()
+        if "job_id" in attrs["task_instances"]["test_value"][0]:
+            del attrs["task_instances"]["test_value"][0]["job_id"]
+        attrs["task_instances"]["test_value"][0][
+            "id"
+        ] = "f81d4fae-7dec-11d0-a765-00a0c91e6bf6"
+        attrs["task_instances"]["test_value"][0]["last_heartbeat_at"] = epoch_tz
+        attrs["task_instances"]["test_value"][0]["scheduled_dttm"] = epoch_tz
+        return attrs
+
+
 class StarshipCompatabilityLayer:
     """StarshipCompatabilityLayer is a factory class that returns the correct StarshipAirflow class for a version
 
@@ -1589,6 +1728,7 @@ class StarshipCompatabilityLayer:
     - 2.9 https://github.com/apache/airflow/tree/2.9.3/airflow/models
     - 2.10 https://github.com/apache/airflow/tree/2.10.3/airflow/models
     - 2.11 https://github.com/apache/airflow/tree/2.11.0/airflow/models
+    - 3.0 https://github.com/apache/airflow/tree/3.0.3/airflow-core/src/airflow/models
 
     >>> isinstance(StarshipCompatabilityLayer("2.8.1"), StarshipAirflow28)
     True
@@ -1604,35 +1744,35 @@ class StarshipCompatabilityLayer:
     """
 
     def __new__(cls, airflow_version: "Union[str, None]" = None) -> StarshipAirflow:
+        import re
+
         if airflow_version is None:
             from airflow import __version__
 
             airflow_version = __version__
             print("Got Airflow Version: " + airflow_version)
         try:
-            [major, minor, _] = airflow_version.split(".", maxsplit=2)
+            [major, minor, _] = re.sub(r"[^0-9.]", "", airflow_version).split(
+                ".", maxsplit=2
+            )
         except ValueError:
             raise RuntimeError(
                 f"Unsupported Airflow Version - must be semver x.y.z: {airflow_version}"
             )
 
-        if int(major) == 2:
-            if int(minor) == 11:
-                return StarshipAirflow211()
-            if int(minor) == 10:
-                return StarshipAirflow210()
-            if int(minor) == 9:
-                return StarshipAirflow29()
-            if int(minor) == 8:
-                return StarshipAirflow28()
-            if int(minor) == 7:
-                return StarshipAirflow27()
-            if int(minor) == 2:
-                return StarshipAirflow22()
-            if int(minor) == 1:
-                return StarshipAirflow21()
-            if int(minor) == 0:
-                return StarshipAirflow20()
-            return StarshipAirflow()
-        else:
+        version_map = {
+            (3, 0): StarshipAirflow30(),
+            (2, 11): StarshipAirflow211(),
+            (2, 10): StarshipAirflow210(),
+            (2, 9): StarshipAirflow29(),
+            (2, 8): StarshipAirflow28(),
+            (2, 7): StarshipAirflow27(),
+            (2, 2): StarshipAirflow22(),
+            (2, 1): StarshipAirflow21(),
+            (2, 0): StarshipAirflow20(),
+        }
+
+        compat_layer = version_map.get((int(major), int(minor)))
+        if compat_layer is None:
             raise RuntimeError(f"Unsupported Airflow Version: {airflow_version}")
+        return compat_layer
