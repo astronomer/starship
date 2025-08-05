@@ -1744,7 +1744,7 @@ class StarshipCompatabilityLayer:
     """
 
     def __new__(cls, airflow_version: "Union[str, None]" = None) -> StarshipAirflow:
-        from packaging.version import Version
+        import re
 
         if airflow_version is None:
             from airflow import __version__
@@ -1752,7 +1752,9 @@ class StarshipCompatabilityLayer:
             airflow_version = __version__
             print("Got Airflow Version: " + airflow_version)
         try:
-            v = Version(airflow_version)
+            [major, minor, _] = re.sub(r"[^0-9.]", "", airflow_version).split(
+                ".", maxsplit=2
+            )
         except ValueError:
             raise RuntimeError(
                 f"Unsupported Airflow Version - must be semver x.y.z: {airflow_version}"
@@ -1770,7 +1772,7 @@ class StarshipCompatabilityLayer:
             (2, 0): StarshipAirflow20(),
         }
 
-        compat_layer = version_map.get((v.major, v.minor))
+        compat_layer = version_map.get((int(major), int(minor)))
         if compat_layer is None:
             raise RuntimeError(f"Unsupported Airflow Version: {airflow_version}")
         return compat_layer
