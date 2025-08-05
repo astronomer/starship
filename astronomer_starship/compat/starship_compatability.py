@@ -197,27 +197,10 @@ class StarshipAirflow:
     and get created directly by StarshipCompatabilityLayer
     """
 
-    from airflow import __version__
-
-    airflow_version = __version__
-    try:
-        [major, minor, _] = airflow_version.split(".", maxsplit=2)
-    except ValueError:
-        raise RuntimeError(
-            f"Unsupported Airflow Version - must be semver x.y.z: {airflow_version}"
-        )
-
-    if int(major) == 3:
-
-        def __init__(self):
-            from airflow.settings import Session
-
-            self.session = Session()
-
-    if int(major) == 2:
-
-        @property
-        def session(self) -> Session:
+    @property
+    def session(self) -> Session:
+        major_version = self.get_major_version()
+        if major_version == 2:
             from flask import g
             from airflow.settings import Session
 
@@ -225,12 +208,28 @@ class StarshipAirflow:
                 g.airflow_session = Session()
 
             return g.airflow_session
+        elif major_version == 3:
+            from airflow.settings import Session
+
+            if not hasattr(self, "_session"):
+                self._session = Session()
+            return self._session
+        else:
+            raise NotImplementedError(
+                f"Unsupported Airflow major version: {major_version}"
+            )
 
     @classmethod
     def get_airflow_version(cls):
         from airflow import __version__
 
         return __version__
+
+    @classmethod
+    def get_major_version(cls):
+        from packaging.version import Version
+
+        return Version(cls.get_airflow_version()).major
 
     @classmethod
     def get_info(cls):
@@ -997,12 +996,9 @@ class StarshipAirflow:
     def insert_directly(self, table_name, items, should_remove_id_field: bool = True):
         from sqlalchemy.exc import InvalidRequestError
         from sqlalchemy import MetaData
-        from airflow import __version__
         import pickle
-        import re
 
-        [major, _] = re.sub(r"[^0-9.]", "", __version__).split(".", maxsplit=1)
-
+        major_version = self.get_major_version()
         if not items:
             return []
 
@@ -1014,7 +1010,7 @@ class StarshipAirflow:
                 # use pickle to insert conf as binary JSONB
                 # this works because the dagrun conf is always a JSON-serializable dict
                 if k == "conf":
-                    if int(major) == 2:
+                    if major_version == 2:
                         item[k] = pickle.dumps(item[k])
                 else:
                     if should_remove_id_field:
@@ -1027,7 +1023,7 @@ class StarshipAirflow:
             self.session.execute(table.insert().values(items))
             self.session.commit()
             for item in items:
-                if "conf" in item and int(major) == 2:
+                if "conf" in item and major_version == 2:
                     # we don't want to return conf in pickled form
                     # this also makes tests happy
                     item["conf"] = pickle.loads(item["conf"])
@@ -1748,7 +1744,7 @@ class StarshipCompatabilityLayer:
     """
 
     def __new__(cls, airflow_version: "Union[str, None]" = None) -> StarshipAirflow:
-        import re
+        from packaging.version import Version
 
         if airflow_version is None:
             from airflow import __version__
@@ -1756,9 +1752,7 @@ class StarshipCompatabilityLayer:
             airflow_version = __version__
             print("Got Airflow Version: " + airflow_version)
         try:
-            [major, minor, _] = re.sub(r"[^0-9.]", "", airflow_version).split(
-                ".", maxsplit=2
-            )
+            v = Version(airflow_version)
         except ValueError:
             raise RuntimeError(
                 f"Unsupported Airflow Version - must be semver x.y.z: {airflow_version}"
@@ -1776,7 +1770,7 @@ class StarshipCompatabilityLayer:
             (2, 0): StarshipAirflow20(),
         }
 
-        compat_layer = version_map.get((int(major), int(minor)))
+        compat_layer = version_map.get((v.major, v.minor))
         if compat_layer is None:
             raise RuntimeError(f"Unsupported Airflow Version: {airflow_version}")
         return compat_layer
