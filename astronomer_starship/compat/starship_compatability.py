@@ -197,27 +197,10 @@ class StarshipAirflow:
     and get created directly by StarshipCompatabilityLayer
     """
 
-    from airflow import __version__
-
-    airflow_version = __version__
-    try:
-        [major, minor, _] = airflow_version.split(".", maxsplit=2)
-    except ValueError:
-        raise RuntimeError(
-            f"Unsupported Airflow Version - must be semver x.y.z: {airflow_version}"
-        )
-
-    if int(major) == 3:
-
-        def __init__(self):
-            from airflow.settings import Session
-
-            self.session = Session()
-
-    if int(major) == 2:
-
-        @property
-        def session(self) -> Session:
+    @property
+    def session(self) -> Session:
+        major_version = self.get_major_version()
+        if major_version == 2:
             from flask import g
             from airflow.settings import Session
 
@@ -225,12 +208,28 @@ class StarshipAirflow:
                 g.airflow_session = Session()
 
             return g.airflow_session
+        elif major_version == 3:
+            from airflow.settings import Session
+
+            if not hasattr(self, "_session"):
+                self._session = Session()
+            return self._session
+        else:
+            raise NotImplementedError(
+                f"Unsupported Airflow major version: {major_version}"
+            )
 
     @classmethod
     def get_airflow_version(cls):
         from airflow import __version__
 
         return __version__
+
+    @classmethod
+    def get_major_version(cls):
+        from packaging.version import Version
+
+        return Version(cls.get_airflow_version()).major
 
     @classmethod
     def get_info(cls):
@@ -997,12 +996,9 @@ class StarshipAirflow:
     def insert_directly(self, table_name, items, should_remove_id_field: bool = True):
         from sqlalchemy.exc import InvalidRequestError
         from sqlalchemy import MetaData
-        from airflow import __version__
         import pickle
-        import re
 
-        [major, _] = re.sub(r"[^0-9.]", "", __version__).split(".", maxsplit=1)
-
+        major_version = self.get_major_version()
         if not items:
             return []
 
@@ -1014,7 +1010,7 @@ class StarshipAirflow:
                 # use pickle to insert conf as binary JSONB
                 # this works because the dagrun conf is always a JSON-serializable dict
                 if k == "conf":
-                    if int(major) == 2:
+                    if major_version == 2:
                         item[k] = pickle.dumps(item[k])
                 else:
                     if should_remove_id_field:
@@ -1027,7 +1023,7 @@ class StarshipAirflow:
             self.session.execute(table.insert().values(items))
             self.session.commit()
             for item in items:
-                if "conf" in item and int(major) == 2:
+                if "conf" in item and major_version == 2:
                     # we don't want to return conf in pickled form
                     # this also makes tests happy
                     item["conf"] = pickle.loads(item["conf"])
@@ -1593,9 +1589,8 @@ class StarshipAirflow211(StarshipAirflow210):
     """
 
 
-class StarshipAirflow3(StarshipAirflow211):
+class StarshipAirflow30(StarshipAirflow211):
     """
-    Base class for Airflow 3.x
     - schedule_interval to timetable_summary in dag
     - bundle_name in dag
     - bundle_version in dag
@@ -1604,15 +1599,13 @@ class StarshipAirflow3(StarshipAirflow211):
     - execution_date to logical_date in dag_run
     - external_trigger not in dag_run
     - dag_hash not in dag_run
-    - triggered_by in dag_run
-    - backfill_id in dag_run
-    - created_dag_version_id in dag_run
+    - creating_job_id not in dag_run
     - bundle_version in dag_run
     - run_after in dag_run
 
     - job_id not in task_instance
+    - id in task_instance
     - last_heartbeat_at in task_instance
-    - dag_version_id in task_instance
     - scheduled_dttm in task_instance
     """
 
@@ -1716,12 +1709,6 @@ class StarshipAirflow3(StarshipAirflow211):
         attrs["task_instances"]["test_value"][0]["last_heartbeat_at"] = epoch_tz
         attrs["task_instances"]["test_value"][0]["scheduled_dttm"] = epoch_tz
         return attrs
-
-
-class StarshipAirflow30(StarshipAirflow3):
-    """
-    Uses the base StarshipAirflow3 class.
-    """
 
 
 class StarshipCompatabilityLayer:
