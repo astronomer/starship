@@ -16,7 +16,7 @@ and an HTTP `status_code`. The `error` key will contain a message describing the
 
 ## Airflow Version
 
-::: astronomer_starship.starship_api.StarshipApi.airflow_version
+::: astronomer_starship.v2.starship_api.StarshipApi.airflow_version
     options:
         show_root_toc_entry: false
         show_root_heading: false
@@ -25,7 +25,7 @@ and an HTTP `status_code`. The `error` key will contain a message describing the
 
 ## Starship Info
 
-::: astronomer_starship.starship_api.StarshipApi.info
+::: astronomer_starship.v2.starship_api.StarshipApi.info
     options:
         show_root_toc_entry: false
         show_root_heading: false
@@ -34,7 +34,7 @@ and an HTTP `status_code`. The `error` key will contain a message describing the
 
 ## Health
 
-::: astronomer_starship.starship_api.StarshipApi.health
+::: astronomer_starship.v2.starship_api.StarshipApi.health
     options:
         show_root_toc_entry: false
         show_root_heading: false
@@ -43,7 +43,7 @@ and an HTTP `status_code`. The `error` key will contain a message describing the
 
 ## Environment Variables
 
-::: astronomer_starship.starship_api.StarshipApi.env_vars
+::: astronomer_starship.v2.starship_api.StarshipApi.env_vars
     options:
         show_root_toc_entry: false
         show_root_heading: false
@@ -52,7 +52,7 @@ and an HTTP `status_code`. The `error` key will contain a message describing the
 
 ## Variable
 
-::: astronomer_starship.starship_api.StarshipApi.variables
+::: astronomer_starship.v2.starship_api.StarshipApi.variables
     options:
         show_root_toc_entry: false
         show_root_heading: false
@@ -61,7 +61,7 @@ and an HTTP `status_code`. The `error` key will contain a message describing the
 
 ## Pools
 
-::: astronomer_starship.starship_api.StarshipApi.pools
+::: astronomer_starship.v2.starship_api.StarshipApi.pools
     options:
         show_root_toc_entry: false
         show_root_heading: false
@@ -70,7 +70,7 @@ and an HTTP `status_code`. The `error` key will contain a message describing the
 
 ## Connections
 
-::: astronomer_starship.starship_api.StarshipApi.connections
+::: astronomer_starship.v2.starship_api.StarshipApi.connections
     options:
         show_root_toc_entry: false
         show_root_heading: false
@@ -79,7 +79,7 @@ and an HTTP `status_code`. The `error` key will contain a message describing the
 
 ## DAGs
 
-::: astronomer_starship.starship_api.StarshipApi.dags
+::: astronomer_starship.v2.starship_api.StarshipApi.dags
     options:
         show_root_toc_entry: false
         show_root_heading: false
@@ -88,7 +88,7 @@ and an HTTP `status_code`. The `error` key will contain a message describing the
 
 ## DAG Runs
 
-::: astronomer_starship.starship_api.StarshipApi.dag_runs
+::: astronomer_starship.v2.starship_api.StarshipApi.dag_runs
     options:
         show_root_toc_entry: false
         show_root_heading: false
@@ -97,7 +97,7 @@ and an HTTP `status_code`. The `error` key will contain a message describing the
 
 ## Task Instances
 
-::: astronomer_starship.starship_api.StarshipApi.task_instances
+::: astronomer_starship.v2.starship_api.StarshipApi.task_instances
     options:
         show_root_toc_entry: false
         show_root_heading: false
@@ -106,7 +106,7 @@ and an HTTP `status_code`. The `error` key will contain a message describing the
 
 ## Task Log
 
-::: astronomer_starship.starship_api.StarshipApi.task_logs
+::: astronomer_starship.v2.starship_api.StarshipApi.task_logs
     options:
         show_root_toc_entry: false
         show_root_heading: false
@@ -115,7 +115,7 @@ and an HTTP `status_code`. The `error` key will contain a message describing the
 
 ## XCom
 
-::: astronomer_starship.starship_api.StarshipApi.xcom
+::: astronomer_starship.v2.starship_api.StarshipApi.xcom
     options:
         show_root_toc_entry: false
         show_root_heading: false

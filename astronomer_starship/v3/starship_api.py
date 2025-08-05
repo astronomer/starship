@@ -116,11 +116,10 @@ async def starship_route(
 
             try:
                 res = post(**kwargs)
-            except IntegrityError as e:
+            except IntegrityError:
                 return JSONResponse(
                     content={
                         "error": "Integrity Error (Duplicate Record?)",
-                        "error_message": e,
                         "kwargs": kwargs,
                     },
                     status_code=409,

@@ -121,9 +121,10 @@ def test_dags(starship):
 
     # not predictable, so remove it
     del actual_dags[0]["fileloc"]
-    del actual_dags[0]["relative_fileloc"]
     del test_input["fileloc"]
-    del test_input["relative_fileloc"]
+    if int(major) == 3:
+        del actual_dags[0]["relative_fileloc"]
+        del test_input["relative_fileloc"]
 
     # not predictable (sorting), so remove it
     del actual_dags[0]["tags"]

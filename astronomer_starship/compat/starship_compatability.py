@@ -735,7 +735,7 @@ class StarshipAirflow:
                         "external_executor_id": "external_executor_id",
                         "trigger_id": None,
                         "trigger_timeout": epoch_tz,
-                        "executor_config": "\x80\x04}\x94.",
+                        "executor_config": None,
                         # "next_method": "next_method",
                         # "next_kwargs": {},
                     }
@@ -873,7 +873,7 @@ class StarshipAirflow:
             "executor_config": {
                 "attr": None,  # "executor_config",
                 "methods": [("POST", False)],
-                "test_value": "\x80\x04}\x94.",
+                "test_value": None,
             },
             # Exception:
             # /airflow/serialization/serialized_objects.py\", line 521, in deserialize
@@ -997,24 +997,25 @@ class StarshipAirflow:
     def insert_directly(self, table_name, items, should_remove_id_field: bool = True):
         from sqlalchemy.exc import InvalidRequestError
         from sqlalchemy import MetaData
+        from airflow import __version__
         import pickle
+        import re
+
+        [major, _] = re.sub(r"[^0-9.]", "", __version__).split(".", maxsplit=1)
 
         if not items:
             return []
 
         # Clean data before inserting
         for item in items:
-            for k in ["conf", "id", "executor_config"]:
+            for k in ["conf", "id"]:
                 if k not in item:
                     continue
-                # drop executor_config, because its original type may have gotten lost
-                # and pickling it will not recover it
-                if k == "executor_config":
-                    item[k] = pickle.dumps({})
                 # use pickle to insert conf as binary JSONB
                 # this works because the dagrun conf is always a JSON-serializable dict
-                elif k == "conf":
-                    item[k] = pickle.dumps(item[k])
+                if k == "conf":
+                    if int(major) == 2:
+                        item[k] = pickle.dumps(item[k])
                 else:
                     if should_remove_id_field:
                         del item[k]
@@ -1026,7 +1027,7 @@ class StarshipAirflow:
             self.session.execute(table.insert().values(items))
             self.session.commit()
             for item in items:
-                if "conf" in item:
+                if "conf" in item and int(major) == 2:
                     # we don't want to return conf in pickled form
                     # this also makes tests happy
                     item["conf"] = pickle.loads(item["conf"])
@@ -1648,8 +1649,6 @@ class StarshipAirflow3(StarshipAirflow211):
             del attrs["external_trigger"]
         if "dag_hash" in attrs:
             del attrs["dag_hash"]
-        if "conf" in attrs:
-            del attrs["conf"]
         if "creating_job_id" in attrs:
             del attrs["creating_job_id"]
         attrs["bundle_version"] = {
@@ -1676,8 +1675,6 @@ class StarshipAirflow3(StarshipAirflow211):
             del attrs["dag_runs"]["test_value"][0]["external_trigger"]
         if "dag_hash" in attrs["dag_runs"]["test_value"][0]:
             del attrs["dag_runs"]["test_value"][0]["dag_hash"]
-        if "conf" in attrs["dag_runs"]["test_value"][0]:
-            del attrs["dag_runs"]["test_value"][0]["conf"]
         if "creating_job_id" in attrs["dag_runs"]["test_value"][0]:
             del attrs["dag_runs"]["test_value"][0]["creating_job_id"]
         attrs["dag_runs"]["test_value"][0]["bundle_version"] = "bundle_version"

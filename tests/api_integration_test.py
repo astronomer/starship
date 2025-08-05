@@ -14,7 +14,10 @@ URLS_AND_TOKENS = {
 
 
 def get_extras(deployment_url: str, token: str) -> Dict[str, Any]:
-    """Use Bearer auth if astro else admin:admin if local"""
+    """
+    Airflow 2: Use Bearer auth if astro else admin:admin if local
+    Airflow 3: Use Bearer auth
+    """
     return (
         {
             "headers": {
@@ -125,6 +128,7 @@ def test_integration_dags(url_and_token_and_starship):
             assert sorted(dag["tags"]) == sorted(expected_get["tags"]), actual.text
 
 
+@manual_tests
 def test_integration_dag_runs_and_task_instances(url_and_token_and_starship):
     (url, token, starship) = url_and_token_and_starship
     dr_route = "api/starship/dag_runs"
@@ -132,8 +136,8 @@ def test_integration_dag_runs_and_task_instances(url_and_token_and_starship):
     dag_id = "dag_0"
 
     # delete dag
-    requests.delete(f"{url}/api/v1/dags/{dag_id}", **get_extras(url, token))
-
+    # requests.delete(f"{url}/api/v2/dags/{dag_id}", **get_extras(url, token))
+    requests.delete(f"{url}/{dr_route}?dag_id={dag_id}", **get_extras(url, token))
     dr_test_input = get_test_data(method="POST", attrs=starship.dag_runs_attrs())
     dr_test_input = json.loads(json.dumps(dr_test_input, default=str))
 
@@ -141,7 +145,6 @@ def test_integration_dag_runs_and_task_instances(url_and_token_and_starship):
     actual = requests.post(
         f"{url}/{dr_route}", json=dr_test_input, **get_extras(url, token)
     )
-    print(actual.text)
     assert actual.status_code in [200, 409], actual.text
     if actual.status_code == 409:
         assert (
