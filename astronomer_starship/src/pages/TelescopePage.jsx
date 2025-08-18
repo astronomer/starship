@@ -1,14 +1,25 @@
 import {
-  Box, Button,
-  Divider, FormControl,
+  Box,
+  Button,
+  Divider,
+  FormControl,
   FormErrorMessage,
   FormHelperText,
-  FormLabel, Link,
-  Input, InputGroup,
-  Text, Tooltip, VStack, CircularProgress, useToast,
+  FormLabel,
+  HStack,
+  Link,
+  Input,
+  InputGroup,
+  Spacer,
+  Text,
+  Tooltip,
+  VStack,
+  CircularProgress,
+  useToast,
 } from '@chakra-ui/react';
 import React, { useEffect, useMemo, useState } from 'react';
-import { GoDownload, GoUpload } from 'react-icons/go';
+import { GoRocket, GoDownload, GoUpload } from 'react-icons/go';
+import { NavLink } from 'react-router-dom';
 import axios from "axios";
 import constants from "../constants.js";
 import { localRoute } from "../util.js";
@@ -38,9 +49,21 @@ export default function TelescopePage({ state, dispatch }) {
   }, [state]);
   return (
     <Box>
-      <Text fontSize="xl">
-        Telescope is a tool for gathering metadata from an Airflow instance which can be processed to collect insights.
-      </Text>
+      <HStack>
+        <Text fontSize="xl">
+          Telescope is a tool for gathering metadata from an Airflow instance which can be processed to collect insights.
+        </Text>
+        <Spacer />
+        <Button
+          size="sm"
+          leftIcon={<GoRocket />}
+          as={NavLink}
+          to="/setup"
+        >
+          Starship
+        </Button>
+
+      </HStack>
       <Divider marginY="5px" />
       <VStack width="60%" display="flex" alignItems="center">
         <Box width="100%" margin="0 30px" alignItems="left">

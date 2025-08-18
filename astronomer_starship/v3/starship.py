@@ -1,6 +1,7 @@
 import os
 import requests
 from pathlib import Path
+from airflow import __version__
 from airflow.plugins_manager import AirflowPlugin
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import HTMLResponse
@@ -29,7 +30,13 @@ templates = Jinja2Templates(directory=Path(__file__).parent.parent / "templates"
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     """Render the index page."""
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(
+        "index.html",
+        {
+            "request": request,
+            "airflow_version": __version__,
+        },
+    )
 
 
 # API ROUTES
@@ -73,7 +80,7 @@ async def proxy(request: Request):
         url,
         headers=request_headers,
         params=request.query_params if request.query_params else None,
-        **({"body": body} if body else {}),
+        **({"data": body} if body else {}),
     )
     response_headers = dict(response.headers)
     if not response.ok:
@@ -90,9 +97,21 @@ async def proxy(request: Request):
             f"response.status_code={response.status_code}\n"
             f"response.content={response.content}\n"
         )
+
+    # runs into issues with ERR_CONTENT_DECODING_FAILED on Airflow 3 deployments
+    # axios.get does not return a valid response
+    encoding_headers = [
+        "content-encoding",
+        "transfer-encoding",
+    ]
+    response_headers = {
+        k: v for k, v in response.headers.items() if k.lower() not in encoding_headers
+    }
     response_headers["Starship-Proxy-Status"] = "OK"
     return Response(
-        response.content, status_code=response.status_code, headers=response_headers
+        content=response.content,
+        status_code=response.status_code,
+        headers=response_headers,
     )
 
 

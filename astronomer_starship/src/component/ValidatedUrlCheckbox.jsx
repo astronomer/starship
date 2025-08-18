@@ -15,9 +15,9 @@ export default function ValidatedUrlCheckbox({
       .then((res) => {
         // Valid if it's a 200, has data, and is JSON
         const isValid = (
-          res.status === 200 &&
-          res.data &&
-          res.headers['content-type'] === 'application/json'
+          res.status === 200
+          && res.data
+          && res.headers['content-type'] === 'application/json'
         );
         setValid(isValid);
       })

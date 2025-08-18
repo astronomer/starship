@@ -238,6 +238,9 @@ async def airflow_version(request: Request):
     """
     Returns the version of Airflow that the Starship API is connected to.
 
+    DEPRECATED: Instead use [`/api/starship/info`](./#starship-info) to get both Airflow and Starship versions
+    plus additional information.
+
     ---
 
     ### `GET /api/starship/airflow_version`
@@ -251,6 +254,31 @@ async def airflow_version(request: Request):
     """
     return await starship_route(
         request=request, get=starship_compat.get_airflow_version
+    )
+
+
+@router.get("/info")
+async def info(request: Request):
+    """
+    Returns relevant information related to Starship and the Airflow deployment.
+
+    ---
+
+    ### `GET /api/starship/info`
+
+    **Parameters:** None
+
+    **Response**:
+    ```
+    {
+      "airflow_version": "2.11.0+astro.1",
+      "starship_version": "2.5.0",
+    }
+    ```
+    """
+    return await starship_route(
+        request=request,
+        get=starship_compat.get_info,
     )
 
 

@@ -137,7 +137,7 @@ create-test TESTPATH:
     set -euxo pipefail
     if [[ -d {{TESTPATH}} ]]
     then
-      echo "starship_scratch already exists"
+      echo "{{TESTPATH}} already exists"
     else
       mkdir -p {{TESTPATH}}
       ln -sf $(pwd) {{ TESTPATH }}/starship
@@ -150,7 +150,6 @@ create-test TESTPATH:
       echo "# ALTERNATIVELY, COMMENT THIS OUT AND ADD TO REQUIREMENTS.TXT" >> Dockerfile
       echo "# --extra-index-url=https://test.pypi.org/simple/" >> requirements.txt
       echo "# astronomer-starship==?.?.?" >> requirements.txt
-      echo "apache-airflow-providers-fab>2" >> requirements.txt
       echo "version: \"3.1\"" >> docker-compose.override.yml
       echo "services:" >> docker-compose.override.yml
       echo "  api-server:" >> docker-compose.override.yml

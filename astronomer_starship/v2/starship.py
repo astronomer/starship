@@ -1,5 +1,7 @@
 import os
 import requests
+from pathlib import Path
+from airflow import __version__
 from airflow.plugins_manager import AirflowPlugin
 
 try:
@@ -26,7 +28,7 @@ class Starship(BaseView):
     @expose("/")
     def main(self):
         """Main view - just bootstraps the React app."""
-        return self.render_template("index.html")
+        return self.render_template("index.html", airflow_version=__version__)
 
     # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
     @expose("/proxy", methods=ALLOWED_PROXY_METHODS)
@@ -91,8 +93,12 @@ starship_view = Starship()
 starship_bp = Blueprint(
     "starship",
     __name__,
-    static_folder="static",  # should be default, just being explicit
-    template_folder="templates",  # should be default, just being explicit
+    static_folder=(
+        Path(__file__).parent.parent / "static"
+    ),  # should be default, just being explicit
+    template_folder=(
+        Path(__file__).parent.parent / "templates"
+    ),  # should be default, just being explicit
     static_url_path="/starship/static",  # so static/foo.html is at /starship/static/foo.html
 )
 

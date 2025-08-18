@@ -28,6 +28,8 @@ export const initialState = {
   isAstro: true,
   isStarship: false,
   isAirflow: false,
+  airflowVersion: '',
+  airflowMajorVersion: 0,
   isProductSelected: false,
   isTokenTouched: false,
   token: null,
@@ -125,6 +127,13 @@ export const reducer = (state, action) => {
         ...state,
         isAirflow: action.isAirflow,
         isSetupComplete: action.isAirflow && state.isStarship && state.token && state.isValidUrl,
+      };
+    }
+    case 'set-airflow-version': {
+      return {
+        ...state,
+        airflowVersion: action.airflowVersion,
+        airflowMajorVersion: action.airflowMajorVersion,
       };
     }
     case 'set-software-info': {

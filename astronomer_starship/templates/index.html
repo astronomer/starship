@@ -1,4 +1,11 @@
+{% if airflow_version.startswith("2") %}
+    {% extends base_template %}
+{% endif %}
+
 {% block head_js %}
+{% if airflow_version.startswith("2") %}
+    {{ super() }}
+{% endif %}
 {#<script>#}
 {#  const airflow_version = "{{ airflow_version }}"#}
 {#  const airflow_base_url = "{{ airflow_base_url }}"#}
@@ -7,12 +14,15 @@
 {% endblock %}
 
 {% block head_css %}
+{% if airflow_version.startswith("2") %}
+    {{ super() }}
+{% endif %}
 <link rel="stylesheet" crossorigin href="static/assets/index.css">
 {% endblock %}
 
-{% block page_title %}
-Starship Migration Plugin
-{% endblock %}
+{# {% block page_title %} #}
+{# Starship Migration Plugin #}
+{# {% endblock %} #}
 
 {% block content %}
 <div id="root" class="starship-main"></div>

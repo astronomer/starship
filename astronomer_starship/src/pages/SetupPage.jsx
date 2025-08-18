@@ -22,53 +22,98 @@ import {
 } from '@chakra-ui/react';
 import React, { useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { CheckIcon, ExternalLinkIcon, RepeatIcon, } from '@chakra-ui/icons';
-import { IoTelescopeOutline } from 'react-icons/io5';
+import { CheckIcon, ExternalLinkIcon, RepeatIcon } from '@chakra-ui/icons';
+import { IoTelescopeOutline, IoHomeOutline } from 'react-icons/io5';
 import { NavLink } from 'react-router-dom';
-import { getHoustonRoute, getTargetUrlFromParts, proxyHeaders, proxyUrl, tokenUrlFromAirflowUrl } from '../util';
+import axios from 'axios';
+import {
+  getHoustonRoute, getTargetUrlFromParts, localRoute, proxyHeaders, proxyUrl, tokenUrlFromAirflowUrl,
+} from '../util';
 import ValidatedUrlCheckbox from '../component/ValidatedUrlCheckbox';
-import axios from "axios";
-import { getWorkspaceDeploymentsQuery } from "../constants.js";
+import { getWorkspaceDeploymentsQuery } from '../constants.js';
 
 export default function SetupPage({ state, dispatch }) {
+  // Get the Airflow version if the target deployment is valid
+  useEffect(
+    () => {
+      if (
+        state.targetUrl.startsWith('http')
+          && state.isValidUrl
+          && state.airflowMajorVersion === 0
+      ) {
+        axios.get(proxyUrl(`${state.targetUrl}/api/v1/version`), {
+          headers: proxyHeaders(state.token),
+        })
+          .then((res) => {
+            const { version } = res.data;
+            const majorVersion = parseInt(version.split('.')[0], 10);
+            dispatch(
+              {
+                type: 'set-airflow-version',
+                airflowVersion: version,
+                airflowMajorVersion: majorVersion,
+              },
+            );
+          })
+          .catch((v1err) => {
+            axios.get(proxyUrl(`${state.targetUrl}/api/v2/version`), {
+              headers: proxyHeaders(state.token),
+            })
+              .then((res) => {
+                const { version } = res.data;
+                const majorVersion = parseInt(version.split('.')[0], 10);
+                dispatch(
+                  {
+                    type: 'set-airflow-version',
+                    airflowVersion: version,
+                    airflowMajorVersion: majorVersion,
+                  },
+                );
+              })
+              .catch((v2err) => {});
+          });
+      }
+    },
+    [state],
+  );
   // Get the workspace ID & etc. if it's software and setup is completed
   useEffect(
     () => {
       if (
-        state.isSetupComplete && // setup is completed
-        !state.isAstro &&  // it's Software
-        !(state.releaseName && state.workspaceId && state.deploymentId) // one or more of three isn't set
-      ){
+        state.isSetupComplete // setup is completed
+        && !state.isAstro // it's Software
+        && !(state.releaseName && state.workspaceId && state.deploymentId) // one or more of three isn't set
+      ) {
         axios.post(
           proxyUrl(getHoustonRoute(state.urlOrgPart)),
           {
-            operationName: "workspaces",
+            operationName: 'workspaces',
             query: getWorkspaceDeploymentsQuery,
-            variables: {}
+            variables: {},
           },
           {
-            headers: proxyHeaders(state.token)
-          }
+            headers: proxyHeaders(state.token),
+          },
         )
-        .then((res) => {
-          let found = false;
-          for (let workspace of res.data?.data?.workspaces) {
-            if (found) break;
-            for (let deployment of workspace.deployments) {
+          .then((res) => {
+            const found = false;
+            for (const workspace of res.data?.data?.workspaces) {
               if (found) break;
-              if (deployment.releaseName === state.urlDeploymentPart) {
-                dispatch({
-                  type: 'set-software-info',
-                  deploymentId: deployment.id,
-                  releaseName: deployment.releaseName,
-                  workspaceId: workspace.id
-                });
+              for (const deployment of workspace.deployments) {
+                if (found) break;
+                if (deployment.releaseName === state.urlDeploymentPart) {
+                  dispatch({
+                    type: 'set-software-info',
+                    deploymentId: deployment.id,
+                    releaseName: deployment.releaseName,
+                    workspaceId: workspace.id,
+                  });
+                }
               }
             }
-          }
-          res.data?.data?.workspaces
-        })
-        .catch((err) => {});
+            res.data?.data?.workspaces;
+          })
+          .catch((err) => {});
       }
     },
     [state],
@@ -79,6 +124,13 @@ export default function SetupPage({ state, dispatch }) {
       <HStack>
         <Text fontSize="xl">Starship is a utility to migrate Airflow metadata between instances</Text>
         <Spacer />
+        <Button
+          size="sm"
+          leftIcon={<IoHomeOutline />}
+          asChild
+        >
+          <a href={window.location.origin}>Home</a>
+        </Button>
         <Button
           size="sm"
           leftIcon={<IoTelescopeOutline />}
@@ -316,7 +368,6 @@ export default function SetupPage({ state, dispatch }) {
                 <FormErrorMessage>Please input a token.</FormErrorMessage>
               </SlideFade>
             </FormControl>
-
             {/* ==== CHECK AIRFLOW AND STARSHIP ==== */}
             <FormControl className="setup-form-field">
               <SlideFade in={state.targetUrl.startsWith('http') && state.isValidUrl && state.isProductSelected}>
@@ -333,7 +384,11 @@ export default function SetupPage({ state, dispatch }) {
                         text="Airflow"
                         valid={state.isAirflow}
                         setValid={(value) => dispatch({ type: 'set-is-airflow', isAirflow: value })}
-                        url={`${state.targetUrl}/api/v1/health`}
+                        url={
+                            state.airflowMajorVersion === 3
+                              ? `${state.targetUrl}/api/v2/monitor/health`
+                              : `${state.targetUrl}/api/v1/health`
+                        }
                         token={state.token}
                       />
                       <ValidatedUrlCheckbox
