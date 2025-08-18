@@ -25,7 +25,7 @@ Make a connection in Airflow with the following details:
 - **Host**: the URL of the homepage of Airflow (excluding `/home` on the end of the URL)
   - For example, if your deployment URL is `https://astronomer.astronomer.run/abcdt4ry/home`, you'll use `https://astronomer.astronomer.run/abcdt4ry`
 - **Schema**: `https`
-- **Extras**: `{"Authorization": "Bearer <token>"}`
+- **Extra**: `{"Authorization": "Bearer <token>"}`
 
 ## Usage
 1. Add the following DAG to your source environment:
