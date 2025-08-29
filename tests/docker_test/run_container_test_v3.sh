@@ -13,7 +13,7 @@ echo -e $INSTALL_OUTPUT
 popd
 
 # if we don't find 'Successfully installed' or if we find 'ERROR'
-grep -q 'Successfully installed astronomer-starship' <<< $INSTALL_OUTPUT
+grep -q -E 'Successfully installed.+astronomer-starship' <<< $INSTALL_OUTPUT
 SUCCESSFULLY_INSTALLED=$?
 grep -q 'ERROR' <<< $INSTALL_OUTPUT
 ERROR=$?

@@ -1,6 +1,5 @@
 import os
 import pytest
-from airflow import __version__
 from pathlib import Path
 
 manual_tests = pytest.mark.skipif(
@@ -13,17 +12,20 @@ def project_root() -> Path:
     return Path(__file__).parent.parent
 
 
-[major, _] = __version__.split(".", maxsplit=1)
-if int(major) == 2:
-
-    @pytest.fixture()
-    def app():
+@pytest.fixture()
+def app():
+    try:
         from airflow.www.app import create_app
 
         app = create_app(testing=True)
-        yield app
+    except ImportError:
+        from airflow.providers.fab.www.app import create_app
 
-    @pytest.fixture(autouse=True)
-    def app_context(app):
-        with app.app_context():
-            yield
+        app = create_app(enable_plugins=True)
+    yield app
+
+
+@pytest.fixture(autouse=True)
+def app_context(app):
+    with app.app_context():
+        yield

@@ -135,7 +135,7 @@ def test_docker_pytest(has_docker, docker_client, project_root, local_version):
                 platform=platform,
                 command=f"/usr/local/airflow/starship/tests/docker_test/{test_script} "
                 f"{image} "
-                f"starship/dist/astronomer_starship-{version}-py3-none-any.whl",
+                f"starship/dist/astronomer_starship-{version}-py3-none-any.whl[provider]",
                 volumes=[
                     f"{project_root}/dist/:/usr/local/airflow/starship/dist/:rw",
                     f"{project_root}/tests/docker_test:/usr/local/airflow/starship/tests/docker_test:rw",

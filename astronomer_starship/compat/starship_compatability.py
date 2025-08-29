@@ -734,7 +734,7 @@ class StarshipAirflow:
                         "external_executor_id": "external_executor_id",
                         "trigger_id": None,
                         "trigger_timeout": epoch_tz,
-                        "executor_config": None,
+                        "executor_config": "\x80\x04}\x94.",
                         # "next_method": "next_method",
                         # "next_kwargs": {},
                     }
@@ -872,7 +872,7 @@ class StarshipAirflow:
             "executor_config": {
                 "attr": None,  # "executor_config",
                 "methods": [("POST", False)],
-                "test_value": None,
+                "test_value": "\x80\x04}\x94.",
             },
             # Exception:
             # /airflow/serialization/serialized_objects.py\", line 521, in deserialize
@@ -1004,17 +1004,12 @@ class StarshipAirflow:
 
         # Clean data before inserting
         for item in items:
-            for k in ["conf", "id"]:
-                if k not in item:
-                    continue
-                # use pickle to insert conf as binary JSONB
-                # this works because the dagrun conf is always a JSON-serializable dict
-                if k == "conf":
-                    if major_version == 2:
-                        item[k] = pickle.dumps(item[k])
-                else:
-                    if should_remove_id_field:
-                        del item[k]
+            if "executor_config" in item:
+                item["executor_config"] = pickle.dumps({})
+            if "conf" in item and major_version == 2:
+                item["conf"] = pickle.dumps(item["conf"])
+            if should_remove_id_field and "id" in item:
+                del item["id"]
         try:
             engine = self.session.get_bind()
             metadata = MetaData(bind=engine)
@@ -1027,6 +1022,9 @@ class StarshipAirflow:
                     # we don't want to return conf in pickled form
                     # this also makes tests happy
                     item["conf"] = pickle.loads(item["conf"])
+                if "executor_config" in item and major_version == 3:
+                    # binary cannot be decoded in Airflow 3
+                    item["executor_config"] = pickle.loads(item["executor_config"])
             return items
         except (InvalidRequestError, KeyError):
             return self.insert_directly(f"airflow.{table_name}", items)

@@ -6,6 +6,7 @@ import pytest
 
 from http import HTTPStatus
 from airflow import __version__
+from packaging.version import Version
 from astronomer_starship.compat.starship_compatability import (
     StarshipCompatabilityLayer,
     get_test_data,
@@ -15,20 +16,26 @@ docker_test = pytest.mark.skipif(
     not bool(os.getenv("DOCKER_TEST")), reason="Not inside Docker container under test"
 )
 
-[major, _] = __version__.split(".", maxsplit=1)
-if int(major) == 2:
+v = Version(__version__)
 
-    @pytest.fixture()
-    def app():
+
+@pytest.fixture()
+def app():
+    try:
         from airflow.www.app import create_app
 
         app = create_app(testing=True)
-        yield app
+    except ImportError:
+        from airflow.providers.fab.www.app import create_app
 
-    @pytest.fixture(autouse=True)
-    def app_context(app):
-        with app.app_context():
-            yield
+        app = create_app(enable_plugins=True)
+    yield app
+
+
+@pytest.fixture(autouse=True)
+def app_context(app):
+    with app.app_context():
+        yield
 
 
 @pytest.fixture(scope="session")
@@ -122,7 +129,7 @@ def test_dags(starship):
     # not predictable, so remove it
     del actual_dags[0]["fileloc"]
     del test_input["fileloc"]
-    if int(major) == 3:
+    if v.major == 3:
         del actual_dags[0]["relative_fileloc"]
         del test_input["relative_fileloc"]
 

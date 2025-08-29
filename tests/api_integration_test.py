@@ -3,6 +3,8 @@ from typing import Dict, Any
 import pytest
 import requests
 from tests.conftest import manual_tests
+from airflow import __version__
+from packaging.version import Version
 from astronomer_starship.compat.starship_compatability import (
     StarshipCompatabilityLayer,
     get_test_data,
@@ -180,6 +182,12 @@ def test_integration_dag_runs_and_task_instances(url_and_token_and_starship):
     actual = requests.post(
         f"{url}/{ti_route}", json=ti_test_input, **get_extras(url, token)
     )
+
+    v = Version(__version__)
+    if v.major == 3:
+        # post route does not return executor_config in pickled form
+        ti_test_input["task_instances"][0]["executor_config"] = {}
+
     assert actual.status_code in [200, 409], actual.text
     if actual.status_code == 409:
         assert (
