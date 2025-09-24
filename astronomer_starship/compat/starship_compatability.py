@@ -925,10 +925,6 @@ class StarshipAirflow:
         task_instances = self.insert_directly("task_instance", task_instances)
         return {"task_instances": task_instances}
 
-    def delete_task_instances(self, **kwargs):
-        attrs = {self.task_instances_attrs()[k]["attr"]: v for k, v in kwargs.items()}
-        return generic_delete(self.session, "airflow.models.TaskInstance", **attrs)
-
     @classmethod
     def task_log_attrs(cls) -> "Dict[str, AttrDesc]":
         return {}
