@@ -31,9 +31,13 @@ Make a connection in Airflow with the following details:
 1. Add the following DAG to your source environment:
 
     ```python title="dags/starship_airflow_migration_dag.py"
-    from astronomer_starship.providers.starship.operators.starship import StarshipAirflowMigrationDAG
+    from astronomer_starship.providers.starship.operators.starship import (
+        StarshipAirflowMigrationDAG,
+    )
 
-    globals()['starship_airflow_migration_dag'] = StarshipAirflowMigrationDAG(http_conn_id="starship_default")
+    globals()["starship_airflow_migration_dag"] = StarshipAirflowMigrationDAG(
+        http_conn_id="starship_default"
+    )
     ```
 
 2. Unpause the DAG in the Airflow UI
