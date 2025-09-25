@@ -4,7 +4,6 @@ Hooks for interacting with Starship migrations
 
 from abc import ABC, abstractmethod
 
-from functools import cached_property
 from typing import List
 
 from airflow.providers.http.hooks.http import HttpHook
@@ -74,9 +73,15 @@ class StarshipHook(ABC):
 class StarshipLocalHook(BaseHook, StarshipHook):
     """Hook to retrieve local Airflow data, which can then be sent to the Target Starship instance."""
 
-    @cached_property
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._starship_compat = None
+
+    @property
     def starship_compat(self):
-        return StarshipCompatabilityLayer()
+        if self._starship_compat is None:
+            self._starship_compat = StarshipCompatabilityLayer()
+        return self._starship_compat
 
     def get_variables(self):
         """

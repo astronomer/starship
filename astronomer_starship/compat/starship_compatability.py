@@ -1,4 +1,3 @@
-from functools import cached_property
 import json
 from http import HTTPStatus
 import logging
@@ -198,11 +197,16 @@ class StarshipAirflow:
     and get created directly by StarshipCompatabilityLayer
     """
 
-    @cached_property
+    def __init__(self):
+        self._session = None
+
+    @property
     def session(self) -> Session:
         from airflow.settings import Session
 
-        return Session()
+        if self._session is None:
+            self._session = Session()
+        return self._session
 
     @classmethod
     def get_airflow_version(cls):
