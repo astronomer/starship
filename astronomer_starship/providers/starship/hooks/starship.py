@@ -73,21 +73,11 @@ class StarshipHook(ABC):
 class StarshipLocalHook(BaseHook, StarshipHook):
     """Hook to retrieve local Airflow data, which can then be sent to the Target Starship instance."""
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._starship_compat = None
-
-    @property
-    def starship_compat(self):
-        if self._starship_compat is None:
-            self._starship_compat = StarshipCompatabilityLayer()
-        return self._starship_compat
-
     def get_variables(self):
         """
         Get all variables from the local Airflow instance.
         """
-        return self.starship_compat.get_variables()
+        return StarshipCompatabilityLayer().get_variables()
 
     def set_variable(self, **kwargs):
         raise RuntimeError("Setting local data is not supported")
@@ -96,7 +86,7 @@ class StarshipLocalHook(BaseHook, StarshipHook):
         """
         Get all pools from the local Airflow instance.
         """
-        return self.starship_compat.get_pools()
+        return StarshipCompatabilityLayer().get_pools()
 
     def set_pool(self, **kwargs):
         raise RuntimeError("Setting local data is not supported")
@@ -106,7 +96,7 @@ class StarshipLocalHook(BaseHook, StarshipHook):
         """
         Get all connections from the local Airflow instance.
         """
-        return self.starship_compat.get_connections()
+        return StarshipCompatabilityLayer().get_connections()
 
     def set_connection(self, **kwargs):
         raise RuntimeError("Setting local data is not supported")
@@ -115,19 +105,21 @@ class StarshipLocalHook(BaseHook, StarshipHook):
         """
         Get all DAGs from the local Airflow instance.
         """
-        return self.starship_compat.get_dags()
+        return StarshipCompatabilityLayer().get_dags()
 
     def set_dag_is_paused(self, dag_id: str, is_paused: bool):
         """
         Set the paused status of a DAG in the local Airflow instance.
         """
-        return self.starship_compat.set_dag_is_paused(dag_id, is_paused)
+        return StarshipCompatabilityLayer().set_dag_is_paused(dag_id, is_paused)
 
     def get_dag_runs(self, dag_id: str, offset: int = 0, limit: int = 10) -> dict:
         """
         Get DAG runs from the local Airflow instance.
         """
-        return self.starship_compat.get_dag_runs(dag_id, offset=offset, limit=limit)
+        return StarshipCompatabilityLayer().get_dag_runs(
+            dag_id, offset=offset, limit=limit
+        )
 
     def set_dag_runs(self, dag_runs: list):
         raise RuntimeError("Setting local data is not supported")
@@ -136,7 +128,7 @@ class StarshipLocalHook(BaseHook, StarshipHook):
         """
         Get task instances from the local Airflow instance.
         """
-        return self.starship_compat.get_task_instances(
+        return StarshipCompatabilityLayer().get_task_instances(
             dag_id, offset=offset, limit=limit
         )
 
