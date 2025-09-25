@@ -197,15 +197,16 @@ class StarshipAirflow:
     and get created directly by StarshipCompatabilityLayer
     """
 
+    def __init__(self):
+        self._session = None
+
     @property
     def session(self) -> Session:
-        from flask import g
         from airflow.settings import Session
 
-        if "airflow_session" not in g:
-            g.airflow_session = Session()
-
-        return g.airflow_session
+        if self._session is None:
+            self._session = Session()
+        return self._session
 
     @classmethod
     def get_airflow_version(cls):

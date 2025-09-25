@@ -9,7 +9,7 @@ description = "Migrations to Astro"
 authors = [
     { name = "Fritz Davenport", email = "fritz@astronomer.io" },
     { name = "CETA Team", email = "ceta@astronomer.io" },
-    { name = "Astronomer", email = "humans@astronomer.io" }
+    { name = "Astronomer", email = "humans@astronomer.io" },
 ]
 readme = "README.md"
 license = { text = "PROPRIETARY" }
@@ -35,16 +35,21 @@ version = { attr = "astronomer_starship.__version__" }
 [tool.setuptools.packages.find]
 include = ["astronomer_starship", "astronomer_starship.*"]
 exclude = [
-    "*venv*", "*venv*.*",
-    "*tests.*", "*tests",
-    "*build", "*build.*",
-    "*dist", "*dist.*",
-    "*node_modules", "*node_modules.*",
+    "*venv*",
+    "*venv*.*",
+    "*tests.*",
+    "*tests",
+    "*build",
+    "*build.*",
+    "*dist",
+    "*dist.*",
+    "*node_modules",
+    "*node_modules.*",
 ]
 
 [project.optional-dependencies]
 provider = [
-    "apache-airflow-providers-http"
+    "apache-airflow-providers-http",
 ]
 
 dev = [
@@ -54,6 +59,7 @@ dev = [
 
     # test
     "apache-airflow<3",        # Starship only supports Airflow version up to 2.11 at the moment
+    "flask_limiter<3.13",      # A breaking change was introduced in version 3.13 of flask-limiter
     "pytest>=7",
     "pytest-cov>=4.0",
     "pytest-integration>=0.2",
@@ -78,7 +84,6 @@ dev = [
     "isort>=5",
 ]
 
-
 # for pip installing this pyproject.toml
 [project.entry-points."airflow.plugins"]
 "starship" = "astronomer_starship.starship:StarshipPlugin"
@@ -97,7 +102,7 @@ skips = [
     "B301",
     "B403",
     "B310", # urlopen in Aeroscope
-    "B608"  # SQL Injection in DAG History Migration
+    "B608", # SQL Injection in DAG History Migration
 ]
 
 [tool.ruff]
@@ -105,8 +110,17 @@ line-length = 120
 
 [tool.pytest.ini_options]
 norecursedirs = [
-    "tests/docker_test/", "tests/resources/", "hooks", "*.egg", ".eggs",
-    "dist", "build", "docs", ".tox", ".git", "__pycache__"
+    "tests/docker_test/",
+    "tests/resources/",
+    "hooks",
+    "*.egg",
+    ".eggs",
+    "dist",
+    "build",
+    "docs",
+    ".tox",
+    ".git",
+    "__pycache__",
 ]
 doctest_optionflags = ["NUMBER", "NORMALIZE_WHITESPACE", "IGNORE_EXCEPTION_DETAIL"]
 

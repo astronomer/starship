@@ -218,7 +218,11 @@ class StarshipApi(BaseView):
         presigned_url = request.args.get("presigned_url", False)
         if presigned_url:
             try:
-                upload = requests.put(presigned_url, data=json.dumps(report))
+                upload = requests.put(
+                    presigned_url,
+                    data=json.dumps(report),
+                    timeout=30,
+                )
                 return upload.content, upload.status_code
             except requests.exceptions.ConnectionError as e:
                 return str(e), 400
@@ -244,6 +248,7 @@ class StarshipApi(BaseView):
         2.11.0+astro.1
         ```
         """
+        starship_compat = StarshipCompatabilityLayer()
         return starship_route(get=starship_compat.get_airflow_version)
 
     @expose("/info", methods=["GET"])
@@ -266,6 +271,7 @@ class StarshipApi(BaseView):
         }
         ```
         """
+        starship_compat = StarshipCompatabilityLayer()
         return starship_route(get=starship_compat.get_info)
 
     # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
@@ -291,6 +297,7 @@ class StarshipApi(BaseView):
         ```
 
         """
+        starship_compat = StarshipCompatabilityLayer()
         return starship_route(get=starship_compat.get_env_vars)
 
     # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_POOL)])
@@ -345,6 +352,7 @@ class StarshipApi(BaseView):
 
         **Response:** None
         """
+        starship_compat = StarshipCompatabilityLayer()
         return starship_route(
             get=starship_compat.get_pools,
             post=starship_compat.set_pool,
@@ -403,6 +411,7 @@ class StarshipApi(BaseView):
 
         **Response:** None
         """
+        starship_compat = StarshipCompatabilityLayer()
         return starship_route(
             get=starship_compat.get_variables,
             post=starship_compat.set_variable,
@@ -476,6 +485,7 @@ class StarshipApi(BaseView):
 
         **Response:** None
         """
+        starship_compat = StarshipCompatabilityLayer()
         return starship_route(
             get=starship_compat.get_connections,
             post=starship_compat.set_connection,
@@ -533,6 +543,7 @@ class StarshipApi(BaseView):
         }
         ```
         """
+        starship_compat = StarshipCompatabilityLayer()
         return starship_route(
             get=starship_compat.get_dags,
             patch=starship_compat.set_dag_is_paused,
@@ -635,6 +646,7 @@ class StarshipApi(BaseView):
 
         **Response:** None
         """
+        starship_compat = StarshipCompatabilityLayer()
         return starship_route(
             get=starship_compat.get_dag_runs,
             post=starship_compat.set_dag_runs,
@@ -735,6 +747,7 @@ class StarshipApi(BaseView):
         | trigger_timeout          | >2.1    | date | 1970-01-01T00:00:00+00:00         |
         | executor_config          |         | str  |                                   |
         """
+        starship_compat = StarshipCompatabilityLayer()
         return starship_route(
             get=starship_compat.get_task_instances,
             post=starship_compat.set_task_instances,
@@ -818,6 +831,7 @@ class StarshipApi(BaseView):
 
         **Response:** None
         """
+        starship_compat = StarshipCompatabilityLayer()
         return starship_route(
             get=starship_compat.get_task_log,
             post=starship_compat.set_task_log,
@@ -907,6 +921,7 @@ class StarshipApi(BaseView):
 
         **Response:** None
         """
+        starship_compat = StarshipCompatabilityLayer()
         return starship_route(
             get=starship_compat.get_xcom,
             post=starship_compat.set_xcom,
@@ -914,8 +929,6 @@ class StarshipApi(BaseView):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.xcom_attrs()),
         )
 
-
-starship_compat = StarshipCompatabilityLayer()
 
 starship_api_view = StarshipApi()
 starship_api_bp = Blueprint(
@@ -932,3 +945,9 @@ class StarshipAPIPlugin(AirflowPlugin):
             "view": starship_api_view,
         }
     ]
+
+    @classmethod
+    def on_load(cls, *args, **kwargs):
+        # Initialize compatibility layer on plugin load to ensure it loads fine.
+        # If not, a runtime error will be raised, disabling the plugin.
+        StarshipCompatabilityLayer()
