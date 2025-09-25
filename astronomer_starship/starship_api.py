@@ -218,7 +218,11 @@ class StarshipApi(BaseView):
         presigned_url = request.args.get("presigned_url", False)
         if presigned_url:
             try:
-                upload = requests.put(presigned_url, data=json.dumps(report))
+                upload = requests.put(
+                    presigned_url,
+                    data=json.dumps(report),
+                    timeout=30,
+                )
                 return upload.content, upload.status_code
             except requests.exceptions.ConnectionError as e:
                 return str(e), 400
