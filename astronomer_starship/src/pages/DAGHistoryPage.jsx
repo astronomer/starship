@@ -126,8 +126,9 @@ function DAGHistoryMigrateButton({
         // Get both DAG Runs and Task Instances locally
         axios.get(localRoute(constants.DAG_RUNS_ROUTE), { params: { dag_id: dagId, limit: appliedBatchSize, offset } }),
         axios.get(localRoute(constants.TASK_INSTANCE_ROUTE), { params: { dag_id: dagId, limit: appliedBatchSize, offset } }),
+        axios.get(localRoute(constants.TASK_INSTANCE_HISTORY_ROUTE), { params: { dag_id: dagId, limit: appliedBatchSize, offset } }),
       ]).then(
-        axios.spread((dagRunsRes, taskInstanceRes) => {
+        axios.spread((dagRunsRes, taskInstanceRes, taskInstanceHistoryRes) => {
           // the total number of DAG Runs to migrate
           const dagRunsToMigrateCount = Math.min(dagRunsRes.data.dag_run_count, limit);
 
@@ -149,15 +150,19 @@ function DAGHistoryMigrateButton({
               errFn({ err: { response: dagRunCreateRes } });
               return;
             }
-            // Then create Task Instances
-            axios.post(
-              proxyUrl(url + constants.TASK_INSTANCE_ROUTE),
-              { task_instances: taskInstanceRes.data.task_instances },
-              { params: { dag_id: dagId }, headers: proxyHeaders(token) },
-            ).then(
-              (taskInstanceCreateRes) => {
+
+            // Then create task instances and task instance history records
+            Promise.all([
+              axios.post(proxyUrl(url + constants.TASK_INSTANCE_ROUTE), { task_instances: taskInstanceRes.data.task_instances }, { params: { dag_id: dagId }, headers: proxyHeaders(token) },),
+              axios.post(proxyUrl(url + constants.TASK_INSTANCE_HISTORY_ROUTE), { task_instances: taskInstanceHistoryRes.data.task_instances }, { params: { dag_id: dagId }, headers: proxyHeaders(token) },),
+            ]).then(
+              axios.spread((taskInstanceCreateRes, taskInstanceHistoryCreateRes) => {
                 if (taskInstanceCreateRes.status !== 200) {
                   errFn({ err: { response: taskInstanceCreateRes } });
+                  return;
+                }
+                if (taskInstanceHistoryCreateRes.status !== 200) {
+                  errFn({ err: { response: taskInstanceHistoryCreateRes } });
                   return;
                 }
                 // continue with next batch if there are more DAG Runs to migrate
@@ -170,7 +175,7 @@ function DAGHistoryMigrateButton({
                 setLoadPerc(percent * 1);
                 setDagsData(dagRunsToMigrateCount);
                 setExists(true);
-              },
+              }),
             ).catch(errFn);
           }).catch(errFn);
         }),
