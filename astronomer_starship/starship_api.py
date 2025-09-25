@@ -850,6 +850,7 @@ class StarshipApi(BaseView):
         | trigger_timeout          | >2.1    | date | 1970-01-01T00:00:00+00:00         |
         | executor_config          |         | str  |                                   |
         """
+        starship_compat = StarshipCompatabilityLayer()
         return starship_route(
             get=starship_compat.get_task_instance_history,
             post=starship_compat.set_task_instance_history,
