@@ -2,22 +2,22 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://astronomer.github.io/starship/</loc>
-         <lastmod>2025-09-25</lastmod>
+         <lastmod>2025-10-01</lastmod>
     </url>
     <url>
          <loc>https://astronomer.github.io/starship/api/</loc>
-         <lastmod>2025-09-25</lastmod>
+         <lastmod>2025-10-01</lastmod>
     </url>
     <url>
          <loc>https://astronomer.github.io/starship/operator/</loc>
-         <lastmod>2025-09-25</lastmod>
+         <lastmod>2025-10-01</lastmod>
     </url>
     <url>
          <loc>https://astronomer.github.io/starship/migration_source/gcc/</loc>
-         <lastmod>2025-09-25</lastmod>
+         <lastmod>2025-10-01</lastmod>
     </url>
     <url>
          <loc>https://astronomer.github.io/starship/migration_source/mwaa/</loc>
-         <lastmod>2025-09-25</lastmod>
+         <lastmod>2025-10-01</lastmod>
     </url>
 </urlset>
