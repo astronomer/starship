@@ -40,13 +40,13 @@ class StarshipVariableMigrationOperator(StarshipMigrationOperator):
         self.variable_key = variable_key
 
     def execute(self, context) -> Any:
-        logging.info("Getting Variable", self.variable_key)
+        logging.info("Getting Variable %s", self.variable_key)
         variables = self.source_hook.get_variables()
         variable: Union[dict, None] = (
             [v for v in variables if v["key"] == self.variable_key] or [None]
         )[0]
         if variable is not None:
-            logging.info("Migrating Variable", self.variable_key)
+            logging.info("Migrating Variable %s", self.variable_key)
             self.target_hook.set_variable(**variable)
         else:
             raise RuntimeError("Variable not found! " + self.variable_key)
@@ -93,13 +93,13 @@ class StarshipPoolMigrationOperator(StarshipMigrationOperator):
         self.pool_name = pool_name
 
     def execute(self, context) -> Any:
-        logging.info("Getting Pool", self.pool_name)
+        logging.info("Getting Pool %s", self.pool_name)
         pool: Union[dict, None] = (
             [v for v in self.source_hook.get_pools() if v["name"] == self.pool_name]
             or [None]
         )[0]
         if pool is not None:
-            logging.info("Migrating Pool", self.pool_name)
+            logging.info("Migrating Pool %s", self.pool_name)
             self.target_hook.set_pool(**pool)
         else:
             raise RuntimeError("Pool not found!")
@@ -143,7 +143,7 @@ class StarshipConnectionMigrationOperator(StarshipMigrationOperator):
         self.connection_id = connection_id
 
     def execute(self, context) -> Any:
-        logging.info("Getting Connection", self.connection_id)
+        logging.info("Getting Connection %s", self.connection_id)
         connection: Union[dict, None] = (
             [
                 v
@@ -153,7 +153,7 @@ class StarshipConnectionMigrationOperator(StarshipMigrationOperator):
             or [None]
         )[0]
         if connection is not None:
-            logging.info("Migrating Connection", self.connection_id)
+            logging.info("Migrating Connection %s", self.connection_id)
             self.target_hook.set_connection(**connection)
         else:
             raise RuntimeError("Connection not found!")
@@ -207,18 +207,18 @@ class StarshipDagHistoryMigrationOperator(StarshipMigrationOperator):
         self.dag_run_limit = dag_run_limit
 
     def execute(self, context):
-        logging.info("Pausing local DAG for", self.target_dag_id)
+        logging.info("Pausing local DAG for %s", self.target_dag_id)
         self.source_hook.set_dag_is_paused(dag_id=self.target_dag_id, is_paused=True)
         # TODO - Poll until all tasks are done
 
-        logging.info("Getting local DAG Runs for", self.target_dag_id)
+        logging.info("Getting local DAG Runs for %s", self.target_dag_id)
         dag_runs = self.source_hook.get_dag_runs(
             dag_id=self.target_dag_id, limit=self.dag_run_limit
         )
         if len(dag_runs["dag_runs"]) == 0:
             raise AirflowSkipException("No DAG Runs found for " + self.target_dag_id)
 
-        logging.info("Getting local Task Instances for", self.target_dag_id)
+        logging.info("Getting local Task Instances for %s", self.target_dag_id)
         task_instances = self.source_hook.get_task_instances(
             dag_id=self.target_dag_id, limit=self.dag_run_limit
         )
@@ -227,16 +227,16 @@ class StarshipDagHistoryMigrationOperator(StarshipMigrationOperator):
                 "No Task Instances found for " + self.target_dag_id
             )
 
-        logging.info("Setting target DAG Runs for", self.target_dag_id)
+        logging.info("Setting target DAG Runs for %s", self.target_dag_id)
         self.target_hook.set_dag_runs(dag_runs=dag_runs["dag_runs"])
 
-        logging.info("Setting target Task Instances for", self.target_dag_id)
+        logging.info("Setting target Task Instances for %s", self.target_dag_id)
         self.target_hook.set_task_instances(
             task_instances=task_instances["task_instances"]
         )
 
         if self.unpause_dag_in_target:
-            logging.info("Unpausing target DAG for", self.target_dag_id)
+            logging.info("Unpausing target DAG for %s", self.target_dag_id)
             self.target_hook.set_dag_is_paused(
                 dag_id=self.target_dag_id, is_paused=False
             )
