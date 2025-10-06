@@ -761,7 +761,6 @@ class StarshipApi(BaseView):
     @csrf.exempt
     def task_instance_history(self):
         """
-        TODO
         Get and set TaskInstanceHistory records.
 
         **Model:** `airflow.models.TaskInstanceHistory`
