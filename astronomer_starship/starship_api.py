@@ -756,6 +756,108 @@ class StarshipApi(BaseView):
             ),
         )
 
+    # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_TASK_INSTANCE_HISTORY)])
+    @expose("/task_instance_history", methods=["GET", "POST"])
+    @csrf.exempt
+    def task_instance_history(self):
+        """
+        Get and set TaskInstanceHistory records.
+
+        **Model:** `airflow.models.TaskInstanceHistory`
+
+        **Table:** `task_instance_history`
+
+        ---
+
+        ### `GET /api/starship/task_instance_history`
+
+        **Parameters:** Args
+
+        | Field (*=Required)       | Version | Type               | Example                           |
+        |--------------------------|---------|--------------------|-----------------------------------|
+        | dag_id*                  |         | str                | dag_0                             |
+        | limit                    |         | int                | 10                                |
+        | offset                   |         | int                | 0                                 |
+
+        **Response**:
+        ```json
+        {
+            "task_instances": [
+                {
+                    "task_instances": []
+                    "run_id": "manual__1970-01-01T00:00:00+00:00",
+                    "queued_at": "1970-01-01T00:00:00+00:00",
+                    "execution_date": "1970-01-01T00:00:00+00:00",
+                    "start_date": "1970-01-01T00:00:00+00:00",
+                    "end_date": "1970-01-01T00:00:00+00:00",
+                    "state": "SUCCESS",
+                    "creating_job_id": 123,
+                    "external_trigger": true,
+                    "run_type": "manual",
+                    "conf": {"my_param": "my_value"},
+                    "data_interval_start": "1970-01-01T00:00:00+00:00",
+                    "data_interval_end": "1970-01-01T00:00:00+00:00",
+                    "last_scheduling_decision": "1970-01-01T00:00:00+00:00",
+                    "dag_hash": "...."
+                },
+                ...
+            ],
+            "dag_run_count": 2,
+        }
+        ```
+
+        ### `POST /api/starship/task_instance_history`
+
+        **Parameters:** JSON
+
+        | Field (*=Required)       | Version | Type               | Example                           |
+        |--------------------------|---------|--------------------|-----------------------------------|
+        | task_instances           |         | list[TaskInstance] | [ ... ]                           |
+
+        ```json
+        {
+            "task_instances": [ ... ]
+        }
+        ```
+
+        **Task Instance:**
+
+        | Field (*=Required)       | Version | Type | Example                           |
+        |--------------------------|---------|------|-----------------------------------|
+        | dag_id*                  |         | str  | dag_0                             |
+        | run_id*                  | >2.1    | str  | manual__1970-01-01T00:00:00+00:00 |
+        | task_id*                 |         | str  | task_0                            |
+        | map_index*               | >2.2    | int  | -1                                |
+        | execution_date*          | <=2.1   | date | 1970-01-01T00:00:00+00:00         |
+        | start_date               |         | date | 1970-01-01T00:00:00+00:00         |
+        | end_date                 |         | date | 1970-01-01T00:00:00+00:00         |
+        | duration                 |         | float | 0.0                              |
+        | max_tries                |         | int  | 2                                 |
+        | hostname                 |         | str  | host                              |
+        | unixname                 |         | str  | unixname                          |
+        | job_id                   |         | int  | 123                               |
+        | pool*                    |         | str  | default_pool                      |
+        | pool_slots               |         | int  | 1                                 |
+        | queue                    |         | str  | queue                             |
+        | priority_weight          |         | int  | 1                                 |
+        | operator                 |         | str  | BashOperator                      |
+        | queued_dttm              |         | date | 1970-01-01T00:00:00+00:00         |
+        | queued_by_job_id         |         | int  | 123                               |
+        | pid                      |         | int  | 123                               |
+        | external_executor_id     |         | int  |                                   |
+        | trigger_id               | >2.1    | str  |                                   |
+        | trigger_timeout          | >2.1    | date | 1970-01-01T00:00:00+00:00         |
+        | executor_config          |         | str  |                                   |
+        """
+        starship_compat = StarshipCompatabilityLayer()
+        return starship_route(
+            get=starship_compat.get_task_instance_history,
+            post=starship_compat.set_task_instance_history,
+            kwargs_fn=partial(
+                get_kwargs_fn, attrs=starship_compat.task_instances_attrs()
+            ),
+        )
+
     # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_TASK_INSTANCE)])
     @expose("/task_log", methods=["GET", "POST", "DELETE"])
     @csrf.exempt
