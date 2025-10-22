@@ -104,6 +104,15 @@ and an HTTP `status_code`. The `error` key will contain a message describing the
         show_source: false
         show_header: false
 
+## Task Instance History
+
+::: astronomer_starship.starship_api.StarshipApi.task_instance_history
+    options:
+        show_root_toc_entry: false
+        show_root_heading: false
+        show_source: false
+        show_header: false
+
 ## Task Log
 
 ::: astronomer_starship.starship_api.StarshipApi.task_logs

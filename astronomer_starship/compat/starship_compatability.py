@@ -926,9 +926,18 @@ class StarshipAirflow:
         task_instances = self.insert_directly("task_instance", task_instances)
         return {"task_instances": task_instances}
 
-    def delete_task_instances(self, **kwargs):
-        attrs = {self.task_instances_attrs()[k]["attr"]: v for k, v in kwargs.items()}
-        return generic_delete(self.session, "airflow.models.TaskInstance", **attrs)
+    def get_task_instance_history(self, dag_id: str, **kwargs):
+        """Get task instance history records."""
+        # Before Airflow 2.10, we just return an empty list
+        return {
+            "task_instances": [],
+            "dag_run_count": self._get_dag_run_count(dag_id),
+        }
+
+    def set_task_instance_history(self, **kwargs):
+        """Set task instance history records."""
+        # Before Airflow 2.10, we do nothing
+        return {"task_instances": []}
 
     @classmethod
     def task_log_attrs(cls) -> "Dict[str, AttrDesc]":
@@ -1564,6 +1573,59 @@ class StarshipAirflow210(StarshipAirflow29):
         attrs = super().task_instances_attrs()
         attrs["task_instances"]["test_value"][0]["executor"] = "executor"
         return attrs
+
+    def get_task_instance_history(self, dag_id: str, offset: int = 0, limit: int = 10):
+        """Get task instance history records."""
+        from sqlalchemy import desc
+        from airflow.models import DagRun
+        from airflow.models.taskinstancehistory import TaskInstanceHistory
+        from sqlalchemy.orm import load_only
+
+        try:
+            # py36/sqlalchemy1.3 doesn't query(Table.column)
+            # noinspection PyTypeChecker
+            sub_query = (
+                self.session.query(DagRun.run_id)
+                .filter(DagRun.dag_id == dag_id)
+                .order_by(desc(DagRun.start_date))
+                .limit(limit)
+            )
+            if offset:
+                sub_query = sub_query.offset(offset)
+            sub_query = sub_query.subquery()
+
+            # .in_ doesn't seem to get recognized by type checkers
+            # noinspection PyUnresolvedReferences
+            results = (
+                self.session.query(TaskInstanceHistory)
+                .filter(TaskInstanceHistory.dag_id == dag_id)
+                .filter(TaskInstanceHistory.run_id.in_(sub_query))
+                .options(
+                    load_only(
+                        *[
+                            attr_desc["attr"]
+                            for attr, attr_desc in self.task_instance_attrs().items()
+                            if attr_desc["attr"] is not None
+                        ]
+                    )
+                )
+                .order_by(desc(TaskInstanceHistory.start_date))
+                .all()
+            )
+            return {
+                "task_instances": results_to_list_via_attrs(
+                    results, self.task_instance_attrs()
+                ),
+                "dag_run_count": self._get_dag_run_count(dag_id),
+            }
+        except Exception as e:
+            self.session.rollback()
+            raise e
+
+    def set_task_instance_history(self, task_instances: list):
+        """Set task instance history records."""
+        task_instances = self.insert_directly("task_instance_history", task_instances)
+        return {"task_instances": task_instances}
 
 
 class StarshipAirflow211(StarshipAirflow210):

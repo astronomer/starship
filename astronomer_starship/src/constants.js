@@ -7,6 +7,7 @@ const constants = {
   DAGS_ROUTE: '/api/starship/dags',
   DAG_RUNS_ROUTE: '/api/starship/dag_runs',
   TASK_INSTANCE_ROUTE: '/api/starship/task_instances',
+  TASK_INSTANCE_HISTORY_ROUTE: '/api/starship/task_instance_history',
 };
 export default constants;
 
