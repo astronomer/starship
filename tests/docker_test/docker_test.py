@@ -6,7 +6,7 @@ import pytest
 
 from http import HTTPStatus
 
-from astronomer_starship.compat.starship_compatability import (
+from astronomer_starship.af2.starship_compatability import (
     StarshipCompatabilityLayer,
     get_test_data,
 )

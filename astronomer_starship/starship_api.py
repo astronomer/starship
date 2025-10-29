@@ -8,7 +8,7 @@ from airflow.www.app import csrf
 from flask import Blueprint, request, jsonify
 from flask_appbuilder import expose, BaseView
 
-from astronomer_starship.compat.starship_compatability import (
+from astronomer_starship.af2.starship_compatability import (
     StarshipCompatabilityLayer,
     get_kwargs_fn,
 )
