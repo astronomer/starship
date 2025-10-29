@@ -88,8 +88,8 @@ starship_view = Starship()
 starship_bp = Blueprint(
     "starship",
     __name__,
-    static_folder="static",  # should be default, just being explicit
-    template_folder="templates",  # should be default, just being explicit
+    static_folder="../static",  # should be default, just being explicit
+    template_folder="../templates",  # should be default, just being explicit
     static_url_path="/starship/static",  # so static/foo.html is at /starship/static/foo.html
 )
 
