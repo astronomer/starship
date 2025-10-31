@@ -1,3 +1,9 @@
+"""Compatibility layer for different major Airflow versions.
+
+All imports should go through this module and will be resolved to the corresponding Airflow version.
+"""
+
+
 def _get_base_airflow_version_tuple() -> tuple[int, int, int]:
     from airflow import __version__
     from packaging.version import Version
@@ -22,12 +28,13 @@ AIRFLOW_V_2 = AIRFLOW_VERSION_TUPLE >= (2, 0, 0) and AIRFLOW_VERSION_TUPLE < (3,
 if AIRFLOW_V_2:
     from astronomer_starship._af2 import starship_compatability
     from astronomer_starship._af2.starship import StarshipPlugin
-    from astronomer_starship._af2.starship_api import StarshipAPIPlugin
+    from astronomer_starship._af2.starship_api import StarshipApi, StarshipAPIPlugin
 else:
     raise AirflowVersionError()
 
 __all__ = [
     "starship_compatability",
+    "StarshipApi",
     "StarshipAPIPlugin",
     "StarshipPlugin",
 ]
