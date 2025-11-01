@@ -86,8 +86,8 @@ dev = [
 
 # for pip installing this pyproject.toml
 [project.entry-points."airflow.plugins"]
-"starship" = "astronomer_starship.compat:StarshipPlugin"
-"starship_api" = "astronomer_starship.compat:StarshipAPIPlugin"
+"starship" = "astronomer_starship.starship:StarshipPlugin"
+"starship_api" = "astronomer_starship.starship_api:StarshipAPIPlugin"
 
 [project.entry-points.apache_airflow_provider]
 provider_info = "astronomer_starship.__init__:get_provider_info"
