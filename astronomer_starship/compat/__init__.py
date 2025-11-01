@@ -26,14 +26,12 @@ AIRFLOW_VERSION_TUPLE = _get_base_airflow_version_tuple()
 AIRFLOW_V_2 = AIRFLOW_VERSION_TUPLE >= (2, 0, 0) and AIRFLOW_VERSION_TUPLE < (3, 0, 0)
 
 if AIRFLOW_V_2:
-    from astronomer_starship._af2 import starship_compatability
     from astronomer_starship._af2.starship import StarshipPlugin
     from astronomer_starship._af2.starship_api import StarshipApi, StarshipAPIPlugin
 else:
     raise AirflowVersionError()
 
 __all__ = [
-    "starship_compatability",
     "StarshipApi",
     "StarshipAPIPlugin",
     "StarshipPlugin",
