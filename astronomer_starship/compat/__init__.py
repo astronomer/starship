@@ -3,8 +3,10 @@
 All imports should go through this module and will be resolved to the corresponding Airflow version.
 """
 
+from typing import Tuple
 
-def _get_base_airflow_version_tuple() -> tuple[int, int, int]:
+
+def _get_base_airflow_version_tuple() -> Tuple[int, int, int]:
     from airflow import __version__
     from packaging.version import Version
 
