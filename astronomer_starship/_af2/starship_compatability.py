@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-from flask import Response
 from sqlalchemy.orm import Session
 from typing import TYPE_CHECKING
 
@@ -1313,6 +1312,7 @@ class StarshipAirflow28(StarshipAirflow27):
     def get_task_log(self, **kwargs):
         """Get the log for a task instance"""
         from airflow.io.path import ObjectStoragePath
+        from flask import Response
 
         try:
             path, conn_id = self._task_log_path(**kwargs)
