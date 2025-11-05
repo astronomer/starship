@@ -5,6 +5,35 @@ import os
 from typing import Any, Dict, List, Union
 
 
+class HttpError(Exception):
+    """HTTP Error with status code"""
+
+    def __init__(self, msg: str, status_code: int):
+        self.msg = msg
+        self.status_code = status_code
+
+
+class NotFound(HttpError):
+    """Not Found 404"""
+
+    def __init__(self, msg: str):
+        super().__init__(msg, 404)
+
+
+class MethodNotAllowed(HttpError):
+    """Method Not Allowed 405"""
+
+    def __init__(self, msg: str):
+        super().__init__(msg, 405)
+
+
+class Conflict(HttpError):
+    """Conflict 409"""
+
+    def __init__(self, msg: str):
+        super().__init__(msg, 409)
+
+
 def get_json_or_clean_str(o: str) -> Union[List[Any], Dict[Any, Any], Any]:
     """For Aeroscope - Either load JSON (if we can) or strip and split the string, while logging the error"""
     from json import JSONDecodeError

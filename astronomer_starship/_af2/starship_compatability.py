@@ -2,9 +2,15 @@ import json
 from http import HTTPStatus
 import logging
 import os
-from flask import jsonify, Response
+from flask import Response
 from sqlalchemy.orm import Session
 from typing import TYPE_CHECKING
+
+from astronomer_starship.common import (
+    Conflict,
+    MethodNotAllowed,
+    NotFound,
+)
 
 if TYPE_CHECKING:
     from typing import Any, TypedDict, Tuple, Dict, List, Union
@@ -231,16 +237,12 @@ class StarshipAirflow:
     @classmethod
     def set_env_vars(cls):
         """This is set directly at the Astro API, so return an error"""
-        res = jsonify({"error": "Set via the Astro/Houston API"})
-        res.status_code = 409
-        raise NotImplementedError()
+        raise Conflict("Set via the Astro/Houston API")
 
     @classmethod
     def delete_env_vars(cls):
         """This is not possible to do via API, so return an error"""
-        res = jsonify({"error": "Not implemented"})
-        res.status_code = 405
-        raise NotImplementedError()
+        raise MethodNotAllowed("Not implemented")
 
     @classmethod
     def variable_attrs(cls) -> "Dict[str, AttrDesc]":
@@ -945,21 +947,15 @@ class StarshipAirflow:
 
     def get_task_log(self, **kwargs):
         """Get the log for a task instance"""
-        res = jsonify({"error": "Task logs require Airflow 2.8 or later"})
-        res.status_code = 409
-        raise NotImplementedError()
+        raise Conflict("Task logs require Airflow 2.8 or later")
 
     def set_task_log(self, **kwargs):
         """Set the log for a task instance"""
-        res = jsonify({"error": "Task logs require Airflow 2.8 or later"})
-        res.status_code = 409
-        raise NotImplementedError()
+        raise Conflict("Task logs require Airflow 2.8 or later")
 
     def delete_task_log(self, **kwargs):
         """Delete the log for a task instance"""
-        res = jsonify({"error": "Task logs require Airflow 2.8 or later"})
-        res.status_code = 409
-        raise NotImplementedError()
+        raise Conflict("Task logs require Airflow 2.8 or later")
 
     @classmethod
     def xcom_attrs(cls) -> "Dict[str, AttrDesc]":
@@ -967,21 +963,15 @@ class StarshipAirflow:
 
     def get_xcom(self, **kwargs):
         """Get XCom for a task instance"""
-        res = jsonify({"error": "XComs require Airflow 2.8 or later"})
-        res.status_code = 409
-        raise NotImplementedError()
+        raise Conflict("XComs require Airflow 2.8 or later")
 
     def set_xcom(self, **kwargs):
         """Set the XCom for a task instance"""
-        res = jsonify({"error": "XComs require Airflow 2.8 or later"})
-        res.status_code = 409
-        raise NotImplementedError()
+        raise Conflict("XComs require Airflow 2.8 or later")
 
     def delete_xcom(self, **kwargs):
         """Delete the XCom for a task instance"""
-        res = jsonify({"error": "XComs require Airflow 2.8 or later"})
-        res.status_code = 409
-        raise NotImplementedError()
+        raise Conflict("XComs require Airflow 2.8 or later")
 
     def insert_directly(self, table_name, items):
         from sqlalchemy.exc import InvalidRequestError
@@ -1292,19 +1282,13 @@ class StarshipAirflow28(StarshipAirflow27):
                     break
 
             if conn_id is None:
-                res = jsonify({"error": "No remote logging connection found."})
-                res.status_code = 409
-                raise NotImplementedError()
+                raise Conflict("No remote logging connection found.")
         elif ASTRONOMER_ENVIRONMENT == "local":
             # Local astro dev environment
             base_folder = "/usr/local/airflow/logs"
             conn_id = None
         else:
-            res = jsonify(
-                {"error": "Task logs are only supported on Astronomer environments."}
-            )
-            res.status_code = 409
-            raise NotImplementedError()
+            raise Conflict("Task logs are only supported on Astronomer environments.")
 
         path_components = (
             [
@@ -1352,9 +1336,7 @@ class StarshipAirflow28(StarshipAirflow27):
 
             return Response(generator(), mimetype="text/plain")
         except FileNotFoundError as e:
-            res = jsonify({"error": f"Task log at {path} not found: {e}"})
-            res.status_code = 404
-            return res
+            raise NotFound(f"Task log at {path} not found: {e}")
 
     def set_task_log(self, **kwargs):
         """Set the log for a task instance"""
@@ -1392,9 +1374,7 @@ class StarshipAirflow28(StarshipAirflow27):
             remote_path.unlink()
             return Response(status=HTTPStatus.NO_CONTENT)
         except FileNotFoundError as e:
-            res = jsonify({"error": f"Task log at {path} not found: {e}"})
-            res.status_code = 404
-            return res
+            raise NotFound(f"Task log at {path} not found: {e}")
 
     @classmethod
     def xcom_attrs(cls) -> "Dict[str, AttrDesc]":
@@ -1490,11 +1470,7 @@ class StarshipAirflow28(StarshipAirflow27):
         )
 
         if dag_run is None:
-            res = jsonify(
-                {"error": f"DagRun with dag_id={dag_id} and run_id={run_id} not found"}
-            )
-            res.status_code = 404
-            return res
+            raise NotFound(f"DagRun with dag_id={dag_id} and run_id={run_id} not found")
 
         try:
             # we only have to base64 decode the value and commit the result as binary

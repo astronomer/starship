@@ -82,6 +82,9 @@ def starship_route(
             res = delete(**kwargs)
         elif request.method == "PATCH":
             res = patch(**kwargs)
+    except common.HttpError as e:
+        res = jsonify({"error": e.msg})
+        res.status_code = e.status_code
     except Exception as e:
         import traceback
 
