@@ -3,6 +3,8 @@
 [![CI](https://github.com/astronomer/starship/actions/workflows/checks.yaml/badge.svg)](https://github.com/astronomer/starship/actions/workflows/checks.yaml)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![PyPI version](https://badge.fury.io/py/astronomer-starship.svg)](https://badge.fury.io/py/astronomer-starship)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/astronomer-starship.svg)](https://pypi.org/project/astronomer-starship/)
 
 <!--suppress HtmlDeprecatedAttribute -->
 <p align="center">
