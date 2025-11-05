@@ -14,7 +14,7 @@ docker_test = pytest.mark.skipif(
 )
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def starship():
     return StarshipCompatabilityLayer()
 
