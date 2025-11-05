@@ -1,5 +1,4 @@
 import json
-from http import HTTPStatus
 import logging
 import os
 from flask import Response
@@ -159,7 +158,7 @@ def generic_set_one(session: Session, qualname: str, attrs: dict, **kwargs):
         raise e
 
 
-def generic_delete(session: Session, qualname: str, **kwargs) -> Response:
+def generic_delete(session: Session, qualname: str, **kwargs) -> None:
     from sqlalchemy import delete
 
     (_, thing_cls) = import_from_qualname(qualname)
@@ -169,7 +168,6 @@ def generic_delete(session: Session, qualname: str, **kwargs) -> Response:
         deleted_rows = session.execute(delete(thing_cls).where(*filters)).rowcount
         session.commit()
         logger.info(f"Deleted {deleted_rows} rows for table {qualname}")
-        return Response(status=HTTPStatus.NO_CONTENT)
     except Exception as e:
         logger.error(f"Error deleting row(s) for table {qualname}: {e}")
         session.rollback()
@@ -1361,8 +1359,6 @@ class StarshipAirflow28(StarshipAirflow27):
                     break
                 f.write(data)
 
-        return Response(status=HTTPStatus.NO_CONTENT)
-
     def delete_task_log(self, **kwargs):
         """Delete the log for a task instance"""
         from airflow.io.path import ObjectStoragePath
@@ -1372,7 +1368,6 @@ class StarshipAirflow28(StarshipAirflow27):
             remote_path = ObjectStoragePath(path, conn_id=conn_id)
 
             remote_path.unlink()
-            return Response(status=HTTPStatus.NO_CONTENT)
         except FileNotFoundError as e:
             raise NotFound(f"Task log at {path} not found: {e}")
 
@@ -1485,8 +1480,6 @@ class StarshipAirflow28(StarshipAirflow27):
 
             self.session.add(xcom)
             self.session.commit()
-
-            return Response(status=HTTPStatus.NO_CONTENT)
         except Exception as e:
             self.session.rollback()
             raise e

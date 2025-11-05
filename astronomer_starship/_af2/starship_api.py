@@ -1,19 +1,19 @@
 import json
 from functools import partial
+from http import HTTPStatus
+from typing import TYPE_CHECKING
 
 import flask
 from airflow.plugins_manager import AirflowPlugin
 from airflow.www.app import csrf
-from flask import Blueprint, request, jsonify
-from flask_appbuilder import expose, BaseView
+from flask import Blueprint, Response, jsonify, request
+from flask_appbuilder import BaseView, expose
 
 from astronomer_starship import common
 from astronomer_starship._af2.starship_compatability import (
     StarshipCompatabilityLayer,
     get_kwargs_fn,
 )
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from typing import Callable
@@ -53,7 +53,7 @@ def starship_route(
         if request.method == "GET":
             res = get(**kwargs)
         elif request.method == "POST":
-            from sqlalchemy.exc import IntegrityError, DataError, StatementError
+            from sqlalchemy.exc import DataError, IntegrityError, StatementError
 
             try:
                 res = post(**kwargs)
@@ -82,6 +82,9 @@ def starship_route(
             res = delete(**kwargs)
         elif request.method == "PATCH":
             res = patch(**kwargs)
+
+        if res is None:
+            res = Response(status=HTTPStatus.NO_CONTENT)
     except common.HttpError as e:
         res = jsonify({"error": e.msg})
         res.status_code = e.status_code
