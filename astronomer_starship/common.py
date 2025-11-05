@@ -1,8 +1,15 @@
 """Common utilities for Astronomer Starship which are Airflow version agnostic."""
 
 import json
+import logging
 import os
-from typing import Any, Dict, List, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Union
+from sqlalchemy.orm import Session
+
+if TYPE_CHECKING:
+    from typing import Any, Tuple, Dict, List, Union
+
+logger = logging.getLogger(__name__)
 
 
 class HttpError(Exception):
@@ -129,3 +136,162 @@ def telescope(
         except requests.exceptions.ConnectionError as e:
             return str(e), 400
     return report
+
+
+def get_from_request(args, json, key, required: bool = False) -> "Any":
+    val = json.get(key, args.get(key))
+    if val is None and required:
+        raise RuntimeError(f"Missing required key: {key}")
+    return val
+
+
+def import_from_qualname(qualname: str) -> "Tuple[str, Any]":
+    """Import a function or module from a qualified name
+    :param qualname: The qualified name of the function or module to import (e.g. a.b.d.MyOperator or json)
+    :return Tuple[str, Any]: The name of the function or module, and the function or module itself
+    >>> import_from_qualname('json.loads') # doctest: +ELLIPSIS
+    ('loads', <function loads at ...>)
+    >>> import_from_qualname('json') # doctest: +ELLIPSIS
+    ('json', <module 'json' from '...'>)
+    """
+    from importlib import import_module
+
+    [module, name] = (
+        qualname.rsplit(".", 1) if "." in qualname else [qualname, qualname]
+    )
+    imported_module = import_module(module)
+    return (
+        name,
+        getattr(imported_module, name) if "." in qualname else imported_module,
+    )
+
+
+def get_kwargs_fn(request_method: str, args: dict, json: dict, attrs: dict):
+    """
+    Walks the attrs dict
+    - if the request method is in the "methods" list we call get_from_request
+        (which gets it from request.args or request.json, and throws if is_required and not given)
+    - assuming we found it, we set it as the `attr_desc['attr']`
+    - those kwargs later get passed directly to the function (e.g. set_pool)
+
+    :param request_method: request.method
+    :param args: request.args
+    :param json: request.json
+    :param attrs: the attrs to get from the request - e.g. StarshipAirflow27.dag_attrs()
+
+    >>> get_kwargs_fn(
+    ...   "POST", {}, {'key': 'key', 'val': 'val', 'description': 'description'}, StarshipAirflow.variable_attrs()
+    ... )  # get from request.json
+    {'key': 'key', 'val': 'val', 'description': 'description'}
+    >>> get_kwargs_fn(
+    ...   "GET", {"dag_id": "foo"}, {}, StarshipAirflow.dag_runs_attrs()
+    ... )  # with optional request.args, that don't exist, don't get passed through
+    {'dag_id': 'foo'}
+    >>> get_kwargs_fn(
+    ...   "GET", {"dag_id": "foo", "limit": 5}, {}, StarshipAirflow.dag_runs_attrs()
+    ... )  # with optional request.args, that exists, gets passed through
+    {'dag_id': 'foo', 'limit': 5}
+    """
+    kwargs = {}
+    for attr, attr_desc in attrs.items():
+        for method_and_is_required in attr_desc["methods"]:
+            (method, is_required) = method_and_is_required
+            if request_method == method:
+                key = attr_desc.get("attr") or attr
+                val = get_from_request(args, json, attr, required=is_required)
+                if val is not None:
+                    kwargs[key] = val
+    return kwargs
+
+
+def results_to_list_via_attrs(
+    results: "List[Any]", attrs: dict
+) -> "List[Dict[str, Any]]":
+    """
+
+    >>> class Foo:
+    ...   def __init__(self, key, val):
+    ...     self.key = key
+    ...     self.val = val
+    >>> results_to_list_via_attrs(
+    ...   [Foo("key", "val")],
+    ...   {"key": {"attr": "key", "methods": [("POST", True)], "test_value": "key"}}
+    ... )
+    [{'key': 'key'}]
+    """
+    return json.loads(
+        json.dumps(
+            [
+                {
+                    attr: (
+                        getattr(result, attr_desc["attr"], None)
+                        if attr_desc["attr"]
+                        else None
+                    )
+                    for attr, attr_desc in attrs.items()
+                }
+                for result in results
+            ],
+            default=str,
+        )
+    )
+
+
+def generic_get_all(session: Session, qualname: str, attrs: dict) -> list:
+    (_, thing_cls) = import_from_qualname(qualname)
+    results = session.query(thing_cls).all()
+    return results_to_list_via_attrs(results, attrs)
+
+
+def generic_set_one(session: Session, qualname: str, attrs: dict, **kwargs):
+    """
+    :param session: The SQLAlchemy session
+    :param qualname: The qualified name of the object to create
+    :param attrs: attrs which inform what to return
+    :param kwargs: The kwargs given to the created object
+    """
+    (_, thing_cls) = import_from_qualname(qualname)
+    try:
+        thing = thing_cls(**kwargs)
+        session.add(thing)
+        session.commit()
+        return results_to_list_via_attrs([thing], attrs)[0]
+    except Exception as e:
+        session.rollback()
+        raise e
+
+
+def generic_delete(session: Session, qualname: str, **kwargs) -> None:
+    from sqlalchemy import delete
+
+    (_, thing_cls) = import_from_qualname(qualname)
+
+    try:
+        filters = [getattr(thing_cls, attr) == val for attr, val in kwargs.items()]
+        deleted_rows = session.execute(delete(thing_cls).where(*filters)).rowcount
+        session.commit()
+        logger.info(f"Deleted {deleted_rows} rows for table {qualname}")
+    except Exception as e:
+        logger.error(f"Error deleting row(s) for table {qualname}: {e}")
+        session.rollback()
+        raise e
+
+
+def get_test_data(attrs: dict, method: "Union[str, None]" = None) -> "Dict[str, Any]":
+    """
+    >>> get_test_data(method="POST", attrs={"key": {"attr": "key", "methods": [("POST", True)], "test_value": "key"}})
+    {'key': 'key'}
+    >>> get_test_data(method="PATCH", attrs=StarshipAirflow.dag_attrs())
+    {'dag_id': 'dag_0', 'is_paused': False}
+    >>> get_test_data(attrs=StarshipAirflow.dag_attrs()) # doctest: +ELLIPSIS
+    {'dag_id': 'dag_0', 'schedule_interval': '@once', 'is_paused': False, ... 'dag_run_count': 0}
+    """
+
+    if method:
+        return {
+            attr: attr_desc["test_value"]
+            for attr, attr_desc in attrs.items()
+            if any([method == _method for (_method, _) in attr_desc["methods"]])
+        }
+    else:
+        return {attr: attr_desc["test_value"] for attr, attr_desc in attrs.items()}

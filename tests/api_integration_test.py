@@ -1,12 +1,14 @@
 import json
-from typing import Dict, Any
+from typing import Any, Dict
+
 import pytest
 import requests
-from tests.conftest import manual_tests
+
+from astronomer_starship.common import get_test_data
 from astronomer_starship.compat.starship_compatability import (
     StarshipCompatabilityLayer,
-    get_test_data,
 )
+from tests.conftest import manual_tests
 
 URLS_AND_TOKENS = {
     "localhost": ("http://localhost:8080", None),

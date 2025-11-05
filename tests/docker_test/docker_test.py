@@ -4,9 +4,9 @@ import json
 import os
 import pytest
 
+from astronomer_starship.common import get_test_data
 from astronomer_starship.compat.starship_compatability import (
     StarshipCompatabilityLayer,
-    get_test_data,
 )
 
 docker_test = pytest.mark.skipif(

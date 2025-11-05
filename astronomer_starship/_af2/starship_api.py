@@ -9,11 +9,10 @@ from airflow.www.app import csrf
 from flask import Blueprint, Response, jsonify, request
 from flask_appbuilder import BaseView, expose
 
-from astronomer_starship import common
 from astronomer_starship._af2.starship_compatability import (
     StarshipCompatabilityLayer,
-    get_kwargs_fn,
 )
+from astronomer_starship.common import HttpError, get_kwargs_fn, telescope
 
 if TYPE_CHECKING:
     from typing import Callable
@@ -85,7 +84,7 @@ def starship_route(
 
         if res is None:
             res = Response(status=HTTPStatus.NO_CONTENT)
-    except common.HttpError as e:
+    except HttpError as e:
         res = jsonify({"error": e.msg})
         res.status_code = e.status_code
     except Exception as e:
@@ -139,7 +138,7 @@ class StarshipApi(BaseView):
     @expose("/telescope", methods=["GET"])
     @csrf.exempt
     def telescope(self):
-        return common.telescope(
+        return telescope(
             organization=request.args["organization"],
             presigned_url=request.args.get("presigned_url", None),
         )
