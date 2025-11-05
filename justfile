@@ -17,7 +17,7 @@ install-frontend:
 
 # install backend requirements
 install-backend EDITABLE="":
-    pip install {{EDITABLE}} '.[dev]'
+    pip install {{EDITABLE}} -c constraints.txt '.[dev]'
 
 # Install the project
 install: clean install-frontend install-backend

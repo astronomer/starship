@@ -59,7 +59,6 @@ dev = [
 
     # test
     "apache-airflow<3",        # Starship only supports Airflow version up to 2.11 at the moment
-    "flask_limiter<3.13",      # A breaking change was introduced in version 3.13 of flask-limiter
     "pytest>=7",
     "pytest-cov>=4.0",
     "pytest-integration>=0.2",

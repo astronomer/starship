@@ -1,0 +1,2 @@
+# A breaking change was introduced in version 3.13 of flask-limiter
+flask_limiter<3.13
