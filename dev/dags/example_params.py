@@ -10,9 +10,7 @@ from airflow.operators.bash import BashOperator
     start_date=datetime(2025, 6, 1),
     catchup=False,
     params={
-        "example_param": Param(
-            "default_value", type="string", description="An example parameter"
-        ),
+        "example_param": Param("default_value", type="string", description="An example parameter"),
     },
     tags=["params"],
 )

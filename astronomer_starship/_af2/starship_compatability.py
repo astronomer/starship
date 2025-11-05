@@ -1,14 +1,16 @@
+import datetime
 import json
 import logging
 import os
-from sqlalchemy.orm import Session
 from typing import TYPE_CHECKING
-import datetime
+
 import pytz
+from sqlalchemy.orm import Session
+
 from astronomer_starship.common import (
-    Conflict,
-    MethodNotAllowed,
-    NotFound,
+    ConflictError,
+    MethodNotAllowedError,
+    NotFoundError,
     generic_delete,
     generic_get_all,
     generic_set_one,
@@ -16,7 +18,7 @@ from astronomer_starship.common import (
 )
 
 if TYPE_CHECKING:
-    from typing import Any, TypedDict, Tuple, Dict, List, Union
+    from typing import Any, Dict, List, Tuple, TypedDict, Union
 
     class AttrDesc(TypedDict):
         attr: str
@@ -59,6 +61,7 @@ class StarshipAirflow:
     @classmethod
     def get_info(cls):
         from airflow import __version__ as airflow_version
+
         from astronomer_starship import __version__ as starship_version
 
         return {
@@ -73,12 +76,12 @@ class StarshipAirflow:
     @classmethod
     def set_env_vars(cls):
         """This is set directly at the Astro API, so return an error"""
-        raise Conflict("Set via the Astro/Houston API")
+        raise ConflictError("Set via the Astro/Houston API")
 
     @classmethod
     def delete_env_vars(cls):
         """This is not possible to do via API, so return an error"""
-        raise MethodNotAllowed("Not implemented")
+        raise MethodNotAllowedError("Not implemented")
 
     @classmethod
     def variable_attrs(cls) -> "Dict[str, AttrDesc]":
@@ -97,14 +100,10 @@ class StarshipAirflow:
         }
 
     def get_variables(self):
-        return generic_get_all(
-            self.session, "airflow.models.Variable", self.variable_attrs()
-        )
+        return generic_get_all(self.session, "airflow.models.Variable", self.variable_attrs())
 
     def set_variable(self, **kwargs):
-        return generic_set_one(
-            self.session, "airflow.models.Variable", self.variable_attrs(), **kwargs
-        )
+        return generic_set_one(self.session, "airflow.models.Variable", self.variable_attrs(), **kwargs)
 
     def delete_variable(self, **kwargs):
         attrs = {self.variable_attrs()[k]["attr"]: v for k, v in kwargs.items()}
@@ -130,16 +129,10 @@ class StarshipAirflow:
         return generic_get_all(self.session, "airflow.models.Pool", self.pool_attrs())
 
     def set_pool(self, **kwargs):
-        return generic_set_one(
-            self.session, "airflow.models.Pool", self.pool_attrs(), **kwargs
-        )
+        return generic_set_one(self.session, "airflow.models.Pool", self.pool_attrs(), **kwargs)
 
     def delete_pool(self, **kwargs):
-        attrs = {
-            self.pool_attrs()[k]["attr"]: v
-            for k, v in kwargs.items()
-            if k in self.pool_attrs()
-        }
+        attrs = {self.pool_attrs()[k]["attr"]: v for k, v in kwargs.items() if k in self.pool_attrs()}
         return generic_delete(self.session, "airflow.models.Pool", **attrs)
 
     @classmethod
@@ -193,14 +186,10 @@ class StarshipAirflow:
         }
 
     def get_connections(self):
-        return generic_get_all(
-            self.session, "airflow.models.Connection", self.connection_attrs()
-        )
+        return generic_get_all(self.session, "airflow.models.Connection", self.connection_attrs())
 
     def set_connection(self, **kwargs):
-        return generic_set_one(
-            self.session, "airflow.models.Connection", self.connection_attrs(), **kwargs
-        )
+        return generic_set_one(self.session, "airflow.models.Connection", self.connection_attrs(), **kwargs)
 
     def delete_connection(self, **kwargs):
         attrs = {self.connection_attrs()[k]["attr"]: v for k, v in kwargs.items()}
@@ -294,11 +283,7 @@ class StarshipAirflow:
         from sqlalchemy import update
 
         try:
-            self.session.execute(
-                update(DagModel)
-                .where(DagModel.dag_id == dag_id)
-                .values(is_paused=is_paused)
-            )
+            self.session.execute(update(DagModel).where(DagModel.dag_id == dag_id).values(is_paused=is_paused))
             self.session.commit()
             return {
                 "dag_id": dag_id,
@@ -313,12 +298,7 @@ class StarshipAirflow:
             from airflow.models import DagTag
 
             # noinspection PyTypeChecker
-            return [
-                tag[0]
-                for tag in self.session.query(DagTag.name)
-                .filter(DagTag.dag_id == dag_id)
-                .all()
-            ]
+            return [tag[0] for tag in self.session.query(DagTag.name).filter(DagTag.dag_id == dag_id).all()]
         except ImportError:
             return []
         except Exception as e:
@@ -327,17 +307,13 @@ class StarshipAirflow:
 
     def _get_dag_run_count(self, dag_id: str):
         from airflow.models import DagRun
-        from sqlalchemy.sql.functions import count
         from sqlalchemy import distinct
+        from sqlalchemy.sql.functions import count
 
         try:
             # py36/sqlalchemy1.3 doesn't like label?
             # noinspection PyTypeChecker
-            return (
-                self.session.query(count(distinct(DagRun.run_id)))
-                .filter(DagRun.dag_id == dag_id)
-                .one()[0]
-            )
+            return self.session.query(count(distinct(DagRun.run_id))).filter(DagRun.dag_id == dag_id).one()[0]
         except Exception as e:
             self.session.rollback()
             raise e
@@ -473,15 +449,11 @@ class StarshipAirflow:
         }
 
     def get_dag_runs(self, dag_id: str, offset: int = 0, limit: int = 10) -> dict:
-        from sqlalchemy import desc
         from airflow.models import DagRun
+        from sqlalchemy import desc
 
         try:
-            query = (
-                self.session.query(DagRun)
-                .filter(DagRun.dag_id == dag_id)
-                .order_by(desc(DagRun.start_date))
-            )
+            query = self.session.query(DagRun).filter(DagRun.dag_id == dag_id).order_by(desc(DagRun.start_date))
             if offset:
                 query = query.offset(offset)
             results = query.limit(limit).all()
@@ -714,8 +686,8 @@ class StarshipAirflow:
         }
 
     def get_task_instances(self, dag_id: str, offset: int = 0, limit: int = 10):
-        from sqlalchemy import desc
         from airflow.models import DagRun, TaskInstance
+        from sqlalchemy import desc
         from sqlalchemy.orm import load_only
 
         try:
@@ -750,9 +722,7 @@ class StarshipAirflow:
                 .all()
             )
             return {
-                "task_instances": results_to_list_via_attrs(
-                    results, self.task_instance_attrs()
-                ),
+                "task_instances": results_to_list_via_attrs(results, self.task_instance_attrs()),
                 "dag_run_count": self._get_dag_run_count(dag_id),
             }
         except Exception as e:
@@ -783,15 +753,15 @@ class StarshipAirflow:
 
     def get_task_log(self, **kwargs):
         """Get the log for a task instance"""
-        raise Conflict("Task logs require Airflow 2.8 or later")
+        raise ConflictError("Task logs require Airflow 2.8 or later")
 
     def set_task_log(self, **kwargs):
         """Set the log for a task instance"""
-        raise Conflict("Task logs require Airflow 2.8 or later")
+        raise ConflictError("Task logs require Airflow 2.8 or later")
 
     def delete_task_log(self, **kwargs):
         """Delete the log for a task instance"""
-        raise Conflict("Task logs require Airflow 2.8 or later")
+        raise ConflictError("Task logs require Airflow 2.8 or later")
 
     @classmethod
     def xcom_attrs(cls) -> "Dict[str, AttrDesc]":
@@ -799,20 +769,21 @@ class StarshipAirflow:
 
     def get_xcom(self, **kwargs):
         """Get XCom for a task instance"""
-        raise Conflict("XComs require Airflow 2.8 or later")
+        raise ConflictError("XComs require Airflow 2.8 or later")
 
     def set_xcom(self, **kwargs):
         """Set the XCom for a task instance"""
-        raise Conflict("XComs require Airflow 2.8 or later")
+        raise ConflictError("XComs require Airflow 2.8 or later")
 
     def delete_xcom(self, **kwargs):
         """Delete the XCom for a task instance"""
-        raise Conflict("XComs require Airflow 2.8 or later")
+        raise ConflictError("XComs require Airflow 2.8 or later")
 
-    def insert_directly(self, table_name, items):
-        from sqlalchemy.exc import InvalidRequestError
-        from sqlalchemy import MetaData
+    def insert_directly(self, table_name, items):  # noqa: C901
         import pickle
+
+        from sqlalchemy import MetaData
+        from sqlalchemy.exc import InvalidRequestError
 
         if not items:
             return []
@@ -917,8 +888,8 @@ class StarshipAirflow21(StarshipAirflow22):
     # noinspection DuplicatedCode
     def get_task_instances(self, dag_id: str, offset: int = 0, limit: int = 10):
         """Task Instance doesn't have run_id in AF2.1"""
-        from sqlalchemy import desc
         from airflow.models import DagRun, TaskInstance
+        from sqlalchemy import desc
         from sqlalchemy.orm import load_only
 
         try:
@@ -951,9 +922,7 @@ class StarshipAirflow21(StarshipAirflow22):
                 .all()
             )
             return {
-                "task_instances": results_to_list_via_attrs(
-                    results, self.task_instance_attrs()
-                ),
+                "task_instances": results_to_list_via_attrs(results, self.task_instance_attrs()),
                 "dag_run_count": self._get_dag_run_count(dag_id),
             }
         except Exception as e:
@@ -1033,6 +1002,7 @@ class StarshipAirflow28(StarshipAirflow27):
         }
         return attrs
 
+    @classmethod
     def task_log_attrs(cls) -> "Dict[str, AttrDesc]":
         return {
             "dag_id": {
@@ -1102,9 +1072,9 @@ class StarshipAirflow28(StarshipAirflow27):
         **_,
     ) -> "Tuple[str, str | None]":
         """Get the path to the task log file and the connection ID for remote storage."""
-        ASTRONOMER_ENVIRONMENT = os.getenv("ASTRONOMER_ENVIRONMENT")
+        astronomer_environment = os.getenv("ASTRONOMER_ENVIRONMENT")
 
-        if ASTRONOMER_ENVIRONMENT == "cloud":
+        if astronomer_environment == "cloud":
             # Astro Hosted
             base_folder = os.getenv("AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER")
             conn_id = None
@@ -1118,13 +1088,13 @@ class StarshipAirflow28(StarshipAirflow27):
                     break
 
             if conn_id is None:
-                raise Conflict("No remote logging connection found.")
-        elif ASTRONOMER_ENVIRONMENT == "local":
+                raise ConflictError("No remote logging connection found.")
+        elif astronomer_environment == "local":
             # Local astro dev environment
             base_folder = "/usr/local/airflow/logs"
             conn_id = None
         else:
-            raise Conflict("Task logs are only supported on Astronomer environments.")
+            raise ConflictError("Task logs are only supported on Astronomer environments.")
 
         path_components = (
             [
@@ -1173,7 +1143,7 @@ class StarshipAirflow28(StarshipAirflow27):
 
             return Response(generator(), mimetype="text/plain")
         except FileNotFoundError as e:
-            raise NotFound(f"Task log at {path} not found: {e}")
+            raise NotFoundError(f"Task log at {path} not found: {e}") from e
 
     def set_task_log(self, **kwargs):
         """Set the log for a task instance"""
@@ -1208,7 +1178,7 @@ class StarshipAirflow28(StarshipAirflow27):
 
             remote_path.unlink()
         except FileNotFoundError as e:
-            raise NotFound(f"Task log at {path} not found: {e}")
+            raise NotFoundError(f"Task log at {path} not found: {e}") from e
 
     @classmethod
     def xcom_attrs(cls) -> "Dict[str, AttrDesc]":
@@ -1263,8 +1233,9 @@ class StarshipAirflow28(StarshipAirflow27):
 
     def get_xcom(self, *, dag_id: str, run_id: str, task_id: str, map_index: int):
         """Get XCom for a task instance"""
-        from airflow.models import XCom
         import base64
+
+        from airflow.models import XCom
 
         results = (
             self.session.query(XCom)
@@ -1293,18 +1264,14 @@ class StarshipAirflow28(StarshipAirflow27):
 
     def set_xcom(self, *, dag_id, run_id, value=None, **kwargs):
         """Insert XCom"""
-        from airflow.models import DagRun, XCom
         import base64
 
-        dag_run = (
-            self.session.query(DagRun)
-            .filter(DagRun.dag_id == dag_id)
-            .filter(DagRun.run_id == run_id)
-            .first()
-        )
+        from airflow.models import DagRun, XCom
+
+        dag_run = self.session.query(DagRun).filter(DagRun.dag_id == dag_id).filter(DagRun.run_id == run_id).first()
 
         if dag_run is None:
-            raise NotFound(f"DagRun with dag_id={dag_id} and run_id={run_id} not found")
+            raise NotFoundError(f"DagRun with dag_id={dag_id} and run_id={run_id} not found")
 
         try:
             # we only have to base64 decode the value and commit the result as binary
@@ -1350,12 +1317,8 @@ class StarshipAirflow29(StarshipAirflow28):
 
     def task_instances_attrs(self):
         attrs = super().task_instances_attrs()
-        attrs["task_instances"]["test_value"][0][
-            "rendered_map_index"
-        ] = "rendered_map_index"
-        attrs["task_instances"]["test_value"][0][
-            "task_display_name"
-        ] = "task_display_name"
+        attrs["task_instances"]["test_value"][0]["rendered_map_index"] = "rendered_map_index"
+        attrs["task_instances"]["test_value"][0]["task_display_name"] = "task_display_name"
         return attrs
 
 
@@ -1384,9 +1347,9 @@ class StarshipAirflow210(StarshipAirflow29):
 
     def get_task_instance_history(self, dag_id: str, offset: int = 0, limit: int = 10):
         """Get task instance history records."""
-        from sqlalchemy import desc
         from airflow.models import DagRun
         from airflow.models.taskinstancehistory import TaskInstanceHistory
+        from sqlalchemy import desc
         from sqlalchemy.orm import load_only
 
         try:
@@ -1421,9 +1384,7 @@ class StarshipAirflow210(StarshipAirflow29):
                 .all()
             )
             return {
-                "task_instances": results_to_list_via_attrs(
-                    results, self.task_instance_attrs()
-                ),
+                "task_instances": results_to_list_via_attrs(results, self.task_instance_attrs()),
                 "dag_run_count": self._get_dag_run_count(dag_id),
             }
         except Exception as e:
@@ -1469,12 +1430,12 @@ class StarshipCompatabilityLayer:
     >>> StarshipCompatabilityLayer("2.0")
     Traceback (most recent call last):
     RuntimeError: Unsupported Airflow Version - must be semver x.y.z: 2.0
-    >>> StarshipCompatabilityLayer("") # doctest: +ELLIPSIS
+    >>> StarshipCompatabilityLayer("")  # doctest: +ELLIPSIS
     Traceback (most recent call last):
     RuntimeError: Unsupported Airflow Version - must be semver x.y.z:...
     """
 
-    def __new__(cls, airflow_version: "Union[str, None]" = None) -> StarshipAirflow:
+    def __new__(cls, airflow_version: "Union[str, None]" = None) -> StarshipAirflow:  # noqa: C901
         if airflow_version is None:
             from airflow import __version__
 
@@ -1482,10 +1443,8 @@ class StarshipCompatabilityLayer:
             print("Got Airflow Version: " + airflow_version)
         try:
             [major, minor, _] = airflow_version.split(".", maxsplit=2)
-        except ValueError:
-            raise RuntimeError(
-                f"Unsupported Airflow Version - must be semver x.y.z: {airflow_version}"
-            )
+        except ValueError as e:
+            raise RuntimeError(f"Unsupported Airflow Version - must be semver x.y.z: {airflow_version}") from e
 
         if int(major) == 2:
             if int(minor) == 11:

@@ -4,10 +4,11 @@ import json
 import logging
 import os
 from typing import TYPE_CHECKING, Any, Dict, List, Union
+
 from sqlalchemy.orm import Session
 
 if TYPE_CHECKING:
-    from typing import Any, Tuple, Dict, List, Union
+    from typing import Any, Dict, List, Tuple, Union
 
 logger = logging.getLogger(__name__)
 
@@ -20,21 +21,21 @@ class HttpError(Exception):
         self.status_code = status_code
 
 
-class NotFound(HttpError):
+class NotFoundError(HttpError):
     """Not Found 404"""
 
     def __init__(self, msg: str):
         super().__init__(msg, 404)
 
 
-class MethodNotAllowed(HttpError):
+class MethodNotAllowedError(HttpError):
     """Method Not Allowed 405"""
 
     def __init__(self, msg: str):
         super().__init__(msg, 405)
 
 
-class Conflict(HttpError):
+class ConflictError(HttpError):
     """Conflict 409"""
 
     def __init__(self, msg: str):
@@ -43,8 +44,8 @@ class Conflict(HttpError):
 
 def get_json_or_clean_str(o: str) -> Union[List[Any], Dict[Any, Any], Any]:
     """For Aeroscope - Either load JSON (if we can) or strip and split the string, while logging the error"""
-    from json import JSONDecodeError
     import logging
+    from json import JSONDecodeError
 
     try:
         return json.loads(o)
@@ -57,15 +58,15 @@ def get_json_or_clean_str(o: str) -> Union[List[Any], Dict[Any, Any], Any]:
 def clean_airflow_report_output(log_string: str) -> Union[dict, str]:
     r"""For Aeroscope - Look for the magic string from the Airflow report and then decode the base64 and convert to json
     Or return output as a list, trimmed and split on newlines
-    >>> clean_airflow_report_output('INFO 123 - xyz - abc\n\n\nERROR - 1234\n%%%%%%%\naGVsbG8gd29ybGQ=')
+    >>> clean_airflow_report_output("INFO 123 - xyz - abc\n\n\nERROR - 1234\n%%%%%%%\naGVsbG8gd29ybGQ=")
     'hello world'
     >>> clean_airflow_report_output(
-    ...   'INFO 123 - xyz - abc\n\n\nERROR - 1234\n%%%%%%%\neyJvdXRwdXQiOiAiaGVsbG8gd29ybGQifQ=='
+    ...     "INFO 123 - xyz - abc\n\n\nERROR - 1234\n%%%%%%%\neyJvdXRwdXQiOiAiaGVsbG8gd29ybGQifQ=="
     ... )
     {'output': 'hello world'}
     """
-    from json import JSONDecodeError
     import base64
+    from json import JSONDecodeError
 
     log_lines = log_string.split("\n")
     enumerated_log_lines = list(enumerate(log_lines))
@@ -75,9 +76,7 @@ def clean_airflow_report_output(log_string: str) -> Union[dict, str]:
             found_i = i + 1
             break
     if found_i != -1:
-        output = base64.decodebytes(
-            "\n".join(log_lines[found_i:]).encode("utf-8")
-        ).decode("utf-8")
+        output = base64.decodebytes("\n".join(log_lines[found_i:]).encode("utf-8")).decode("utf-8")
         try:
             return json.loads(output)
         except JSONDecodeError:
@@ -91,14 +90,15 @@ def telescope(
     organization: str,
     presigned_url: Union[str, None] = None,
 ) -> Union[Dict, str]:
-    import requests
-    from socket import gethostname
     import io
     import runpy
-    from urllib.request import urlretrieve
-    from contextlib import redirect_stdout, redirect_stderr
-    from urllib.error import HTTPError
+    from contextlib import redirect_stderr, redirect_stdout
     from datetime import datetime, timezone
+    from socket import gethostname
+    from urllib.error import HTTPError
+    from urllib.request import urlretrieve
+
+    import requests
 
     aero_version = os.getenv("TELESCOPE_REPORT_RELEASE_VERSION", "latest")
     a = "airflow_report.pyz"
@@ -110,9 +110,7 @@ def telescope(
     try:
         urlretrieve(aero_url, a)
     except HTTPError as e:
-        raise RuntimeError(
-            f"Error finding specified version:{aero_version} -- Reason:{e.reason}"
-        )
+        raise RuntimeError(f"Error finding specified version:{aero_version} -- Reason:{e.reason}") from e
 
     s = io.StringIO()
     with redirect_stdout(s), redirect_stderr(s):
@@ -121,9 +119,7 @@ def telescope(
         "telescope_version": "aeroscope-latest",
         "report_date": datetime.now(timezone.utc).isoformat()[:10],
         "organization_name": organization,
-        "local": {
-            gethostname(): {"airflow_report": clean_airflow_report_output(s.getvalue())}
-        },
+        "local": {gethostname(): {"airflow_report": clean_airflow_report_output(s.getvalue())}},
     }
     if presigned_url:
         try:
@@ -149,16 +145,14 @@ def import_from_qualname(qualname: str) -> "Tuple[str, Any]":
     """Import a function or module from a qualified name
     :param qualname: The qualified name of the function or module to import (e.g. a.b.d.MyOperator or json)
     :return Tuple[str, Any]: The name of the function or module, and the function or module itself
-    >>> import_from_qualname('json.loads') # doctest: +ELLIPSIS
+    >>> import_from_qualname("json.loads")  # doctest: +ELLIPSIS
     ('loads', <function loads at ...>)
-    >>> import_from_qualname('json') # doctest: +ELLIPSIS
+    >>> import_from_qualname("json")  # doctest: +ELLIPSIS
     ('json', <module 'json' from '...'>)
     """
     from importlib import import_module
 
-    [module, name] = (
-        qualname.rsplit(".", 1) if "." in qualname else [qualname, qualname]
-    )
+    [module, name] = qualname.rsplit(".", 1) if "." in qualname else [qualname, qualname]
     imported_module = import_module(module)
     return (
         name,
@@ -180,15 +174,18 @@ def get_kwargs_fn(request_method: str, args: dict, json: dict, attrs: dict):
     :param attrs: the attrs to get from the request - e.g. StarshipAirflow27.dag_attrs()
 
     >>> get_kwargs_fn(
-    ...   "POST", {}, {'key': 'key', 'val': 'val', 'description': 'description'}, StarshipAirflow.variable_attrs()
+    ...     "POST",
+    ...     {},
+    ...     {"key": "key", "val": "val", "description": "description"},
+    ...     StarshipAirflow.variable_attrs(),
     ... )  # get from request.json
     {'key': 'key', 'val': 'val', 'description': 'description'}
     >>> get_kwargs_fn(
-    ...   "GET", {"dag_id": "foo"}, {}, StarshipAirflow.dag_runs_attrs()
+    ...     "GET", {"dag_id": "foo"}, {}, StarshipAirflow.dag_runs_attrs()
     ... )  # with optional request.args, that don't exist, don't get passed through
     {'dag_id': 'foo'}
     >>> get_kwargs_fn(
-    ...   "GET", {"dag_id": "foo", "limit": 5}, {}, StarshipAirflow.dag_runs_attrs()
+    ...     "GET", {"dag_id": "foo", "limit": 5}, {}, StarshipAirflow.dag_runs_attrs()
     ... )  # with optional request.args, that exists, gets passed through
     {'dag_id': 'foo', 'limit': 5}
     """
@@ -204,18 +201,15 @@ def get_kwargs_fn(request_method: str, args: dict, json: dict, attrs: dict):
     return kwargs
 
 
-def results_to_list_via_attrs(
-    results: "List[Any]", attrs: dict
-) -> "List[Dict[str, Any]]":
+def results_to_list_via_attrs(results: "List[Any]", attrs: dict) -> "List[Dict[str, Any]]":
     """
 
     >>> class Foo:
-    ...   def __init__(self, key, val):
-    ...     self.key = key
-    ...     self.val = val
+    ...     def __init__(self, key, val):
+    ...         self.key = key
+    ...         self.val = val
     >>> results_to_list_via_attrs(
-    ...   [Foo("key", "val")],
-    ...   {"key": {"attr": "key", "methods": [("POST", True)], "test_value": "key"}}
+    ...     [Foo("key", "val")], {"key": {"attr": "key", "methods": [("POST", True)], "test_value": "key"}}
     ... )
     [{'key': 'key'}]
     """
@@ -223,11 +217,7 @@ def results_to_list_via_attrs(
         json.dumps(
             [
                 {
-                    attr: (
-                        getattr(result, attr_desc["attr"], None)
-                        if attr_desc["attr"]
-                        else None
-                    )
+                    attr: (getattr(result, attr_desc["attr"], None) if attr_desc["attr"] else None)
                     for attr, attr_desc in attrs.items()
                 }
                 for result in results
@@ -270,20 +260,22 @@ def generic_delete(session: Session, qualname: str, **kwargs) -> None:
         filters = [getattr(thing_cls, attr) == val for attr, val in kwargs.items()]
         deleted_rows = session.execute(delete(thing_cls).where(*filters)).rowcount
         session.commit()
-        logger.info(f"Deleted {deleted_rows} rows for table {qualname}")
+        logger.info("Deleted %s rows for table %s", deleted_rows, qualname)
     except Exception as e:
-        logger.error(f"Error deleting row(s) for table {qualname}: {e}")
+        logger.error("Error deleting row(s) for table %s: %s", qualname, e)
         session.rollback()
         raise e
 
 
 def get_test_data(attrs: dict, method: "Union[str, None]" = None) -> "Dict[str, Any]":
     """
-    >>> get_test_data(method="POST", attrs={"key": {"attr": "key", "methods": [("POST", True)], "test_value": "key"}})
+    >>> get_test_data(
+    ...     method="POST", attrs={"key": {"attr": "key", "methods": [("POST", True)], "test_value": "key"}}
+    ... )
     {'key': 'key'}
     >>> get_test_data(method="PATCH", attrs=StarshipAirflow.dag_attrs())
     {'dag_id': 'dag_0', 'is_paused': False}
-    >>> get_test_data(attrs=StarshipAirflow.dag_attrs()) # doctest: +ELLIPSIS
+    >>> get_test_data(attrs=StarshipAirflow.dag_attrs())  # doctest: +ELLIPSIS
     {'dag_id': 'dag_0', 'schedule_interval': '@once', 'is_paused': False, ... 'dag_run_count': 0}
     """
 
@@ -291,7 +283,7 @@ def get_test_data(attrs: dict, method: "Union[str, None]" = None) -> "Dict[str, 
         return {
             attr: attr_desc["test_value"]
             for attr, attr_desc in attrs.items()
-            if any([method == _method for (_method, _) in attr_desc["methods"]])
+            if any(method == _method for (_method, _) in attr_desc["methods"])
         }
     else:
         return {attr: attr_desc["test_value"] for attr, attr_desc in attrs.items()}

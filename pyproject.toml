@@ -72,29 +72,14 @@ dev = [
     "mkdocs-material",
     "mkdocstrings[python]",
     "pygments",
-
-    # precommit
-    "pre-commit>=3.3; python_version>'3.7'",
-    "detect-secrets>=1.4; python_version>'3.6'",
-
-    # lint
-    "black>=22",
-    "ruff>=0.0.261; python_version>'3.6'",
-    "pylint>=2",
-    "isort>=5",
 ]
 
-# for pip installing this pyproject.toml
 [project.entry-points."airflow.plugins"]
 "starship" = "astronomer_starship.starship:StarshipPlugin"
 "starship_api" = "astronomer_starship.starship_api:StarshipAPIPlugin"
 
 [project.entry-points.apache_airflow_provider]
 provider_info = "astronomer_starship.__init__:get_provider_info"
-
-[tool.black]
-# https://github.com/psf/black
-color = true
 
 [tool.bandit]
 exclude_dirs = ["tests"]
@@ -107,6 +92,26 @@ skips = [
 
 [tool.ruff]
 line-length = 120
+target-version = "py37" # Ruff only support 3.7+ but should play nicely with 3.6; see https://github.com/astral-sh/ruff/issues/3826
+
+[tool.ruff.format]
+docstring-code-format = true
+docstring-code-line-length = 100
+
+[tool.ruff.lint]
+extend-select = [
+    "A",   # flake8-builtins
+    "B",   # flake8-bugbear
+    "C",   # flake8-comprehensions
+    "C90", # Complexity
+    "G",   # flake8-logging-format
+    "I",   # isort
+    "ISC", # flake8-implicit-str-concat
+    "N",   # pep8-naming
+    "T10", # flake8-debugger
+    "UP",  # pyupgrade
+    "W",   # pycodestyle warnings
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

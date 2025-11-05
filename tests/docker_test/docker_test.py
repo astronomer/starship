@@ -2,6 +2,7 @@
 
 import json
 import os
+
 import pytest
 
 from astronomer_starship.common import get_test_data
@@ -9,9 +10,7 @@ from astronomer_starship.compat.starship_compatability import (
     StarshipCompatabilityLayer,
 )
 
-docker_test = pytest.mark.skipif(
-    not bool(os.getenv("DOCKER_TEST")), reason="Not inside Docker container under test"
-)
+docker_test = pytest.mark.skipif(not bool(os.getenv("DOCKER_TEST")), reason="Not inside Docker container under test")
 
 
 @pytest.fixture
@@ -32,6 +31,7 @@ def test_airflow_version(starship):
 def test_info(starship):
     """Test the info endpoint."""
     from airflow import __version__ as airflow_version
+
     from astronomer_starship import __version__ as starship_version
 
     actual = starship.get_info()
@@ -126,13 +126,11 @@ def test_dag_runs_and_task_instances(starship):
     # Get Dag Runs
     run_id = test_input["dag_runs"][0]["run_id"]
     actual = starship.get_dag_runs(dag_id)
-    actual_dag_runs = [
-        dag_run for dag_run in actual["dag_runs"] if dag_run["run_id"] == run_id
-    ]
+    actual_dag_runs = [dag_run for dag_run in actual["dag_runs"] if dag_run["run_id"] == run_id]
     assert len(actual_dag_runs) == 1, actual
-    assert json.dumps(actual_dag_runs[0], default=str) in json.dumps(
-        test_input["dag_runs"], default=str
-    ), actual_dag_runs
+    assert json.dumps(actual_dag_runs[0], default=str) in json.dumps(test_input["dag_runs"], default=str), (
+        actual_dag_runs
+    )
 
     # Set Task Instances
     test_input = get_test_data(method="POST", attrs=starship.task_instances_attrs())
@@ -148,9 +146,9 @@ def test_dag_runs_and_task_instances(starship):
         del actual_task_instances[0]["trigger_timeout"]
     if "trigger_timeout" in test_input["task_instances"][0]:
         del test_input["task_instances"][0]["trigger_timeout"]
-    assert json.dumps(actual_task_instances, default=str) in json.dumps(
-        test_input["task_instances"], default=str
-    ), actual_task_instances
+    assert json.dumps(actual_task_instances, default=str) in json.dumps(test_input["task_instances"], default=str), (
+        actual_task_instances
+    )
 
     test_input = get_test_data(method="DELETE", attrs=starship.dag_runs_attrs())
     actual = starship.delete_dag_runs(**test_input)

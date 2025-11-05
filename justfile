@@ -11,11 +11,6 @@ default:
 help:
     @just --list
 
-# Install pre-commit
-install-precommit:
-    pre-commit install
-
-
 # install frontend requirements
 install-frontend:
     cd astronomer_starship && npm install

@@ -1,3 +1,9 @@
+# Astronomer Starship
+
+[![CI](https://github.com/astronomer/starship/actions/workflows/checks.yaml/badge.svg)](https://github.com/astronomer/starship/actions/workflows/checks.yaml)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+
 <!--suppress HtmlDeprecatedAttribute -->
 <p align="center">
   <img
@@ -10,7 +16,7 @@
   <b>Astronomer Starship</b> can send your Airflow workloads to new places!
 </p>
 
-# What is it?
+## What is it?
 
 Starship is a utility to migrate Airflow metadata such as Airflow Variables,
 Connections, Environment Variables, Pools, and DAG History between two Airflow instances.

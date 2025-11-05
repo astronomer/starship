@@ -1,10 +1,7 @@
 import os
+
 import requests
 from airflow.plugins_manager import AirflowPlugin
-from airflow.www.app import csrf
-from flask import Blueprint, request, Response
-from flask_appbuilder import BaseView
-from flask_appbuilder import expose
 
 # INCOMPATIBILITY: Airflow 1.10.15
 # File "/home/airflow/.local/lib/python3.6/site-packages/astronomer_starship/starship.py", line 9, in <module>
@@ -12,6 +9,9 @@ from flask_appbuilder import expose
 # ImportError: cannot import name 'permissions'
 from airflow.security import permissions
 from airflow.www import auth
+from airflow.www.app import csrf
+from flask import Blueprint, Response, request
+from flask_appbuilder import BaseView, expose
 
 ALLOWED_PROXY_METHODS = ["GET", "POST", "PATCH", "DELETE"]
 
@@ -32,9 +32,7 @@ class Starship(BaseView):
         """Proxy for the React app to use to access the Airflow API."""
         request_method = request.method
         if request_method not in ALLOWED_PROXY_METHODS:
-            return Response(
-                "Method not in " + ", ".join(ALLOWED_PROXY_METHODS), status=405
-            )
+            return Response("Method not in " + ", ".join(ALLOWED_PROXY_METHODS), status=405)
 
         request_headers = dict(request.headers)
         token = (
@@ -79,9 +77,7 @@ class Starship(BaseView):
                 f"response.content={response.content}\n"
             )
         response_headers["Starship-Proxy-Status"] = "OK"
-        return Response(
-            response.content, status=response.status_code, headers=response_headers
-        )
+        return Response(response.content, status=response.status_code, headers=response_headers)
 
 
 starship_view = Starship()

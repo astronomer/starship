@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from typing import Callable
 
 
-def starship_route(
+def starship_route(  # noqa: C901
     get=None,
     post=None,
     put=None,
@@ -32,9 +32,7 @@ def starship_route(
         kwargs = (
             kwargs_fn(
                 request_method=request_method,
-                args=(
-                    request.args if request_method in ["GET", "POST", "DELETE"] else {}
-                ),
+                args=(request.args if request_method in ["GET", "POST", "DELETE"] else {}),
                 json=(request.json if request.is_json else {}),
             )
             if kwargs_fn
@@ -66,14 +64,10 @@ def starship_route(
                 )
                 res.status_code = 409
             except DataError as e:
-                res = jsonify(
-                    {"error": "Data Error", "error_message": e, "kwargs": kwargs}
-                )
+                res = jsonify({"error": "Data Error", "error_message": e, "kwargs": kwargs})
                 res.status_code = 400
             except StatementError as e:
-                res = jsonify(
-                    {"error": "SQL Error", "error_message": e, "kwargs": kwargs}
-                )
+                res = jsonify({"error": "SQL Error", "error_message": e, "kwargs": kwargs})
                 res.status_code = 400
         elif request.method == "PUT":
             res = put(**kwargs)
@@ -181,8 +175,8 @@ class StarshipApi(BaseView):
         **Response**:
         ```
         {
-          "airflow_version": "2.11.0+astro.1",
-          "starship_version": "2.5.0",
+            "airflow_version": "2.11.0+astro.1",
+            "starship_version": "2.5.0",
         }
         ```
         """
@@ -666,9 +660,7 @@ class StarshipApi(BaseView):
         return starship_route(
             get=starship_compat.get_task_instances,
             post=starship_compat.set_task_instances,
-            kwargs_fn=partial(
-                get_kwargs_fn, attrs=starship_compat.task_instances_attrs()
-            ),
+            kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.task_instances_attrs()),
         )
 
     # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_TASK_INSTANCE_HISTORY)])
@@ -768,9 +760,7 @@ class StarshipApi(BaseView):
         return starship_route(
             get=starship_compat.get_task_instance_history,
             post=starship_compat.set_task_instance_history,
-            kwargs_fn=partial(
-                get_kwargs_fn, attrs=starship_compat.task_instances_attrs()
-            ),
+            kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.task_instances_attrs()),
         )
 
     # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_TASK_INSTANCE)])

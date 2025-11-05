@@ -1,10 +1,9 @@
 import os
 import subprocess
-from pathlib import Path
-
 from asyncio import FIRST_EXCEPTION, Future
 from concurrent import futures
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 import pytest
 from docker.errors import ImageNotFound
@@ -136,17 +135,13 @@ def test_docker_pytest(has_docker, docker_client, project_root, local_version):
             )
             if exit_code["StatusCode"] != 0:
                 print(f"[IMAGE={image}] exit code: {exit_code}\n{logs.decode()}")
-                log_file_name = f'{image.rsplit(":", maxsplit=1)[-1]}.test.log'
+                log_file_name = f"{image.rsplit(':', maxsplit=1)[-1]}.test.log"
                 Path(log_file_name).write_bytes(logs)
             assert exit_code == {"StatusCode": 0}, f"exit code: {exit_code}\n{logs}"
-            assert (
-                b"[STARSHIP-PYTEST-SUCCESS" in logs
-            ), f"Looking for success in {exit_code}\n{logs}"
+            assert b"[STARSHIP-PYTEST-SUCCESS" in logs, f"Looking for success in {exit_code}\n{logs}"
 
         print("Building...")
-        build_logs = subprocess.run(
-            "just build-backend", shell=True, capture_output=True, check=True
-        )
+        build_logs = subprocess.run("just build-backend", shell=True, capture_output=True, check=True)
         print(build_logs)
         tests = [executor.submit(run_test_for_image, image) for image in IMAGES]
         for test in futures.wait(tests, return_when=FIRST_EXCEPTION)[0]:
