@@ -109,17 +109,10 @@ skips = [
 line-length = 120
 
 [tool.pytest.ini_options]
+testpaths = ["tests"]
 norecursedirs = [
     "tests/docker_test/",
     "tests/resources/",
-    "hooks",
-    "*.egg",
-    ".eggs",
-    "dist",
-    "build",
-    "docs",
-    ".tox",
-    ".git",
     "__pycache__",
 ]
 doctest_optionflags = ["NUMBER", "NORMALIZE_WHITESPACE", "IGNORE_EXCEPTION_DETAIL"]
