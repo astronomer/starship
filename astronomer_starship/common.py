@@ -287,3 +287,42 @@ def get_test_data(attrs: dict, method: "Union[str, None]" = None) -> "Dict[str, 
         }
     else:
         return {attr: attr_desc["test_value"] for attr, attr_desc in attrs.items()}
+
+
+class BaseStarshipAirflow:
+    """Base class for all Starship Airflow compatibility layers.
+
+    It provides common methods functionality that can be used across different major Airflow versions.
+    """
+
+    def __init__(self):
+        self._session = None
+
+    @property
+    def session(self) -> Session:
+        from airflow.settings import Session
+
+        if self._session is None:
+            self._session = Session()
+        return self._session
+
+    @classmethod
+    def get_airflow_version(cls):
+        from airflow import __version__
+
+        return __version__
+
+    @classmethod
+    def get_info(cls):
+        from airflow import __version__ as airflow_version
+
+        from astronomer_starship import __version__ as starship_version
+
+        return {
+            "airflow_version": airflow_version,
+            "starship_version": starship_version,
+        }
+
+    @classmethod
+    def get_env_vars(cls):
+        return dict(os.environ)

@@ -5,11 +5,10 @@ import os
 from typing import TYPE_CHECKING
 
 import pytz
-from sqlalchemy.orm import Session
 
 from astronomer_starship.common import (
+    BaseStarshipAirflow,
     ConflictError,
-    MethodNotAllowedError,
     NotFoundError,
     generic_delete,
     generic_get_all,
@@ -34,54 +33,11 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class StarshipAirflow:
-    """Base Class
-    Contains methods that are expected to work across all Airflow versions
-    When older versions require different behavior, they'll override this class
-    and get created directly by StarshipCompatabilityLayer
+class StarshipAirflow(BaseStarshipAirflow):
+    """Base class for Airflow 2.x compatibility layers.
+
+    Contains methods that are expected to work across all Airflow 2 versions.
     """
-
-    def __init__(self):
-        self._session = None
-
-    @property
-    def session(self) -> Session:
-        from airflow.settings import Session
-
-        if self._session is None:
-            self._session = Session()
-        return self._session
-
-    @classmethod
-    def get_airflow_version(cls):
-        from airflow import __version__
-
-        return __version__
-
-    @classmethod
-    def get_info(cls):
-        from airflow import __version__ as airflow_version
-
-        from astronomer_starship import __version__ as starship_version
-
-        return {
-            "airflow_version": airflow_version,
-            "starship_version": starship_version,
-        }
-
-    @classmethod
-    def get_env_vars(cls):
-        return dict(os.environ)
-
-    @classmethod
-    def set_env_vars(cls):
-        """This is set directly at the Astro API, so return an error"""
-        raise ConflictError("Set via the Astro/Houston API")
-
-    @classmethod
-    def delete_env_vars(cls):
-        """This is not possible to do via API, so return an error"""
-        raise MethodNotAllowedError("Not implemented")
 
     @classmethod
     def variable_attrs(cls) -> "Dict[str, AttrDesc]":
