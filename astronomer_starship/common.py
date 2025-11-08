@@ -8,7 +8,18 @@ from typing import TYPE_CHECKING, Any, Dict, List, Union
 from sqlalchemy.orm import Session
 
 if TYPE_CHECKING:
-    from typing import Any, Dict, List, Tuple, Union
+    from typing import Any, Dict, List, Tuple, TypedDict, Union
+
+    class AttrDesc(TypedDict):
+        attr: str
+        """the name in the ORM, likely the same as the key"""
+
+        methods: List[Tuple[str, bool]]
+        """e.g. [("POST", True)] - if a given method shouldn't mention it, then it's omitted"""
+
+        test_value: Any
+        """any test value, for unit tests"""
+
 
 logger = logging.getLogger(__name__)
 
@@ -292,7 +303,7 @@ def get_test_data(attrs: dict, method: "Union[str, None]" = None) -> "Dict[str, 
 class BaseStarshipAirflow:
     """Base class for all Starship Airflow compatibility layers.
 
-    It provides common methods functionality that can be used across different major Airflow versions.
+    It provides the common interface & functionality that can be used across different major Airflow versions.
     """
 
     def __init__(self):
@@ -326,3 +337,45 @@ class BaseStarshipAirflow:
     @classmethod
     def get_env_vars(cls):
         return dict(os.environ)
+
+    @classmethod
+    def pool_attrs(cls) -> "Dict[str, AttrDesc]":
+        raise NotImplementedError("Subclasses must implement pool_attrs method")
+
+    def get_pools(self):
+        return generic_get_all(self.session, "airflow.models.Pool", self.pool_attrs())
+
+    def set_pool(self, **kwargs):
+        return generic_set_one(self.session, "airflow.models.Pool", self.pool_attrs(), **kwargs)
+
+    def delete_pool(self, **kwargs):
+        attrs = {self.pool_attrs()[k]["attr"]: v for k, v in kwargs.items() if k in self.pool_attrs()}
+        return generic_delete(self.session, "airflow.models.Pool", **attrs)
+
+    @classmethod
+    def variable_attrs(cls) -> "Dict[str, AttrDesc]":
+        raise NotImplementedError("Subclasses must implement variable_attrs method")
+
+    def get_variables(self):
+        return generic_get_all(self.session, "airflow.models.Variable", self.variable_attrs())
+
+    def set_variable(self, **kwargs):
+        return generic_set_one(self.session, "airflow.models.Variable", self.variable_attrs(), **kwargs)
+
+    def delete_variable(self, **kwargs):
+        attrs = {self.variable_attrs()[k]["attr"]: v for k, v in kwargs.items()}
+        return generic_delete(self.session, "airflow.models.Variable", **attrs)
+
+    @classmethod
+    def connection_attrs(cls) -> "Dict[str, AttrDesc]":
+        raise NotImplementedError("Subclasses must implement connection_attrs method")
+
+    def get_connections(self):
+        return generic_get_all(self.session, "airflow.models.Connection", self.connection_attrs())
+
+    def set_connection(self, **kwargs):
+        return generic_set_one(self.session, "airflow.models.Connection", self.connection_attrs(), **kwargs)
+
+    def delete_connection(self, **kwargs):
+        attrs = {self.connection_attrs()[k]["attr"]: v for k, v in kwargs.items()}
+        return generic_delete(self.session, "airflow.models.Connection", **attrs)

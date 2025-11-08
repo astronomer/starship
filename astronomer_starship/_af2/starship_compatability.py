@@ -11,23 +11,13 @@ from astronomer_starship.common import (
     ConflictError,
     NotFoundError,
     generic_delete,
-    generic_get_all,
-    generic_set_one,
     results_to_list_via_attrs,
 )
 
 if TYPE_CHECKING:
-    from typing import Any, Dict, List, Tuple, TypedDict, Union
+    from typing import Dict, Tuple, Union
 
-    class AttrDesc(TypedDict):
-        attr: str
-        """the name in the ORM, likely the same as the key"""
-
-        methods: List[Tuple[str, bool]]
-        """e.g. [("POST", True)] - if a given method shouldn't mention it, then it's omitted"""
-
-        test_value: Any
-        """any test value, for unit tests"""
+    from astronomer_starship.common import AttrDesc
 
 
 logger = logging.getLogger(__name__)
@@ -55,16 +45,6 @@ class StarshipAirflow(BaseStarshipAirflow):
             },
         }
 
-    def get_variables(self):
-        return generic_get_all(self.session, "airflow.models.Variable", self.variable_attrs())
-
-    def set_variable(self, **kwargs):
-        return generic_set_one(self.session, "airflow.models.Variable", self.variable_attrs(), **kwargs)
-
-    def delete_variable(self, **kwargs):
-        attrs = {self.variable_attrs()[k]["attr"]: v for k, v in kwargs.items()}
-        return generic_delete(self.session, "airflow.models.Variable", **attrs)
-
     @classmethod
     def pool_attrs(cls) -> "Dict[str, AttrDesc]":
         return {
@@ -80,16 +60,6 @@ class StarshipAirflow(BaseStarshipAirflow):
                 "test_value": "test_description",
             },
         }
-
-    def get_pools(self):
-        return generic_get_all(self.session, "airflow.models.Pool", self.pool_attrs())
-
-    def set_pool(self, **kwargs):
-        return generic_set_one(self.session, "airflow.models.Pool", self.pool_attrs(), **kwargs)
-
-    def delete_pool(self, **kwargs):
-        attrs = {self.pool_attrs()[k]["attr"]: v for k, v in kwargs.items() if k in self.pool_attrs()}
-        return generic_delete(self.session, "airflow.models.Pool", **attrs)
 
     @classmethod
     def connection_attrs(cls) -> "Dict[str, AttrDesc]":
@@ -140,16 +110,6 @@ class StarshipAirflow(BaseStarshipAirflow):
                 "test_value": "description",
             },
         }
-
-    def get_connections(self):
-        return generic_get_all(self.session, "airflow.models.Connection", self.connection_attrs())
-
-    def set_connection(self, **kwargs):
-        return generic_set_one(self.session, "airflow.models.Connection", self.connection_attrs(), **kwargs)
-
-    def delete_connection(self, **kwargs):
-        attrs = {self.connection_attrs()[k]["attr"]: v for k, v in kwargs.items()}
-        return generic_delete(self.session, "airflow.models.Connection", **attrs)
 
     @classmethod
     def dag_attrs(cls) -> "Dict[str, AttrDesc]":
