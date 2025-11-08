@@ -203,6 +203,6 @@ build-docs: clean
 deploy-docs UPSTREAM="origin": clean
     mkdocs gh-deploy -r {{UPSTREAM}}
 
-# run just commands from the dev project for running the local version of Starship in Airflow
-dev *ARGS:
-    @just dev/{{ARGS}}
+# run just commands from the dev2 project for running the local version of Starship in Airflow 2
+dev2 *ARGS:
+    @just dev2/{{ARGS}}

@@ -164,10 +164,10 @@ Use <https://github.com/nektos/act> to run and test CICD changes locally.
 
 ## Run current code
 
-Checkout [dev](./dev) for options of running the local version of Starship in Airflow.
+Checkout [dev2](./dev2) for options of running the local version of Starship in Airflow 2.
 
 ```shell
-just dev
+just dev2
 ```
 
 ### Local
@@ -175,13 +175,13 @@ just dev
 Spin up a local astro dev environment with the local version of Starship installed.
 
 ```shell
-just dev start
+just dev2 start
 ```
 
 Quickly reload the webserver with refreshed assets and plugin code.
 
 ```shell
-just dev reload
+just dev2 reload
 ```
 
 ### Astro
@@ -189,7 +189,7 @@ just dev reload
 Deploy to a deployment in Astro with the local version of Starship installed.
 
 ```shell
-just dev deploy mydeploymentid
+just dev2 deploy mydeploymentid
 ```
 
 ## Alternatively
