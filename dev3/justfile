@@ -1,0 +1,56 @@
+RUNTIME_VERSION := "3.1-3"
+
+default:
+  @just --list
+
+# build the frontend assets for the webserver
+_build-frontend:
+    # TODO build Airflow 3 compatible frontend assets
+
+# build an image suitable for local development with editable pip install of starship
+_build-image-local:
+    @docker build -t starship-dev-local -f Dockerfile.local --build-arg RUNTIME_VERSION={{RUNTIME_VERSION}} ../
+
+# build an image suitable for deployment with starship installed as a wheel
+_build-image-remote: _build-wheel
+     @docker build -t starship-dev-remote --platform linux/amd64 -f Dockerfile --build-arg RUNTIME_VERSION={{RUNTIME_VERSION}} ../
+
+# build the wheel of local starship
+_build-wheel:
+    @just ../build
+
+# run `astro dev bash [ARGS]` with the webserver pre-selected
+bash *ARGS:
+    @astro dev bash --webserver {{ARGS}}
+
+# run `astro dev deploy [ARGS]` with image suitable for deployments in astro
+deploy *ARGS: _build-image-remote
+    @astro deploy -i starship-dev-remote {{ARGS}}
+
+# run `astro dev kill`
+kill:
+    @astro dev kill
+
+# run `astro dev logs [ARGS]` with the webserver pre-selected
+logs *ARGS:
+    @astro dev logs --webserver {{ARGS}}
+
+# run `astro dev ps`
+ps:
+    @astro dev ps
+
+# restart local webserver with updated frontend assets and plugin code
+reload: _build-frontend
+    @docker restart $(docker container ls --filter name=api-server --format="{{{{.ID}}")
+
+# run `astro dev restart [ARGS]` with image suitable for local development
+restart *ARGS: _build-frontend _build-image-local
+    @astro dev restart -i starship-dev-local {{ARGS}}
+
+# run `astro dev start [ARGS]` with image suitable for local development
+start *ARGS: _build-frontend _build-image-local
+    @astro dev start -i starship-dev-local {{ARGS}}
+
+# run `astro dev stop`
+stop:
+    @astro dev stop

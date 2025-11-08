@@ -206,3 +206,7 @@ deploy-docs UPSTREAM="origin": clean
 # run just commands from the dev2 project for running the local version of Starship in Airflow 2
 dev2 *ARGS:
     @just dev2/{{ARGS}}
+
+# run just commands from the dev3 project for running the local version of Starship in Airflow 3
+dev3 *ARGS:
+    @just dev3/{{ARGS}}
