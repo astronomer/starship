@@ -51,9 +51,11 @@ touch airflow.scheduler.log
 if [ "$AIRFLOW_MAJOR_VERSION" = "2" ]; then
   airflow webserver --workers 1 2>&1 | tee -a airflow.log &
   http_server_ready_line="Listening at: http://0.0.0.0:8080"
+  dagbag_print_command="print(DagBag(store_serialized_dags=True).dags)"
 elif [ "$AIRFLOW_MAJOR_VERSION" = "3" ]; then
   airflow api-server --workers 1 2>&1 | tee -a airflow.log &
   http_server_ready_line="Uvicorn running on http://0.0.0.0:8080"
+  dagbag_print_command="print(DagBag().dags)"
 fi
 airflow scheduler 2>&1 | tee -a airflow-scheduler.log &
 
@@ -66,7 +68,7 @@ else
 fi
 
 echo -e "[STARSHIP-AIRFLOW-DAGBAG-START image=$IMAGE]"
-python -c "from airflow.models.dagbag import DagBag; print(DagBag(store_serialized_dags=True).dags)"
+python -c "from airflow.models.dagbag import DagBag; $dagbag_print_command"
 if [ $? -eq 0 ]; then
   echo -e "[STARSHIP-AIRFLOW-DAGBAG-SUCCESS image=$IMAGE]"
 else
