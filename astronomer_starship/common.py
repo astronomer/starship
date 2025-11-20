@@ -379,3 +379,68 @@ class BaseStarshipAirflow:
     def delete_connection(self, **kwargs):
         attrs = {self.connection_attrs()[k]["attr"]: v for k, v in kwargs.items()}
         return generic_delete(self.session, "airflow.models.Connection", **attrs)
+
+    @classmethod
+    def dag_attrs(cls) -> "Dict[str, AttrDesc]":
+        raise NotImplementedError("Subclasses must implement dag_attrs method")
+
+    def get_dags(self):
+        raise NotImplementedError("Subclasses must implement get_dags method")
+
+    def set_dag_is_paused(self, **kwargs):
+        raise NotImplementedError("Subclasses must implement set_dag_is_paused method")
+
+    @classmethod
+    def dag_runs_attrs(cls) -> "Dict[str, AttrDesc]":
+        raise NotImplementedError("Subclasses must implement dag_runs_attrs method")
+
+    def get_dag_runs(self):
+        raise NotImplementedError("Subclasses must implement get_dag_runs method")
+
+    def set_dag_runs(self, **kwargs):
+        raise NotImplementedError("Subclasses must implement set_dag_runs method")
+
+    def delete_dag_runs(self, **kwargs):
+        raise NotImplementedError("Subclasses must implement delete_dag_runs method")
+
+    @classmethod
+    def task_instances_attrs(cls) -> "Dict[str, AttrDesc]":
+        raise NotImplementedError("Subclasses must implement task_instances_attrs method")
+
+    def get_task_instances(self):
+        raise NotImplementedError("Subclasses must implement get_task_instances method")
+
+    def set_task_instances(self, **kwargs):
+        raise NotImplementedError("Subclasses must implement set_task_instances method")
+
+    def get_task_instance_history(self):
+        raise NotImplementedError("Subclasses must implement get_task_instance_history method")
+
+    def set_task_instance_history(self, **kwargs):
+        raise NotImplementedError("Subclasses must implement set_task_instance_history method")
+
+    @classmethod
+    def task_log_attrs(cls) -> "Dict[str, AttrDesc]":
+        raise NotImplementedError("Subclasses must implement task_log_attrs method")
+
+    def get_task_log(self):
+        raise NotImplementedError("Subclasses must implement get_task_log method")
+
+    def set_task_log(self, **kwargs):
+        raise NotImplementedError("Subclasses must implement set_task_log method")
+
+    def delete_task_log(self, **kwargs):
+        raise NotImplementedError("Subclasses must implement delete_task_log method")
+
+    @classmethod
+    def xcom_attrs(cls) -> "Dict[str, AttrDesc]":
+        raise NotImplementedError("Subclasses must implement xcom_attrs method")
+
+    def get_xcom(self):
+        raise NotImplementedError("Subclasses must implement get_xcom method")
+
+    def set_xcom(self, **kwargs):
+        raise NotImplementedError("Subclasses must implement set_xcom method")
+
+    def delete_xcom(self, **kwargs):
+        raise NotImplementedError("Subclasses must implement delete_xcom method")
