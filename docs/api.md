@@ -18,8 +18,8 @@ and an HTTP `status_code`. The `error` key will contain a message describing the
 
 Returns the version of Airflow that the Starship API is connected to.
 
-DEPRECATED: Instead use [`/api/starship/info`](./#starship-info) to get both Airflow and Starship versions
-plus additional information.
+!!! warning "Deprecated"
+    Instead use [`/api/starship/info`](#starship-info) to get both Airflow and Starship versions plus additional information.
 
 ---
 
@@ -56,8 +56,8 @@ Returns relevant information related to Starship and the Airflow deployment.
 
 Returns the health of the Starship API
 
-DEPRECATED: Instead use [`/api/starship/info`](./#starship-info) which provides the same functionality
-and additional information about Airflow and Starship.
+!!! warning "Deprecated"
+    Instead use [`/api/starship/info`](#starship-info) to get both Airflow and Starship versions plus additional information.
 
 ---
 
@@ -580,9 +580,10 @@ Get and set TaskInstanceHistory records.
 
 ## Task Log
 
-**EXPERIMENTAL**
-
 Get, set or delete task logs.
+
+!!! danger "Experimental"
+    This feature is considered experimental and subject to change.
 
 **Requirements:**
 
@@ -651,9 +652,10 @@ Get, set or delete task logs.
 
 ## XCom
 
-**EXPERIMENTAL**
-
 Get, set or delete XComs.
+
+!!! danger "Experimental"
+    This feature is considered experimental and subject to change.
 
 **Requirements:**
 
