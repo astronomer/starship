@@ -26,10 +26,14 @@ class AirflowVersionError(ImportError):
 
 AIRFLOW_VERSION_TUPLE = _get_base_airflow_version_tuple()
 AIRFLOW_V_2 = AIRFLOW_VERSION_TUPLE >= (2, 0, 0) and AIRFLOW_VERSION_TUPLE < (3, 0, 0)
+AIRFLOW_V_3 = AIRFLOW_VERSION_TUPLE >= (3, 0, 0) and AIRFLOW_VERSION_TUPLE < (4, 0, 0)
 
 if AIRFLOW_V_2:
     from astronomer_starship._af2.starship import StarshipPlugin
     from astronomer_starship._af2.starship_api import StarshipApi, StarshipAPIPlugin
+elif AIRFLOW_V_3:
+    from astronomer_starship._af3.starship import StarshipPlugin
+    from astronomer_starship._af3.starship_api import StarshipApi, StarshipAPIPlugin
 else:
     raise AirflowVersionError()
 
