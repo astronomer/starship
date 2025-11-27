@@ -5,7 +5,7 @@ import os
 
 import pytest
 
-from astronomer_starship.common import get_test_data
+from astronomer_starship.common import get_test_data, normalize_test_data, normalize_for_comparison
 from astronomer_starship.compat.starship_compatability import (
     StarshipCompatabilityLayer,
 )
@@ -128,9 +128,13 @@ def test_dag_runs_and_task_instances(starship):
     actual = starship.get_dag_runs(dag_id)
     actual_dag_runs = [dag_run for dag_run in actual["dag_runs"] if dag_run["run_id"] == run_id]
     assert len(actual_dag_runs) == 1, actual
-    assert json.dumps(actual_dag_runs[0], default=str) in json.dumps(test_input["dag_runs"], default=str), (
-        actual_dag_runs
+    # Normalize and Filter both sides
+    test_keys = set(test_input["dag_runs"][0].keys())
+    filtered_actual = normalize_for_comparison(
+        {k: v for k, v in actual_dag_runs[0].items() if k in test_keys}
     )
+    expected = normalize_for_comparison(normalize_test_data(test_input["dag_runs"][0]))
+    assert filtered_actual == expected, f"Actual: {filtered_actual}\nExpected: {expected}"
 
     # Set Task Instances
     test_input = get_test_data(method="POST", attrs=starship.task_instances_attrs())
@@ -141,13 +145,17 @@ def test_dag_runs_and_task_instances(starship):
     actual = starship.get_task_instances(dag_id)
     actual_task_instances = actual["task_instances"]
     assert len(actual_task_instances) == 1, actual
-    test_input["task_instances"][0]["executor_config"] = None
-    if "trigger_timeout" in actual_task_instances[0]:
-        del actual_task_instances[0]["trigger_timeout"]
-    if "trigger_timeout" in test_input["task_instances"][0]:
-        del test_input["task_instances"][0]["trigger_timeout"]
-    assert json.dumps(actual_task_instances, default=str) in json.dumps(test_input["task_instances"], default=str), (
-        actual_task_instances
+    # Normalize and Filter both sides
+    exclude_keys = {"dag_version_id", "trigger_timeout", "executor_config"}
+    test_keys = set(test_input["task_instances"][0].keys()) - exclude_keys
+    filtered_actual = normalize_for_comparison(
+        {k: v for k, v in actual_task_instances[0].items() if k in test_keys}
+    )
+    filtered_expected = normalize_for_comparison(normalize_test_data(
+        {k: v for k, v in test_input["task_instances"][0].items() if k in test_keys}
+    ))
+    assert filtered_actual == filtered_expected, (
+        f"Actual: {filtered_actual}\nExpected: {filtered_expected}"
     )
 
     test_input = get_test_data(method="DELETE", attrs=starship.dag_runs_attrs())

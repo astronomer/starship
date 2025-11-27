@@ -76,6 +76,17 @@ else
   exit 1
 fi
 
+# For AF3, manually reserialize DAGs to database (scheduler takes too long)
+if [ "$AIRFLOW_MAJOR_VERSION" = "3" ]; then
+  echo -e "[STARSHIP-DAG-RESERIALIZE-START image=$IMAGE]"
+  airflow dags reserialize 2>&1 | grep -v graphviz
+  if [ $? -eq 0 ]; then
+    echo -e "[STARSHIP-DAG-RESERIALIZE-SUCCESS image=$IMAGE]"
+  else
+    echo -e "[STARSHIP-DAG-RESERIALIZE-ERROR image=$IMAGE]"
+  fi
+fi
+
 echo -e "[STARSHIP-PYTEST-START image=$IMAGE]"
 pytest \
   --no-header --disable-warnings --tb=short --strict-markers \

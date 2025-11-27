@@ -298,6 +298,40 @@ def get_test_data(attrs: dict, method: "Union[str, None]" = None) -> "Dict[str, 
         }
     else:
         return {attr: attr_desc["test_value"] for attr, attr_desc in attrs.items()}
+    
+def normalize_test_data(data: "Union[Dict, List]") -> "Union[Dict, List]":
+    """
+
+    >>> import datetime
+    >>> normalize_test_data({"date": datetime.datetime(1970, 1, 1, 0, 0)})
+    {'date': '1970-01-01 00:00:00'}
+    >>> normalize_test_data([{"value": 123}])
+    [{'value': 123}]
+    """
+    return json.loads(json.dumps(data, default=str))
+
+
+# Keys: datetime values
+_DATETIME_KEYS = {
+    "queued_at", "logical_date", "start_date", "end_date",
+    "data_interval_start", "data_interval_end", "run_after",
+    "last_scheduling_decision", "execution_date",
+    "queued_dttm", "scheduled_dttm"
+}
+
+
+def normalize_for_comparison(data: "Union[Dict, List]") -> "Union[Dict, List]":
+    if isinstance(data, dict):
+        result = {}
+        for k, v in data.items():
+            if k in _DATETIME_KEYS and isinstance(v, str):
+                result[k] = v.replace("+00:00", "")
+            else:
+                result[k] = normalize_for_comparison(v)
+        return result
+    if isinstance(data, list):
+        return [normalize_for_comparison(item) for item in data]
+    return data
 
 
 class BaseStarshipAirflow:
