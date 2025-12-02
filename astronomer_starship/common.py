@@ -298,7 +298,8 @@ def get_test_data(attrs: dict, method: "Union[str, None]" = None) -> "Dict[str, 
         }
     else:
         return {attr: attr_desc["test_value"] for attr, attr_desc in attrs.items()}
-    
+
+
 def normalize_test_data(data: "Union[Dict, List]") -> "Union[Dict, List]":
     """
 
@@ -313,10 +314,17 @@ def normalize_test_data(data: "Union[Dict, List]") -> "Union[Dict, List]":
 
 # Keys: datetime values
 _DATETIME_KEYS = {
-    "queued_at", "logical_date", "start_date", "end_date",
-    "data_interval_start", "data_interval_end", "run_after",
-    "last_scheduling_decision", "execution_date",
-    "queued_dttm", "scheduled_dttm"
+    "queued_at",
+    "logical_date",
+    "start_date",
+    "end_date",
+    "data_interval_start",
+    "data_interval_end",
+    "run_after",
+    "last_scheduling_decision",
+    "execution_date",
+    "queued_dttm",
+    "scheduled_dttm",
 }
 
 

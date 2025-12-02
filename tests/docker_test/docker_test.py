@@ -1,11 +1,10 @@
 """NOTE: These tests run _inside docker containers_ generated from the validation_test.py file."""
 
-import json
 import os
 
 import pytest
 
-from astronomer_starship.common import get_test_data, normalize_test_data, normalize_for_comparison
+from astronomer_starship.common import get_test_data, normalize_for_comparison, normalize_test_data
 from astronomer_starship.compat.starship_compatability import (
     StarshipCompatabilityLayer,
 )
@@ -130,9 +129,7 @@ def test_dag_runs_and_task_instances(starship):
     assert len(actual_dag_runs) == 1, actual
     # Normalize and Filter both sides
     test_keys = set(test_input["dag_runs"][0].keys())
-    filtered_actual = normalize_for_comparison(
-        {k: v for k, v in actual_dag_runs[0].items() if k in test_keys}
-    )
+    filtered_actual = normalize_for_comparison({k: v for k, v in actual_dag_runs[0].items() if k in test_keys})
     expected = normalize_for_comparison(normalize_test_data(test_input["dag_runs"][0]))
     assert filtered_actual == expected, f"Actual: {filtered_actual}\nExpected: {expected}"
 
@@ -148,15 +145,11 @@ def test_dag_runs_and_task_instances(starship):
     # Normalize and Filter both sides
     exclude_keys = {"dag_version_id", "trigger_timeout", "executor_config"}
     test_keys = set(test_input["task_instances"][0].keys()) - exclude_keys
-    filtered_actual = normalize_for_comparison(
-        {k: v for k, v in actual_task_instances[0].items() if k in test_keys}
+    filtered_actual = normalize_for_comparison({k: v for k, v in actual_task_instances[0].items() if k in test_keys})
+    filtered_expected = normalize_for_comparison(
+        normalize_test_data({k: v for k, v in test_input["task_instances"][0].items() if k in test_keys})
     )
-    filtered_expected = normalize_for_comparison(normalize_test_data(
-        {k: v for k, v in test_input["task_instances"][0].items() if k in test_keys}
-    ))
-    assert filtered_actual == filtered_expected, (
-        f"Actual: {filtered_actual}\nExpected: {filtered_expected}"
-    )
+    assert filtered_actual == filtered_expected, f"Actual: {filtered_actual}\nExpected: {filtered_expected}"
 
     test_input = get_test_data(method="DELETE", attrs=starship.dag_runs_attrs())
     actual = starship.delete_dag_runs(**test_input)

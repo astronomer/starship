@@ -171,7 +171,7 @@ class StarshipAirflow30(StarshipAirflow):
                 for attr_desc in self.dag_attrs().values()
                 if attr_desc["attr"] is not None
             ]
-            
+
             return json.loads(
                 json.dumps(
                     [
@@ -201,9 +201,7 @@ class StarshipAirflow30(StarshipAirflow):
         from sqlalchemy import update
 
         try:
-            self.session.execute(
-                update(DagModel).where(DagModel.dag_id == dag_id).values(is_paused=is_paused)
-            )
+            self.session.execute(update(DagModel).where(DagModel.dag_id == dag_id).values(is_paused=is_paused))
             self.session.commit()
             return {
                 "dag_id": dag_id,
@@ -217,10 +215,7 @@ class StarshipAirflow30(StarshipAirflow):
         try:
             from airflow.models import DagTag
 
-            return [
-                tag[0] 
-                for tag in self.session.query(DagTag.name).filter(DagTag.dag_id == dag_id).all()
-            ]
+            return [tag[0] for tag in self.session.query(DagTag.name).filter(DagTag.dag_id == dag_id).all()]
         except ImportError:
             # DagTag might not be available
             return []
@@ -234,9 +229,7 @@ class StarshipAirflow30(StarshipAirflow):
         from sqlalchemy.sql.functions import count
 
         try:
-            return self.session.query(
-                count(distinct(DagRun.run_id))
-            ).filter(DagRun.dag_id == dag_id).one()[0]
+            return self.session.query(count(distinct(DagRun.run_id))).filter(DagRun.dag_id == dag_id).one()[0]
         except Exception as e:
             self.session.rollback()
             raise e
@@ -387,27 +380,26 @@ class StarshipAirflow30(StarshipAirflow):
         }
 
     def get_dag_runs(self, dag_id: str, offset: int = 0, limit: int = 10) -> dict:
-        from airflow.models import DagRun
         from sqlalchemy import MetaData, String, desc, select
 
         try:
             engine = self.session.get_bind()
             metadata = MetaData(bind=engine)
-            metadata.reflect(engine, only=['dag_run'])
-            table = metadata.tables['dag_run']
-            
+            metadata.reflect(engine, only=["dag_run"])
+            table = metadata.tables["dag_run"]
+
             # enum validation
-            if 'triggered_by' in table.c:
+            if "triggered_by" in table.c:
                 table.c.triggered_by.type = String(50)
-            
+
             stmt = select(table).where(table.c.dag_id == dag_id).order_by(desc(table.c.start_date))
             if offset:
                 stmt = stmt.offset(offset)
             stmt = stmt.limit(limit)
-            
+
             result = self.session.execute(stmt)
             dag_runs_data = [dict(row._mapping) for row in result]
-            
+
             return json.loads(
                 json.dumps(
                     {
@@ -657,17 +649,18 @@ class StarshipAirflow30(StarshipAirflow):
 
     def get_task_instances(self, dag_id: str, offset: int = 0, limit: int = 10):
         import json
-        from airflow.models import DagRun, TaskInstance
-        from sqlalchemy import String, desc, select, MetaData
+
+        from airflow.models import TaskInstance
+        from sqlalchemy import MetaData, String, desc, select
 
         try:
             engine = self.session.get_bind()
             metadata = MetaData(bind=engine)
-            
-            metadata.reflect(engine, only=['dag_run'])
-            dag_run_table = metadata.tables['dag_run']
+
+            metadata.reflect(engine, only=["dag_run"])
+            dag_run_table = metadata.tables["dag_run"]
             dag_run_table.c.triggered_by.type = String(50)
-            
+
             sub_stmt = (
                 select(dag_run_table.c.run_id)
                 .where(dag_run_table.c.dag_id == dag_id)
@@ -676,22 +669,22 @@ class StarshipAirflow30(StarshipAirflow):
             )
             if offset:
                 sub_stmt = sub_stmt.offset(offset)
-            
+
             run_ids_result = self.session.execute(sub_stmt)
             run_ids = [row[0] for row in run_ids_result]
-            
-            # Use noload() to prevent eager loading 
+
+            # Use noload() to prevent eager loading
             from sqlalchemy.orm import noload
-            
+
             results = (
                 self.session.query(TaskInstance)
                 .filter(TaskInstance.dag_id == dag_id)
                 .filter(TaskInstance.run_id.in_(run_ids))
-                .options(noload('*'))
+                .options(noload("*"))
                 .order_by(desc(TaskInstance.start_date))
                 .all()
             )
-            
+
             return json.loads(
                 json.dumps(
                     {
@@ -707,16 +700,16 @@ class StarshipAirflow30(StarshipAirflow):
 
     def set_task_instances(self, task_instances: list):
         task_instances = self.insert_directly("task_instance", task_instances)
-        
-        # populate dag_version_id 
-        dag_ids = set(ti.get("dag_id") for ti in task_instances if ti.get("dag_id"))
+
+        # populate dag_version_id
+        dag_ids = {ti.get("dag_id") for ti in task_instances if ti.get("dag_id")}
         for dag_id in dag_ids:
             try:
                 self.update_dag_version_id(dag_id)
-                logger.info(f"Auto-populated dag_version_id for DAG: {dag_id}")
+                logger.info("Auto-populated dag_version_id for DAG: %s", dag_id)
             except Exception as e:
-                logger.warning(f"Failed to auto-populate dag_version_id for {dag_id}: {e}")
-        
+                logger.warning("Failed to auto-populate dag_version_id for %s: %s", dag_id, e)
+
         return {"task_instances": task_instances}
 
     def get_task_instance_history(self, dag_id: str, offset: int = 0, limit: int = 10):
@@ -766,17 +759,28 @@ class StarshipAirflow30(StarshipAirflow):
 
     def insert_directly(self, table_name, items):  # noqa: C901
         import pickle
+        import uuid
 
         from sqlalchemy import MetaData
+        from sqlalchemy.dialects.postgresql import insert
         from sqlalchemy.exc import InvalidRequestError
 
         if not items:
             return []
 
         for item in items:
-            # In AF3, conf is stored as JSON, not pickled
-            if "id" in item and table_name not in ["task_instance", "task_instance_history"]:
-                del item["id"]
+            # For task_instance/task_instance_history: generate new UUIDs
+            # to avoid PK conflicts with source data
+            if "id" in item:
+                if table_name in ["task_instance", "task_instance_history"]:
+                    item["id"] = str(uuid.uuid4())
+                else:
+                    del item["id"]
+
+            # Strip FK fields that reference source-specific UUIDs
+            item.pop("dag_version_id", None)
+            item.pop("created_dag_version_id", None)
+
             if "executor_config" in item:
                 # Drop executor_config, because its original type may have gotten lost
                 # and pickling it will not recover it
@@ -786,15 +790,28 @@ class StarshipAirflow30(StarshipAirflow):
             metadata = MetaData(bind=engine)
             metadata.reflect(engine, only=[table_name])
             table = metadata.tables[table_name]
-            
+
             valid_columns = {c.name for c in table.columns}
-            filtered_items = [
-                {k: v for k, v in item.items() if k in valid_columns}
-                for item in items
-            ]
-            
-            self.session.execute(table.insert().values(filtered_items))
+            filtered_items = [{k: v for k, v in item.items() if k in valid_columns} for item in items]
+
+            # Use UPSERT with ON CONFLICT DO NOTHING for idempotent migrations
+            stmt = insert(table).values(filtered_items)
+
+            # Define conflict targets based on table's natural key
+            if table_name == "dag_run":
+                stmt = stmt.on_conflict_do_nothing(index_elements=["dag_id", "run_id"])
+            elif table_name in ["task_instance", "task_instance_history"]:
+                stmt = stmt.on_conflict_do_nothing(index_elements=["dag_id", "task_id", "run_id", "map_index"])
+            else:
+                stmt = stmt.on_conflict_do_nothing()
+
+            self.session.execute(stmt)
             self.session.commit()
+
+            # Remove non-JSON-serializable fields from return value
+            for item in items:
+                if "executor_config" in item and isinstance(item["executor_config"], bytes):
+                    item["executor_config"] = None
             return items
         except (InvalidRequestError, KeyError):
             return self.insert_directly(f"airflow.{table_name}", items)
@@ -804,20 +821,20 @@ class StarshipAirflow30(StarshipAirflow):
 
     def get_latest_dag_version_id(self, dag_id: str):
         from sqlalchemy import MetaData, desc, select
-        
+
         try:
             engine = self.session.get_bind()
             metadata = MetaData(bind=engine)
-            metadata.reflect(engine, only=['dag_version'])
-            dag_version_table = metadata.tables['dag_version']
-            
+            metadata.reflect(engine, only=["dag_version"])
+            dag_version_table = metadata.tables["dag_version"]
+
             stmt = (
                 select(dag_version_table.c.id)
                 .where(dag_version_table.c.dag_id == dag_id)
                 .order_by(desc(dag_version_table.c.version_number))
                 .limit(1)
             )
-            
+
             result = self.session.execute(stmt).first()
             return str(result[0]) if result else None
         except Exception as e:
@@ -830,19 +847,21 @@ class StarshipAirflow30(StarshipAirflow):
         Update created_dag_version_id on dag_run records so the UI can properly display them.
         """
         from sqlalchemy import MetaData, update
-        
+
         try:
             if not dag_version_id:
                 dag_version_id = self.get_latest_dag_version_id(dag_id)
                 if not dag_version_id:
-                    raise ValueError(f"No dag_version found for dag_id: {dag_id}. "
-                                   f"Ensure the DAG has been parsed by Airflow on the target deployment.")
-            
+                    raise ValueError(
+                        f"No dag_version found for dag_id: {dag_id}. "
+                        f"Ensure the DAG has been parsed by Airflow on the target deployment."
+                    )
+
             engine = self.session.get_bind()
             metadata = MetaData(bind=engine)
-            metadata.reflect(engine, only=['dag_run', 'task_instance', 'task_instance_history'])
-            
-            dr_table = metadata.tables['dag_run']
+            metadata.reflect(engine, only=["dag_run", "task_instance", "task_instance_history"])
+
+            dr_table = metadata.tables["dag_run"]
             dr_stmt = (
                 update(dr_table)
                 .where(dr_table.c.dag_id == dag_id)
@@ -850,8 +869,8 @@ class StarshipAirflow30(StarshipAirflow):
                 .values(created_dag_version_id=dag_version_id)
             )
             dr_result = self.session.execute(dr_stmt)
-            
-            ti_table = metadata.tables['task_instance']
+
+            ti_table = metadata.tables["task_instance"]
             ti_stmt = (
                 update(ti_table)
                 .where(ti_table.c.dag_id == dag_id)
@@ -859,8 +878,8 @@ class StarshipAirflow30(StarshipAirflow):
                 .values(dag_version_id=dag_version_id)
             )
             ti_result = self.session.execute(ti_stmt)
-            
-            tih_table = metadata.tables['task_instance_history']
+
+            tih_table = metadata.tables["task_instance_history"]
             tih_stmt = (
                 update(tih_table)
                 .where(tih_table.c.dag_id == dag_id)
@@ -868,9 +887,9 @@ class StarshipAirflow30(StarshipAirflow):
                 .values(dag_version_id=dag_version_id)
             )
             tih_result = self.session.execute(tih_stmt)
-            
+
             self.session.commit()
-            
+
             return {
                 "dag_id": dag_id,
                 "dag_version_id": dag_version_id,
