@@ -133,7 +133,6 @@ async def proxy(request: Request):
 
 
 class StarshipPlugin(AirflowPlugin):
-
     name = "starship"
 
     fastapi_apps = [
