@@ -21,7 +21,7 @@ async def serve_index():
     return FileResponse(STATIC_DIR / "index.html", media_type="text/html")
 
 
-@starship_app.get("/static/assets/{filename:path}")
+@starship_app.get("/assets/{filename:path}")
 async def serve_assets(filename: str):
     file_path = ASSETS_DIR / filename
     if not file_path.exists() or not file_path.is_file():
@@ -146,7 +146,7 @@ class StarshipPlugin(AirflowPlugin):
     external_views = [
         {
             "name": "Migration Tool Starship",
-            "href": "/starship/",
+            "href": "starship/",
             "destination": "nav",
             "category": "Admin",
             "url_route": "starship",
