@@ -1,3 +1,4 @@
+import gzip
 import os
 from pathlib import Path
 from typing import Optional
@@ -112,6 +113,7 @@ async def proxy(request: Request):
                 f"response.content={response.content}\n"
             )
 
+        response_content = response.content
         response_headers = {
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Credentials": "true",
@@ -119,8 +121,15 @@ async def proxy(request: Request):
             "Content-Type": response.headers.get("content-type", "application/json"),
         }
 
+        # GZIP compress response if large (>1KB) and client accepts gzip
+        accept_encoding = request.headers.get("Accept-Encoding", "")
+        if len(response_content) > 1024 and "gzip" in accept_encoding.lower():
+            response_content = gzip.compress(response_content)
+            response_headers["Content-Encoding"] = "gzip"
+            response_headers["X-Uncompressed-Size"] = str(len(response.content))
+
         return Response(
-            content=response.content,
+            content=response_content,
             status_code=response.status_code,
             headers=response_headers,
         )
