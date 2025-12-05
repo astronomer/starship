@@ -5,7 +5,7 @@ default:
 
 # build the frontend assets for the webserver
 _build-frontend:
-    # TODO build Airflow 3 compatible frontend assets
+    @just ../build-frontend
 
 # build an image suitable for local development with editable pip install of starship
 _build-image-local:
