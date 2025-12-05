@@ -67,12 +67,20 @@ class StarshipRoute:
                     )
                 except DataError as e:
                     return JSONResponse(
-                        {"error": "Data Error", "error_message": str(e), "kwargs": json.dumps(kwargs, default=str)},
+                        {
+                            "error": "Data Error",
+                            "error_message": str(e),
+                            "kwargs": json.dumps(kwargs, default=str),
+                        },
                         400,
                     )
                 except StatementError as e:
                     return JSONResponse(
-                        {"error": "SQL Error", "error_message": str(e), "kwargs": json.dumps(kwargs, default=str)},
+                        {
+                            "error": "SQL Error",
+                            "error_message": str(e),
+                            "kwargs": json.dumps(kwargs, default=str),
+                        },
                         400,
                     )
             elif self.method == "PUT":
@@ -165,20 +173,6 @@ class StarshipApi(FastAPI):
         starship_compat: Annotated[StarshipAirflow, Depends(starship_compat)],
     ):
         return starship_route(get=starship_compat.get_env_vars)
-
-    @router.post("/update_dag_version_id")
-    @staticmethod
-    def update_dag_version_id(
-        starship_route: Annotated[StarshipRoute, Depends(starship_route)],
-        starship_compat: Annotated[StarshipAirflow, Depends(starship_compat)],
-    ):
-        return starship_route(
-            post=starship_compat.update_dag_version_id,
-            kwargs_fn=lambda request_method, args, json: {
-                "dag_id": json.get("dag_id"),
-                "dag_version_id": json.get("dag_version_id"),
-            },
-        )
 
     @router.api_route("/pools", methods=["GET", "POST", "DELETE"])
     @staticmethod
