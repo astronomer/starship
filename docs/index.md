@@ -51,24 +51,6 @@ pip install astronomer-starship
 | OSS Airflow VM      | ✅                      |
 | Astronomer Products | ✅                      |
 
-
-## FAQ
-- **I'm on Airflow 1, can I use Starship?**
-
-    _No, Starship is only compatible with Airflow 2.x and above_, see [Compatibility](#compatability)
-
-- **I'm on Airflow>=2.7 and can't test connections?**
-
-  _You must have `AIRFLOW__CORE__TEST_CONNECTION` set. See notes [here](https://airflow.apache.org/docs/apache-airflow/stable/release_notes.html#disable-default-allowing-the-testing-of-connections-in-ui-api-and-cli-32052)_
-
-- **I'm using Google Cloud Composer 2.x and Airflow 2.x and do not see the `Astronomer` menu and/or the Starship Airflow Plugin?**
-
-    _Run the following to ensure you are a privileged user._
-    ```
-    gcloud config set project <PROJECT_NAME>
-    gcloud composer environments run <ENVIRONMENT_NAME> --location <LOCATION> users add-role -- -e <USER_EMAIL> -r Admin
-    ```
-
 ## Security Notice
 This project is an Airflow Plugin that adds custom API routes. Ensure your environments are correctly secured.
 
