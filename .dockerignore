@@ -2,15 +2,15 @@
 **
 
 !astronomer_starship
-!dev/.astro/
-!dev/dags/
-!dev/include/
-!dev/plugins/
-!dev/tests/
+!dev*/.astro/
+!dev*/dags/
+!dev*/include/
+!dev*/plugins/
+!dev*/tests/
 !tests/
 
-!dev/packages.txt
-!dev/requirements.txt
+!dev*/packages.txt
+!dev*/requirements.txt
 !dist/*.whl
 !pyproject.toml
 

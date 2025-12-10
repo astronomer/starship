@@ -11,18 +11,13 @@ default:
 help:
     @just --list
 
-# Install pre-commit
-install-precommit:
-    pre-commit install
-
-
 # install frontend requirements
 install-frontend:
     cd astronomer_starship && npm install
 
 # install backend requirements
 install-backend EDITABLE="":
-    pip install {{EDITABLE}} '.[dev]'
+    pip install {{EDITABLE}} -c constraints.txt '.[dev]'
 
 # Install the project
 install: clean install-frontend install-backend
@@ -208,6 +203,10 @@ build-docs: clean
 deploy-docs UPSTREAM="origin": clean
     mkdocs gh-deploy -r {{UPSTREAM}}
 
-# run just commands from the dev project for running the local version of Starship in Airflow
-dev *ARGS:
-    @just dev/{{ARGS}}
+# run just commands from the dev2 project for running the local version of Starship in Airflow 2
+dev2 *ARGS:
+    @just dev2/{{ARGS}}
+
+# run just commands from the dev3 project for running the local version of Starship in Airflow 3
+dev3 *ARGS:
+    @just dev3/{{ARGS}}

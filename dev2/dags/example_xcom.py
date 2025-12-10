@@ -24,9 +24,7 @@ def run():
         value=None,
     )
 
-    return ObjectStoragePath(
-        "s3://my-bucket/example/object.txt", conn_id="example_conn"
-    )
+    return ObjectStoragePath("s3://my-bucket/example/object.txt", conn_id="example_conn")
 
 
 @dag(

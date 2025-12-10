@@ -3,14 +3,12 @@ Hooks for interacting with Starship migrations
 """
 
 from abc import ABC, abstractmethod
-
 from typing import List
 
-from airflow.providers.http.hooks.http import HttpHook
 from airflow.hooks.base import BaseHook
+from airflow.providers.http.hooks.http import HttpHook
 
 from astronomer_starship.compat.starship_compatability import StarshipCompatabilityLayer
-
 
 POOLS_ROUTE = "/api/starship/pools"
 CONNECTIONS_ROUTE = "/api/starship/connections"
@@ -117,9 +115,7 @@ class StarshipLocalHook(BaseHook, StarshipHook):
         """
         Get DAG runs from the local Airflow instance.
         """
-        return StarshipCompatabilityLayer().get_dag_runs(
-            dag_id, offset=offset, limit=limit
-        )
+        return StarshipCompatabilityLayer().get_dag_runs(dag_id, offset=offset, limit=limit)
 
     def set_dag_runs(self, dag_runs: list):
         raise RuntimeError("Setting local data is not supported")
@@ -128,9 +124,7 @@ class StarshipLocalHook(BaseHook, StarshipHook):
         """
         Get task instances from the local Airflow instance.
         """
-        return StarshipCompatabilityLayer().get_task_instances(
-            dag_id, offset=offset, limit=limit
-        )
+        return StarshipCompatabilityLayer().get_task_instances(dag_id, offset=offset, limit=limit)
 
     def set_task_instances(self, task_instances: list):
         raise RuntimeError("Setting local data is not supported")

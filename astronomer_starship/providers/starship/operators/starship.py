@@ -2,8 +2,7 @@
 
 import logging
 from datetime import datetime
-from typing import Any, Union, List
-from packaging.version import Version
+from typing import Any, List, Union
 
 import airflow
 from airflow import DAG
@@ -11,12 +10,12 @@ from airflow.decorators import task
 from airflow.exceptions import AirflowSkipException
 from airflow.models.baseoperator import BaseOperator
 from airflow.utils.task_group import TaskGroup
+from packaging.version import Version
 
 from astronomer_starship.providers.starship.hooks.starship import (
-    StarshipLocalHook,
     StarshipHttpHook,
+    StarshipLocalHook,
 )
-
 
 # Compatability Notes:
 # - @task() is >=AF2.0
@@ -42,9 +41,7 @@ class StarshipVariableMigrationOperator(StarshipMigrationOperator):
     def execute(self, context) -> Any:
         logging.info("Getting Variable %s", self.variable_key)
         variables = self.source_hook.get_variables()
-        variable: Union[dict, None] = (
-            [v for v in variables if v["key"] == self.variable_key] or [None]
-        )[0]
+        variable: Union[dict, None] = ([v for v in variables if v["key"] == self.variable_key] or [None])[0]
         if variable is not None:
             logging.info("Migrating Variable %s", self.variable_key)
             self.target_hook.set_variable(**variable)
@@ -72,9 +69,9 @@ def starship_variables_migration(variables: List[str] = None, **kwargs):
 
         variables_results = get_variables()
         if Version(airflow.__version__) >= Version("2.3.0"):
-            StarshipVariableMigrationOperator.partial(
-                task_id="migrate_variables", **kwargs
-            ).expand(variable_key=variables_results)
+            StarshipVariableMigrationOperator.partial(task_id="migrate_variables", **kwargs).expand(
+                variable_key=variables_results
+            )
         else:
             for variable in variables_results.output:
                 variables_results >> StarshipVariableMigrationOperator(
@@ -94,10 +91,9 @@ class StarshipPoolMigrationOperator(StarshipMigrationOperator):
 
     def execute(self, context) -> Any:
         logging.info("Getting Pool %s", self.pool_name)
-        pool: Union[dict, None] = (
-            [v for v in self.source_hook.get_pools() if v["name"] == self.pool_name]
-            or [None]
-        )[0]
+        pool: Union[dict, None] = ([v for v in self.source_hook.get_pools() if v["name"] == self.pool_name] or [None])[
+            0
+        ]
         if pool is not None:
             logging.info("Migrating Pool %s", self.pool_name)
             self.target_hook.set_pool(**pool)
@@ -113,9 +109,7 @@ def starship_pools_migration(pools: List[str] = None, **kwargs):
         def get_pools():
             _pools = StarshipLocalHook().get_pools()
             _pools = (
-                [k["name"] for k in _pools if k["name"] in pools]
-                if pools is not None
-                else [k["name"] for k in _pools]
+                [k["name"] for k in _pools if k["name"] in pools] if pools is not None else [k["name"] for k in _pools]
             )
 
             if not len(_pools):
@@ -124,14 +118,10 @@ def starship_pools_migration(pools: List[str] = None, **kwargs):
 
         pools_result = get_pools()
         if Version(airflow.__version__) >= Version("2.3.0"):
-            StarshipPoolMigrationOperator.partial(
-                task_id="migrate_pools", **kwargs
-            ).expand(pool_name=pools_result)
+            StarshipPoolMigrationOperator.partial(task_id="migrate_pools", **kwargs).expand(pool_name=pools_result)
         else:
             for pool in pools_result.output:
-                pools_result >> StarshipPoolMigrationOperator(
-                    task_id="migrate_pool_" + pool, pool_name=pool, **kwargs
-                )
+                pools_result >> StarshipPoolMigrationOperator(task_id="migrate_pool_" + pool, pool_name=pool, **kwargs)
         return tg
 
 
@@ -145,12 +135,7 @@ class StarshipConnectionMigrationOperator(StarshipMigrationOperator):
     def execute(self, context) -> Any:
         logging.info("Getting Connection %s", self.connection_id)
         connection: Union[dict, None] = (
-            [
-                v
-                for v in self.source_hook.get_connections()
-                if v["conn_id"] == self.connection_id
-            ]
-            or [None]
+            [v for v in self.source_hook.get_connections() if v["conn_id"] == self.connection_id] or [None]
         )[0]
         if connection is not None:
             logging.info("Migrating Connection %s", self.connection_id)
@@ -178,9 +163,9 @@ def starship_connections_migration(connections: List[str] = None, **kwargs):
 
         connections_result = get_connections()
         if Version(airflow.__version__) >= Version("2.3.0"):
-            StarshipConnectionMigrationOperator.partial(
-                task_id="migrate_connections", **kwargs
-            ).expand(connection_id=connections_result)
+            StarshipConnectionMigrationOperator.partial(task_id="migrate_connections", **kwargs).expand(
+                connection_id=connections_result
+            )
         else:
             for connection in connections_result.output:
                 connections_result >> StarshipConnectionMigrationOperator(
@@ -212,34 +197,24 @@ class StarshipDagHistoryMigrationOperator(StarshipMigrationOperator):
         # TODO - Poll until all tasks are done
 
         logging.info("Getting local DAG Runs for %s", self.target_dag_id)
-        dag_runs = self.source_hook.get_dag_runs(
-            dag_id=self.target_dag_id, limit=self.dag_run_limit
-        )
+        dag_runs = self.source_hook.get_dag_runs(dag_id=self.target_dag_id, limit=self.dag_run_limit)
         if len(dag_runs["dag_runs"]) == 0:
             raise AirflowSkipException("No DAG Runs found for " + self.target_dag_id)
 
         logging.info("Getting local Task Instances for %s", self.target_dag_id)
-        task_instances = self.source_hook.get_task_instances(
-            dag_id=self.target_dag_id, limit=self.dag_run_limit
-        )
+        task_instances = self.source_hook.get_task_instances(dag_id=self.target_dag_id, limit=self.dag_run_limit)
         if len(task_instances["task_instances"]) == 0:
-            raise AirflowSkipException(
-                "No Task Instances found for " + self.target_dag_id
-            )
+            raise AirflowSkipException("No Task Instances found for " + self.target_dag_id)
 
         logging.info("Setting target DAG Runs for %s", self.target_dag_id)
         self.target_hook.set_dag_runs(dag_runs=dag_runs["dag_runs"])
 
         logging.info("Setting target Task Instances for %s", self.target_dag_id)
-        self.target_hook.set_task_instances(
-            task_instances=task_instances["task_instances"]
-        )
+        self.target_hook.set_task_instances(task_instances=task_instances["task_instances"])
 
         if self.unpause_dag_in_target:
             logging.info("Unpausing target DAG for %s", self.target_dag_id)
-            self.target_hook.set_dag_is_paused(
-                dag_id=self.target_dag_id, is_paused=False
-            )
+            self.target_hook.set_dag_is_paused(dag_id=self.target_dag_id, is_paused=False)
 
 
 def starship_dag_history_migration(dag_ids: List[str] = None, **kwargs):
@@ -250,18 +225,9 @@ def starship_dag_history_migration(dag_ids: List[str] = None, **kwargs):
         def get_dags():
             _dags = StarshipLocalHook().get_dags()
             _dags = (
-                [
-                    k["dag_id"]
-                    for k in _dags
-                    if k["dag_id"] in dag_ids
-                    and k["dag_id"] != "StarshipAirflowMigrationDAG"
-                ]
+                [k["dag_id"] for k in _dags if k["dag_id"] in dag_ids and k["dag_id"] != "StarshipAirflowMigrationDAG"]
                 if dag_ids is not None
-                else [
-                    k["dag_id"]
-                    for k in _dags
-                    if k["dag_id"] != "StarshipAirflowMigrationDAG"
-                ]
+                else [k["dag_id"] for k in _dags if k["dag_id"] != "StarshipAirflowMigrationDAG"]
             )
 
             if not len(_dags):
@@ -288,7 +254,7 @@ def starship_dag_history_migration(dag_ids: List[str] = None, **kwargs):
 
 
 # noinspection PyPep8Naming
-def StarshipAirflowMigrationDAG(
+def StarshipAirflowMigrationDAG(  # noqa: N802
     http_conn_id: str,
     variables: List[str] = None,
     pools: List[str] = None,
@@ -339,14 +305,8 @@ def StarshipAirflowMigrationDAG(
         """,  # noqa: E501
     )
     with dag:
-        starship_variables_migration(
-            variables=variables, http_conn_id=http_conn_id, **kwargs
-        )
+        starship_variables_migration(variables=variables, http_conn_id=http_conn_id, **kwargs)
         starship_pools_migration(pools=pools, http_conn_id=http_conn_id, **kwargs)
-        starship_connections_migration(
-            connections=connections, http_conn_id=http_conn_id, **kwargs
-        )
-        starship_dag_history_migration(
-            dag_ids=dag_ids, http_conn_id=http_conn_id, **kwargs
-        )
+        starship_connections_migration(connections=connections, http_conn_id=http_conn_id, **kwargs)
+        starship_dag_history_migration(dag_ids=dag_ids, http_conn_id=http_conn_id, **kwargs)
     return dag
