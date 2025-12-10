@@ -759,7 +759,6 @@ class StarshipAirflow30(StarshipAirflow):
 
     def insert_directly(self, table_name, items):  # noqa: C901
         import pickle
-        import uuid
 
         from sqlalchemy import MetaData
         from sqlalchemy.dialects.postgresql import insert
@@ -769,13 +768,8 @@ class StarshipAirflow30(StarshipAirflow):
             return []
 
         for item in items:
-            # For task_instance/task_instance_history: generate new UUIDs
-            # to avoid PK conflicts with source data
-            if "id" in item:
-                if table_name in ["task_instance", "task_instance_history"]:
-                    item["id"] = str(uuid.uuid4())
-                else:
-                    del item["id"]
+            if "id" in item and table_name not in ["task_instance", "task_instance_history"]:
+                del item["id"]
 
             # Strip FK fields that reference source-specific UUIDs
             item.pop("dag_version_id", None)
