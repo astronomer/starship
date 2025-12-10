@@ -22,3 +22,9 @@ _Run the following commands to ensure you are a privileged user._
 gcloud config set project <PROJECT_NAME>
 gcloud composer environments run <ENVIRONMENT_NAME> --location <LOCATION> users add-role -- -e <USER_EMAIL> -r Admin
 ```
+
+## Airflow 3 support
+
+**Is Airflow 3 supported?**
+
+_Yes, Airflow 3 is supported by Starship since version 2.7.0._

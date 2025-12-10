@@ -48,8 +48,10 @@ pip install astronomer-starship
 | Airflow 1           | ❌                      |
 | GCC 1 - Airflow 2.x | [Operator](./operator) |
 | GCC 2 - Airflow 2.x | ✅                      |
-| MWAA v2.0.2         | [Operator](./operator) |
-| MWAA ≥ v2.2.2       | ✅                      |
+| GCC 3 - Airflow 2.x & 3.x| ✅                 |
+| MWAA - Airflow 2.0  | [Operator](./operator) |
+| MWAA - Airflow 2.2+ | ✅                      |
+| MWAA - Airflow 3.x  | ✅                      |
 | OSS Airflow VM      | ✅                      |
 | Astronomer Products | ✅                      |
 
