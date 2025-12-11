@@ -1,4 +1,6 @@
-import { Checkbox, useBoolean, useToast } from '@chakra-ui/react';
+import {
+  Checkbox, useBoolean, useToast, HStack, Spinner,
+} from '@chakra-ui/react';
 import React, { useEffect } from 'react';
 import axios from 'axios';
 import PropTypes from 'prop-types';
@@ -11,28 +13,31 @@ export default function ValidatedUrlCheckbox({
   const toast = useToast();
   useEffect(() => {
     // noinspection JSCheckFunctionSignatures
-    axios.get(proxyUrl(url), { headers: proxyHeaders(token) })
+    axios
+      .get(proxyUrl(url), { headers: proxyHeaders(token) })
       .then((res) => {
         // Valid if it's a 200, has data, and is JSON
-        const isValid = (
-          res.status === 200 &&
-          res.data &&
-          res.headers['content-type'] === 'application/json'
-        );
+        const isValid = res.status === 200 && res.data && res.headers['content-type'] === 'application/json';
         setValid(isValid);
       })
       .catch((err) => {
-        if (err.response.status === 404) {
+        if (err.response?.status === 404) {
+          const resourceName = text === 'Airflow' ? 'Airflow API' : text === 'Starship' ? 'Starship API' : text;
           toast({
-            title: 'Not found',
+            title: `${resourceName} endpoint not found`,
+            description: `Unable to reach ${resourceName} at the specified URL. Please verify the URL is correct and that ${text} is accessible.`,
             status: 'error',
             isClosable: true,
+            duration: 5000,
           });
         } else {
+          const errorMessage = err.response?.data?.error || err.message || err.response?.data || 'Unknown error';
           toast({
-            title: err.response?.data?.error || err.message || err.response?.data,
+            title: `Failed to validate ${text}`,
+            description: typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage),
             status: 'error',
             isClosable: true,
+            duration: 5000,
           });
         }
         setValid(false);
@@ -41,15 +46,19 @@ export default function ValidatedUrlCheckbox({
   }, [url, token]);
 
   return (
-    <Checkbox
-      isReadOnly
-      isInvalid={!valid}
-      isChecked={!loading && valid}
-      // eslint-disable-next-line react/jsx-props-no-spreading
-      {...props}
-    >
-      {text}
-    </Checkbox>
+    <HStack spacing={2}>
+      <Checkbox
+        isReadOnly
+        isInvalid={!valid}
+        isChecked={!loading && valid}
+        cursor="default"
+        // eslint-disable-next-line react/jsx-props-no-spreading
+        {...props}
+      >
+        {text}
+      </Checkbox>
+      {loading && <Spinner size="sm" color="brand.400" thickness="2px" speed="0.8s" emptyColor="gray.200" />}
+    </HStack>
   );
 }
 ValidatedUrlCheckbox.propTypes = {

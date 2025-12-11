@@ -85,35 +85,30 @@ export function proxyHeaders(token) {
  * @param dataDispatch - dispatch route to call to set the data variables
  * @param errorDispatch - dispatch route to call to set the error variable
  */
-export function fetchData(
-  localRouteUrl,
-  remoteRouteUrl,
-  token,
-  loadingDispatch,
-  dataDispatch,
-  errorDispatch,
-) {
+export async function fetchData(localRouteUrl, remoteRouteUrl, token, loadingDispatch, dataDispatch, errorDispatch) {
   if (loadingDispatch) {
     loadingDispatch();
   }
-  axios
-    .get(localRouteUrl)
-    .then((res) => {
-      axios
-        .get(proxyUrl(remoteRouteUrl), { headers: proxyHeaders(token) })
-        .then((rRes) => {
-          if (
-            res.status === 200 && res.headers['content-type'] === 'application/json' &&
-            rRes.status === 200 && res.headers['content-type'] === 'application/json'
-          ){
-            dataDispatch(res, rRes)
-          } else {
-            errorDispatch('Invalid response');
-          }
-        }) // , dispatch))
-        .catch((err) => errorDispatch(err)); // , dispatch));
-    })
-    .catch((err) => errorDispatch(err)); // , dispatch));
+
+  try {
+    const [localRes, remoteRes] = await Promise.all([
+      axios.get(localRouteUrl),
+      axios.get(proxyUrl(remoteRouteUrl), { headers: proxyHeaders(token) }),
+    ]);
+
+    if (
+      localRes.status === 200
+      && localRes.headers['content-type'] === 'application/json'
+      && remoteRes.status === 200
+      && remoteRes.headers['content-type'] === 'application/json'
+    ) {
+      dataDispatch(localRes, remoteRes);
+    } else {
+      errorDispatch(new Error('Invalid response: expected JSON content-type'));
+    }
+  } catch (err) {
+    errorDispatch(err);
+  }
 }
 
 export function objectWithoutKey(object, key) {

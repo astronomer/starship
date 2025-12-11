@@ -13,13 +13,7 @@ export default function HiddenValue({ value }) {
   }
   return (
     <InputGroup size="md">
-      <Input
-        pr="4.5rem"
-        type={show ? 'text' : 'password'}
-        value={value || ''}
-        isReadOnly
-        border="0"
-      />
+      <Input pr="4.5rem" type={show ? 'text' : 'password'} value={value || ''} isReadOnly border="0" />
       <InputRightElement width="4.5rem">
         <Button h="1.75rem" size="sm" onClick={handleClick}>
           {show ? 'Hide' : 'Show'}

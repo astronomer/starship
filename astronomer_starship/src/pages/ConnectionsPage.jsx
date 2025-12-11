@@ -1,105 +1,200 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
 import {
-  Button, HStack, Spacer, Text,
+  Button, HStack, Text, useToast, Box, Heading, VStack, Stack,
 } from '@chakra-ui/react';
-import PropTypes from 'prop-types';
 import { RepeatIcon } from '@chakra-ui/icons';
-import StarshipPage from '../component/StarshipPage';
+import axios from 'axios';
+
+import { useAppState, useAppDispatch } from '../AppContext';
 import MigrateButton from '../component/MigrateButton';
 import HiddenValue from '../component/HiddenValue';
+import ProgressSummary from '../component/ProgressSummary';
+import DataTable from '../component/DataTable';
+import PageLoading from '../component/PageLoading';
 import {
-  fetchData, localRoute, objectWithoutKey, proxyHeaders, proxyUrl, remoteRoute,
+  localRoute, objectWithoutKey, proxyHeaders, proxyUrl,
 } from '../util';
 import constants from '../constants';
 
 const columnHelper = createColumnHelper();
-const passwordColumn = columnHelper.accessor('password', {
-  id: 'password', cell: (props) => <HiddenValue value={props.getValue()} />,
-});
-const extraColumn = columnHelper.accessor('extra', {
-  id: 'extra', cell: (props) => <HiddenValue value={props.getValue()} />,
-});
 
-function setConnectionsData(localData, remoteData) {
-  return localData.map(
-    (d) => ({
-      ...d,
-      exists: remoteData.map(
-        // eslint-disable-next-line camelcase
-        ({ conn_id }) => conn_id,
-      ).includes(d.conn_id),
-    }),
-  );
+function mergeData(localData, remoteData) {
+  return localData.map((item) => ({
+    ...item,
+    exists: remoteData.some((remote) => remote.conn_id === item.conn_id),
+  }));
 }
 
-export default function ConnectionsPage({ state, dispatch }) {
-  const [data, setData] = useState(
-    setConnectionsData(state.connectionsLocalData, state.connectionsRemoteData),
-  );
-  const fetchPageData = () => fetchData(
-    localRoute(constants.CONNECTIONS_ROUTE),
-    remoteRoute(state.targetUrl, constants.CONNECTIONS_ROUTE),
-    state.token,
-    () => dispatch({ type: 'set-connections-loading' }),
-    (res, rRes) => dispatch({
-      type: 'set-connections-data', connectionsLocalData: res.data, connectionsRemoteData: rRes.data,
-    }),
-    (err) => dispatch({ type: 'set-connections-error', error: err }),
-  );
-  useEffect(() => fetchPageData(), []);
-  useEffect(
-    () => setData(setConnectionsData(state.connectionsLocalData, state.connectionsRemoteData)),
-    [state],
-  );
+export default function ConnectionsPage() {
+  const { targetUrl, token } = useAppState();
+  const dispatch = useAppDispatch();
+  const toast = useToast();
 
-  // noinspection JSCheckFunctionSignatures
-  const columns = [
-    columnHelper.accessor('conn_id'),
-    columnHelper.accessor('conn_type'),
-    columnHelper.accessor('host'),
-    columnHelper.accessor('port'),
-    columnHelper.accessor('schema'),
-    columnHelper.accessor('login'),
-    passwordColumn,
-    extraColumn,
+  // Local state for this page only
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [data, setData] = useState([]);
+  const [isMigratingAll, setIsMigratingAll] = useState(false);
+
+  // Fetch data on mount
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const [localRes, remoteRes] = await Promise.all([
+        axios.get(localRoute(constants.CONNECTIONS_ROUTE)),
+        axios.get(proxyUrl(targetUrl + constants.CONNECTIONS_ROUTE), {
+          headers: proxyHeaders(token),
+        }),
+      ]);
+
+      if (localRes.status === 200 && remoteRes.status === 200) {
+        setData(mergeData(localRes.data, remoteRes.data));
+      } else {
+        throw new Error('Invalid response from server');
+      }
+    } catch (err) {
+      setError(err);
+      if (err.response?.status === 401) {
+        dispatch({ type: 'invalidate-token' });
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [targetUrl, token, dispatch]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Handle individual item status change
+  const handleItemStatusChange = useCallback((connId, newStatus) => {
+    setData((prev) => prev.map((item) => (
+      item.conn_id === connId ? { ...item, exists: newStatus } : item
+    )));
+  }, []);
+
+  // Migrate all unmigrated items
+  const handleMigrateAll = async () => {
+    const unmigratedItems = data.filter((item) => !item.exists);
+    if (unmigratedItems.length === 0) return;
+
+    setIsMigratingAll(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const item of unmigratedItems) {
+      try {
+        await axios.post(
+          proxyUrl(targetUrl + constants.CONNECTIONS_ROUTE),
+          objectWithoutKey(item, 'exists'),
+          { headers: proxyHeaders(token) },
+        );
+        successCount += 1;
+        setData((prev) => prev.map((d) => (
+          d.conn_id === item.conn_id ? { ...d, exists: true } : d
+        )));
+      } catch (err) {
+        errorCount += 1;
+      }
+    }
+
+    setIsMigratingAll(false);
+
+    toast({
+      title: successCount > 0
+        ? `Successfully migrated ${successCount} connection${successCount !== 1 ? 's' : ''}`
+        : 'Migration failed',
+      description: errorCount > 0 ? `${errorCount} item${errorCount !== 1 ? 's' : ''} failed` : undefined,
+      status: successCount > 0 ? (errorCount > 0 ? 'warning' : 'success') : 'error',
+      duration: 5000,
+      isClosable: true,
+    });
+  };
+
+  // Define columns
+  const columns = React.useMemo(() => [
+    columnHelper.accessor('conn_id', { header: 'Connection ID' }),
+    columnHelper.accessor('conn_type', { header: 'Type' }),
+    columnHelper.accessor('host', { header: 'Host' }),
+    columnHelper.accessor('port', { header: 'Port' }),
+    columnHelper.accessor('schema', { header: 'Schema' }),
+    columnHelper.accessor('login', { header: 'Login' }),
+    columnHelper.accessor('password', {
+      header: 'Password',
+      cell: ({ getValue }) => <HiddenValue value={getValue()} />,
+    }),
+    columnHelper.accessor('extra', {
+      header: 'Extra',
+      cell: ({ getValue }) => <HiddenValue value={getValue()} />,
+    }),
     columnHelper.display({
       id: 'migrate',
       header: 'Migrate',
-      // eslint-disable-next-line react/no-unstable-nested-components
-      cell: (info) => (
+      meta: { align: 'right' },
+      cell: ({ row }) => (
         <MigrateButton
-          route={proxyUrl(state.targetUrl + constants.CONNECTIONS_ROUTE)}
-          headers={proxyHeaders(state.token)}
-          existsInRemote={info.row.original.exists}
-          sendData={{ ...objectWithoutKey(info.row.original, 'exists') }}
+          route={proxyUrl(targetUrl + constants.CONNECTIONS_ROUTE)}
+          headers={proxyHeaders(token)}
+          existsInRemote={row.original.exists}
+          sendData={objectWithoutKey(row.original, 'exists')}
+          onStatusChange={(newStatus) => handleItemStatusChange(row.original.conn_id, newStatus)}
         />
       ),
     }),
-  ];
+  ], [targetUrl, token, handleItemStatusChange]);
+
+  // Calculate progress
+  const totalItems = data.length;
+  const migratedItems = data.filter((item) => item.exists).length;
+
   return (
-    <StarshipPage
-      description={(
-        <HStack>
-          <Text fontSize="xl">
-            Airflow Connection objects are used for storing credentials and other information
-            necessary for connecting to external services.
-            Connections can be defined via multiple mechanisms,
-            Starship only migrates values stored via the Airflow UI.
+    <Box>
+      <Stack
+        direction={{ base: 'column', md: 'row' }}
+        justify="space-between"
+        align={{ base: 'flex-start', md: 'center' }}
+        mb={3}
+      >
+        <Box>
+          <Heading size="md" mb={0.5}>Connections</Heading>
+          <Text fontSize="xs" color="gray.600">
+            Airflow Connection objects store credentials for external services.
           </Text>
-          <Spacer />
-          <Button size="sm" leftIcon={<RepeatIcon />} onClick={() => fetchPageData()}>Reset</Button>
+        </Box>
+        <HStack>
+          <Button
+            size="sm"
+            leftIcon={<RepeatIcon />}
+            onClick={fetchData}
+            variant="outline"
+            isLoading={loading}
+          >
+            Refresh
+          </Button>
         </HStack>
-      )}
-      loading={state.connectionsLoading}
-      data={data}
-      columns={columns}
-      error={state.error}
-    />
+      </Stack>
+
+      <VStack spacing={3} align="stretch" w="100%">
+        {!loading && !error && (
+          <ProgressSummary
+            totalItems={totalItems}
+            migratedItems={migratedItems}
+            onMigrateAll={handleMigrateAll}
+            isMigratingAll={isMigratingAll}
+          />
+        )}
+
+        <Box>
+          {loading || error ? (
+            <PageLoading loading={loading} error={error} />
+          ) : (
+            <DataTable data={data} columns={columns} searchPlaceholder="Search connections..." />
+          )}
+        </Box>
+      </VStack>
+    </Box>
   );
 }
-ConnectionsPage.propTypes = {
-  // eslint-disable-next-line react/forbid-prop-types
-  state: PropTypes.object.isRequired,
-  dispatch: PropTypes.func.isRequired,
-};

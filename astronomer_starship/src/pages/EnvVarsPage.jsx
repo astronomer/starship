@@ -1,35 +1,41 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
-import { Button, HStack, Spacer, Text, useToast, } from '@chakra-ui/react';
+import {
+  Button, HStack, Text, useToast, Box, Heading, VStack, Stack,
+} from '@chakra-ui/react';
 import PropTypes from 'prop-types';
 import axios from 'axios';
 import { MdErrorOutline } from 'react-icons/md';
 import { FaCheck } from 'react-icons/fa';
 import { GoUpload } from 'react-icons/go';
 import { RepeatIcon } from '@chakra-ui/icons';
-import StarshipPage from '../component/StarshipPage';
+
+import { useAppState, useAppDispatch } from '../AppContext';
+import ProgressSummary from '../component/ProgressSummary';
+import DataTable from '../component/DataTable';
+import PageLoading from '../component/PageLoading';
+import HiddenValue from '../component/HiddenValue';
 import {
-  fetchData,
   getAstroEnvVarRoute,
   getHoustonRoute,
   localRoute,
   proxyHeaders,
   proxyUrl,
-  remoteRoute,
 } from '../util';
 import constants, { getDeploymentsQuery, updateDeploymentVariablesMutation } from '../constants';
-import HiddenValue from "../component/HiddenValue.jsx";
 
+const columnHelper = createColumnHelper();
 
+// Custom migrate button for env vars (different API pattern)
 function EnvVarMigrateButton({
-  route, headers, existsInRemote, sendData, isAstro, deploymentId, releaseName
+  route, headers, existsInRemote, sendData, isAstro, deploymentId, releaseName, onStatusChange,
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const toast = useToast();
   const [exists, setExists] = useState(existsInRemote);
 
-  const errFn = (err) => {
+  const handleError = (err) => {
     setExists(false);
     setLoading(false);
     toast({
@@ -38,82 +44,67 @@ function EnvVarMigrateButton({
       isClosable: true,
     });
     setError(err);
-  }
+  };
 
-  function handleSoftwareClick() {
-    // POST https://houston.BASEDOMAIN/v1
+  const handleSoftwareClick = () => {
     setLoading(true);
-    axios.post(
-      route,
-      {
-        operationName: "deploymentVariables",
+    axios
+      .post(route, {
+        operationName: 'deploymentVariables',
         query: getDeploymentsQuery,
-        variables: {
-          "deploymentUuid": deploymentId,
-          "releaseName": releaseName,
-        }
-      },
-      { headers }
-    )
-      .then((res) => {
-        let variables = res.data?.data?.deploymentVariables || [];
-        // TODO - DEDUPE? Check if key already exists and reject
+        variables: { deploymentUuid: deploymentId, releaseName },
+      }, { headers })
+      .then((fetchRes) => {
+        const variables = fetchRes.data?.data?.deploymentVariables || [];
         variables.push(sendData);
-        axios.post(
-            route,
-            {
-              operationName: "UpdateDeploymentVariables",
-              query: updateDeploymentVariablesMutation,
-              variables: {
-                "deploymentUuid": deploymentId,
-                "releaseName": releaseName,
-                "environmentVariables": variables,
-              }
-            },
-            { headers }
-        )
-          .then((res) => {
-            setLoading(false);
-            setExists(res.status === 200);
-          })
-          .catch(errFn);
+        return axios.post(route, {
+          operationName: 'UpdateDeploymentVariables',
+          query: updateDeploymentVariablesMutation,
+          variables: { deploymentUuid: deploymentId, releaseName, environmentVariables: variables },
+        }, { headers });
       })
-      .catch(errFn);
-  }
+      .then((updateRes) => {
+        setLoading(false);
+        const newStatus = updateRes.status === 200;
+        setExists(newStatus);
+        if (onStatusChange) onStatusChange(newStatus);
+      })
+      .catch(handleError);
+  };
 
-  function handleAstroClick() {
+  const handleAstroClick = () => {
     setLoading(true);
-    // GET/POST https://api.astronomer.io/platform/v1beta1/organizations/:organizationId/deployments/:deploymentId
-    axios.get(route, { headers })
-      .then((res) => {
-        // TODO - DEDUPE? Check if key already exists and reject
-        res.data?.environmentVariables.push(sendData);
-        axios.post(route, res.data, { headers })
-        .then((res) => {
-          setLoading(false);
-          setExists(res.status === 200);
-        })
-        .catch(errFn);
+    axios
+      .get(route, { headers })
+      .then((fetchRes) => {
+        fetchRes.data?.environmentVariables.push(sendData);
+        return axios.post(route, fetchRes.data, { headers });
       })
-      .catch(errFn);
-  }
+      .then((postRes) => {
+        setLoading(false);
+        const newStatus = postRes.status === 200;
+        setExists(newStatus);
+        if (onStatusChange) onStatusChange(newStatus);
+      })
+      .catch(handleError);
+  };
+
+  /* eslint-disable no-nested-ternary */
   return (
     <Button
+      size="sm"
+      variant="outline"
       isDisabled={loading || exists}
       isLoading={loading}
       loadingText="Loading"
-      variant="solid"
-      leftIcon={(
-          error ? <MdErrorOutline /> : exists ? <FaCheck /> : !loading ? <GoUpload /> : <span />
-        )}
-      colorScheme={
-          exists ? 'green' : loading ? 'teal' : error ? 'red' : 'teal'
-        }
-      onClick={() => isAstro ? handleAstroClick() : handleSoftwareClick()}
+      leftIcon={error ? <MdErrorOutline /> : exists ? <FaCheck /> : !loading ? <GoUpload /> : <span />}
+      colorScheme={exists ? 'green' : error ? 'red' : 'green'}
+      onClick={() => (isAstro ? handleAstroClick() : handleSoftwareClick())}
     >
-      {exists ? 'Ok' : loading ? '' : error ? 'Error!' : 'Migrate'}
+      {exists ? 'Ok' : error ? 'Error!' : 'Migrate'}
     </Button>
   );
+  /* eslint-enable no-nested-ternary */
 }
 
 EnvVarMigrateButton.propTypes = {
@@ -121,105 +112,171 @@ EnvVarMigrateButton.propTypes = {
   headers: PropTypes.objectOf(PropTypes.string),
   existsInRemote: PropTypes.bool,
   isAstro: PropTypes.bool.isRequired,
-  // eslint-disable-next-line react/forbid-prop-types
-  sendData: PropTypes.object.isRequired,
+  sendData: PropTypes.shape({
+    key: PropTypes.string,
+    value: PropTypes.string,
+    isSecret: PropTypes.bool,
+  }).isRequired,
   deploymentId: PropTypes.string,
   releaseName: PropTypes.string,
+  onStatusChange: PropTypes.func,
 };
+
 EnvVarMigrateButton.defaultProps = {
   headers: {},
   existsInRemote: false,
   deploymentId: null,
   releaseName: null,
+  onStatusChange: null,
 };
 
-const columnHelper = createColumnHelper();
-const valueColumn = columnHelper.accessor('value', {
-  id: 'value', cell: (props) => <HiddenValue value={props.getValue()} />,
-});
-
-function setEnvData(localData, remoteData) {
-  return Object.entries(localData).map(
-    ([key, value]) => ({ key, value }),
-  ).map((d) => ({
-    ...d,
-    exists: d.key in remoteData,
-  }));
+function mergeData(localData, remoteData) {
+  return Object.entries(localData)
+    .map(([key, value]) => ({ key, value }))
+    .map((item) => ({ ...item, exists: item.key in remoteData }));
 }
 
-export default function EnvVarsPage({ state, dispatch }) {
-  const [data, setData] = useState(setEnvData(state.envLocalData, state.envRemoteData));
-  const fetchPageData = () => fetchData(
-    localRoute(constants.ENV_VAR_ROUTE),
-    remoteRoute(state.targetUrl, constants.ENV_VAR_ROUTE),
-    state.token,
-    () => dispatch({ type: 'set-env-loading' }),
-    (res, rRes) => dispatch({
-      type: 'set-env-data', envLocalData: res.data, envRemoteData: rRes.data,
-    }),
-    (err) => dispatch({ type: 'set-env-error', error: err }),
-  );
-  useEffect(() => fetchPageData(), []);
-  useEffect(
-    () => {
-      setData(setEnvData(state.envLocalData, state.envRemoteData))
-    },
-    [state],
-  );
-  //
+export default function EnvVarsPage() {
+  const {
+    targetUrl, token, isAstro, organizationId, deploymentId, releaseName, urlOrgPart,
+  } = useAppState();
+  const dispatch = useAppDispatch();
+  const toast = useToast();
 
-  // noinspection JSCheckFunctionSignatures
-  const columns = [
-    columnHelper.accessor('key'),
-    valueColumn,
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [data, setData] = useState([]);
+  const [isMigratingAll, setIsMigratingAll] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const [localRes, remoteRes] = await Promise.all([
+        axios.get(localRoute(constants.ENV_VAR_ROUTE)),
+        axios.get(proxyUrl(targetUrl + constants.ENV_VAR_ROUTE), {
+          headers: proxyHeaders(token),
+        }),
+      ]);
+
+      if (localRes.status === 200 && remoteRes.status === 200) {
+        setData(mergeData(localRes.data, remoteRes.data));
+        // Extract org/deployment IDs from remote data
+        if (remoteRes.data.ASTRO_ORGANIZATION_ID || remoteRes.data.ASTRO_DEPLOYMENT_ID) {
+          dispatch({
+            type: 'set-organization-id',
+            organizationId: remoteRes.data.ASTRO_ORGANIZATION_ID,
+            deploymentId: remoteRes.data.ASTRO_DEPLOYMENT_ID,
+          });
+        }
+      } else {
+        throw new Error('Invalid response from server');
+      }
+    } catch (err) {
+      setError(err);
+      if (err.response?.status === 401) {
+        dispatch({ type: 'invalidate-token' });
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [targetUrl, token, dispatch]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleItemStatusChange = useCallback((key, newStatus) => {
+    setData((prev) => prev.map((item) => (item.key === key ? { ...item, exists: newStatus } : item)));
+  }, []);
+
+  const handleMigrateAll = async () => {
+    toast({
+      title: 'Bulk migration not yet supported for Environment Variables',
+      description: 'Please migrate environment variables individually',
+      status: 'info',
+      duration: 5000,
+      isClosable: true,
+    });
+    setIsMigratingAll(false);
+  };
+
+  const columns = React.useMemo(() => [
+    columnHelper.accessor('key', { header: 'Key' }),
+    columnHelper.accessor('value', {
+      header: 'Value',
+      cell: ({ getValue }) => <HiddenValue value={getValue()} />,
+    }),
     columnHelper.display({
       id: 'migrate',
       header: 'Migrate',
-      // eslint-disable-next-line react/no-unstable-nested-components
-      cell: (info) => (
-         <EnvVarMigrateButton
-          route={
-            state.isAstro ?
-              proxyUrl(getAstroEnvVarRoute(state.organizationId, state.deploymentId)) :
-              proxyUrl(getHoustonRoute(state.urlOrgPart))
-          }
-          headers={proxyHeaders(state.token)}
-          existsInRemote={info.row.original.exists}
-          sendData={{
-            key: info.row.getValue('key'),
-            value: info.row.getValue('value'),
-            isSecret: false
-          }}
-          isAstro={state.isAstro}
-          deploymentId={state.deploymentId}
-          releaseName={state.releaseName}
-         />
+      meta: { align: 'right' },
+      cell: ({ row }) => (
+        <EnvVarMigrateButton
+          route={isAstro
+            ? proxyUrl(getAstroEnvVarRoute(organizationId, deploymentId))
+            : proxyUrl(getHoustonRoute(urlOrgPart))}
+          headers={proxyHeaders(token)}
+          existsInRemote={row.original.exists}
+          sendData={{ key: row.original.key, value: row.original.value, isSecret: false }}
+          isAstro={isAstro}
+          deploymentId={deploymentId}
+          releaseName={releaseName}
+          onStatusChange={(newStatus) => handleItemStatusChange(row.original.key, newStatus)}
+        />
       ),
     }),
-  ];
+  ], [isAstro, organizationId, deploymentId, urlOrgPart, token, releaseName, handleItemStatusChange]);
+
+  const totalItems = data.length;
+  const migratedItems = data.filter((item) => item.exists).length;
 
   return (
-    <StarshipPage
-      description={(
-        <HStack>
-          <Text fontSize="xl">
-            Environment Variables can be used to set Airflow Configurations, Connections,
-            Variables, or as values directly accessed from a DAG or Task.
+    <Box>
+      <Stack
+        direction={{ base: 'column', md: 'row' }}
+        justify="space-between"
+        align={{ base: 'flex-start', md: 'center' }}
+        mb={3}
+      >
+        <Box>
+          <Heading size="md" mb={0.5}>Environment Variables</Heading>
+          <Text fontSize="xs" color="gray.600">
+            Environment variables for Airflow configurations and DAG access.
           </Text>
-          <Spacer />
-          <Button size="sm" leftIcon={<RepeatIcon />} onClick={() => fetchPageData()}>Reset</Button>
+        </Box>
+        <HStack>
+          <Button
+            size="sm"
+            leftIcon={<RepeatIcon />}
+            onClick={fetchData}
+            variant="outline"
+            isLoading={loading}
+          >
+            Refresh
+          </Button>
         </HStack>
-      )}
-      loading={state.envLoading}
-      data={data}
-      columns={columns}
-      error={state.envError}
-      resetFn={fetchPageData}
-    />
+      </Stack>
+
+      <VStack spacing={3} align="stretch" w="100%">
+        {!loading && !error && (
+          <ProgressSummary
+            totalItems={totalItems}
+            migratedItems={migratedItems}
+            onMigrateAll={handleMigrateAll}
+            isMigratingAll={isMigratingAll}
+          />
+        )}
+
+        <Box>
+          {loading || error ? (
+            <PageLoading loading={loading} error={error} />
+          ) : (
+            <DataTable data={data} columns={columns} searchPlaceholder="Search environment variables..." />
+          )}
+        </Box>
+      </VStack>
+    </Box>
   );
 }
-EnvVarsPage.propTypes = {
-  // eslint-disable-next-line react/forbid-prop-types
-  state: PropTypes.object.isRequired,
-  dispatch: PropTypes.func.isRequired,
-};
