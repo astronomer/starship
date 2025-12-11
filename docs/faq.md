@@ -28,3 +28,9 @@ gcloud composer environments run <ENVIRONMENT_NAME> --location <LOCATION> users 
 **Is Airflow 3 supported?**
 
 _Yes, Airflow 3 is supported by Starship since version 2.7.0._
+
+## Migrate to Airflow 3
+
+**Can I use Starship to migrate from Airflow 2 to Airflow 3?**
+
+_No, Starship should only be used for migrating between two instances of Airflow running the same Airflow and Starship version._
