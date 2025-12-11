@@ -5,10 +5,17 @@ Hooks for interacting with Starship migrations
 from abc import ABC, abstractmethod
 from typing import List
 
-from airflow.hooks.base import BaseHook
 from airflow.providers.http.hooks.http import HttpHook
 
+from astronomer_starship.compat import AIRFLOW_V_2, AIRFLOW_V_3
 from astronomer_starship.compat.starship_compatability import StarshipCompatabilityLayer
+
+if AIRFLOW_V_3:
+    from airflow.sdk import BaseHook
+elif AIRFLOW_V_2:
+    from airflow.hooks.base import BaseHook
+else:
+    raise RuntimeError("Unsupported Airflow version")
 
 POOLS_ROUTE = "/api/starship/pools"
 CONNECTIONS_ROUTE = "/api/starship/connections"
