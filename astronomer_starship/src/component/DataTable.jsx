@@ -1,80 +1,179 @@
-import * as React from 'react';
+import React, { useState } from 'react';
 import {
-  Table, Thead, Tbody, Tr, Th, Td, chakra, TableContainer,
+  Box,
+  HStack,
+  Input,
+  InputGroup,
+  InputLeftElement,
+  Table,
+  TableContainer,
+  Tbody,
+  Td,
+  Text,
+  Th,
+  Thead,
+  Tr,
+  chakra,
 } from '@chakra-ui/react';
-import { TriangleDownIcon, TriangleUpIcon } from '@chakra-ui/icons';
+import { SearchIcon, TriangleDownIcon, TriangleUpIcon } from '@chakra-ui/icons';
 import {
   useReactTable,
   flexRender,
   getCoreRowModel,
   getSortedRowModel,
+  getFilteredRowModel,
 } from '@tanstack/react-table';
+import PropTypes from 'prop-types';
+
+/**
+ * Global filter function for searching across all columns
+ */
+function globalFilterFn(row, columnId, filterValue) {
+  const search = filterValue.toLowerCase();
+  const value = row.getValue(columnId);
+
+  if (value == null) return false;
+
+  // Handle arrays (like tags)
+  if (Array.isArray(value)) {
+    return value.some((item) => String(item).toLowerCase().includes(search));
+  }
+
+  // Handle objects
+  if (typeof value === 'object') {
+    return JSON.stringify(value).toLowerCase().includes(search);
+  }
+
+  return String(value).toLowerCase().includes(search);
+}
 
 export default function DataTable({
   data,
   columns,
+  searchPlaceholder,
+  showSearch,
+  rightElement,
 }) {
-  const [sorting, setSorting] = React.useState([]);
+  const [sorting, setSorting] = useState([]);
+  const [globalFilter, setGlobalFilter] = useState('');
+
   const table = useReactTable({
     columns,
     data,
     getCoreRowModel: getCoreRowModel(),
     onSortingChange: setSorting,
     getSortedRowModel: getSortedRowModel(),
-    state: {sorting},
+    getFilteredRowModel: getFilteredRowModel(),
+    onGlobalFilterChange: setGlobalFilter,
+    globalFilterFn,
+    state: { sorting, globalFilter },
   });
 
-  return (
-    <TableContainer>
-      <Table className="data-table">
-        <Thead>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <Tr key={headerGroup.id}>
-              {headerGroup.headers.map((header) => {
-                // see https://tanstack.com/table/v8/docs/api/core/column-def#meta to type this correctly
-                const {meta} = header.column.columnDef;
-                return (
-                  <Th
-                    key={header.id}
-                    onClick={header.column.getToggleSortingHandler()}
-                    isNumeric={meta?.isNumeric}
-                  >
-                    {flexRender(
-                      header.column.columnDef.header,
-                      header.getContext(),
-                    )}
+  const rowCount = table.getFilteredRowModel().rows.length;
+  const totalCount = data.length;
 
-                    <chakra.span pl="4">
-                      {header.column.getIsSorted() ? (
-                        header.column.getIsSorted() === 'desc' ? (
+  return (
+    <Box>
+      {showSearch && (
+        <HStack mb={3} justify="space-between" align="center">
+          <HStack spacing={3} flex={1}>
+            <InputGroup size="sm" maxW="300px">
+              <InputLeftElement pointerEvents="none">
+                <SearchIcon color="gray.400" />
+              </InputLeftElement>
+              <Input
+                placeholder={searchPlaceholder}
+                value={globalFilter}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                borderRadius="md"
+                focusBorderColor="brand.400"
+              />
+            </InputGroup>
+            {globalFilter && (
+              <Text fontSize="sm" color="gray.500">
+                {rowCount} of {totalCount} items
+              </Text>
+            )}
+          </HStack>
+          {rightElement}
+        </HStack>
+      )}
+      <TableContainer className="data-table">
+        <Table variant="striped" size="sm">
+          <Thead>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <Tr key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  const { meta } = header.column.columnDef;
+                  return (
+                    <Th
+                      key={header.id}
+                      onClick={header.column.getToggleSortingHandler()}
+                      isNumeric={meta?.isNumeric}
+                      textAlign={meta?.align || (meta?.isNumeric ? 'right' : 'left')}
+                      width={meta?.width || 'auto'}
+                      cursor="pointer"
+                    >
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(header.column.columnDef.header, header.getContext())}
+                      <chakra.span pl="4">
+                        {header.column.getIsSorted() === 'desc' && (
                           <TriangleDownIcon aria-label="sorted descending" />
-                        ) : (
+                        )}
+                        {header.column.getIsSorted() === 'asc' && (
                           <TriangleUpIcon aria-label="sorted ascending" />
-                        )
-                      ) : null}
-                    </chakra.span>
-                  </Th>
-                );
-              })}
-            </Tr>
-          ))}
-        </Thead>
-        <Tbody>
-          {table.getRowModel().rows.map((row) => (
-            <Tr key={row.id}>
-              {row.getVisibleCells().map((cell) => {
-                // see https://tanstack.com/table/v8/docs/api/core/column-def#meta to type this correctly
-                const {meta} = cell.column.columnDef;
-                return (
-                  <Td maxW={100} key={cell.id} isNumeric={meta?.isNumeric}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </Td>
-                );
-              })}
-            </Tr>
-          ))}
-        </Tbody>
-      </Table>
-    </TableContainer>
+                        )}
+                      </chakra.span>
+                    </Th>
+                  );
+                })}
+              </Tr>
+            ))}
+          </Thead>
+          <Tbody>
+            {table.getFilteredRowModel().rows.length === 0 ? (
+              <Tr>
+                <Td colSpan={columns.length} textAlign="center" py={8} color="gray.500">
+                  {globalFilter ? 'No matching results' : 'No data available'}
+                </Td>
+              </Tr>
+            ) : (
+              table.getFilteredRowModel().rows.map((row) => (
+                <Tr key={row.id}>
+                  {row.getVisibleCells().map((cell) => {
+                    const { meta } = cell.column.columnDef;
+                    return (
+                      <Td
+                        key={cell.id}
+                        isNumeric={meta?.isNumeric}
+                        textAlign={meta?.align || (meta?.isNumeric ? 'right' : 'left')}
+                        width={meta?.width || 'auto'}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </Td>
+                    );
+                  })}
+                </Tr>
+              ))
+            )}
+          </Tbody>
+        </Table>
+      </TableContainer>
+    </Box>
   );
 }
+
+DataTable.propTypes = {
+  data: PropTypes.arrayOf(PropTypes.object).isRequired,
+  columns: PropTypes.arrayOf(PropTypes.object).isRequired,
+  searchPlaceholder: PropTypes.string,
+  showSearch: PropTypes.bool,
+  rightElement: PropTypes.node,
+};
+
+DataTable.defaultProps = {
+  searchPlaceholder: 'Search...',
+  showSearch: true,
+  rightElement: null,
+};
