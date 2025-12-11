@@ -5,17 +5,25 @@ from datetime import datetime
 from typing import Any, List, Union
 
 import airflow
-from airflow import DAG
-from airflow.decorators import task
 from airflow.exceptions import AirflowSkipException
-from airflow.models.baseoperator import BaseOperator
-from airflow.utils.task_group import TaskGroup
 from packaging.version import Version
 
+from astronomer_starship.compat import AIRFLOW_V_2, AIRFLOW_V_3
 from astronomer_starship.providers.starship.hooks.starship import (
     StarshipHttpHook,
     StarshipLocalHook,
 )
+
+if AIRFLOW_V_3:
+    from airflow.sdk import DAG, BaseOperator, TaskGroup, task
+elif AIRFLOW_V_2:
+    from airflow import DAG
+    from airflow.decorators import task
+    from airflow.models.baseoperator import BaseOperator
+    from airflow.utils.task_group import TaskGroup
+else:
+    raise RuntimeError("Unsupported Airflow version")
+
 
 # Compatability Notes:
 # - @task() is >=AF2.0
