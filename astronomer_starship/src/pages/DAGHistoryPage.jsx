@@ -38,7 +38,7 @@ import { useAppState, useAppDispatch } from '../AppContext';
 import DataTable from '../component/DataTable';
 import PageLoading from '../component/PageLoading';
 import TooltipHeader from '../component/TooltipHeader';
-import { localRoute, proxyHeaders, proxyUrl } from '../util';
+import { localRoute, proxyHeaders, proxyUrl, getDagViewPath } from '../util';
 import constants from '../constants';
 
 const columnHelper = createColumnHelper();
@@ -225,7 +225,7 @@ function mergeDagData(localData, remoteData) {
 }
 
 export default function DAGHistoryPage() {
-  const { targetUrl, token, limit, batchSize } = useAppState();
+  const { targetUrl, token, limit, batchSize, localAirflowVersion } = useAppState();
   const dispatch = useAppDispatch();
   const toast = useToast();
 
@@ -238,6 +238,14 @@ export default function DAGHistoryPage() {
     setError(null);
 
     try {
+      // Fetch local Airflow version if not already known
+      if (!localAirflowVersion) {
+        const infoRes = await axios.get(localRoute('/api/starship/info'));
+        if (infoRes.status === 200 && infoRes.data?.airflow_version) {
+          dispatch({ type: 'set-local-airflow-version', version: infoRes.data.airflow_version });
+        }
+      }
+
       const [localRes, remoteRes] = await Promise.all([
         axios.get(localRoute(constants.DAGS_ROUTE)),
         axios.get(proxyUrl(targetUrl + constants.DAGS_ROUTE), { headers: proxyHeaders(token) }),
@@ -256,7 +264,7 @@ export default function DAGHistoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [targetUrl, token, dispatch]);
+  }, [targetUrl, token, dispatch, localAirflowVersion]);
 
   useEffect(() => {
     fetchData();
@@ -324,9 +332,11 @@ export default function DAGHistoryPage() {
       header: 'ID',
       cell: ({ row, getValue }) => (
         <Tooltip hasArrow label={`File: ${row.original.local.fileloc}`}>
-          <Link isExternal href={localRoute(`/dags/${getValue()}`)} color="moonshot.700" fontWeight="semibold">
-            {getValue()}<ExternalLinkIcon mx="2px" />
-          </Link>
+          <Box as="span">
+            <Link isExternal href={localRoute(getDagViewPath(getValue(), localAirflowVersion))} color="moonshot.700" fontWeight="semibold">
+              {getValue()}<ExternalLinkIcon mx="2px" />
+            </Link>
+          </Box>
         </Tooltip>
       ),
     }),
@@ -339,7 +349,7 @@ export default function DAGHistoryPage() {
         return (
           <HStack spacing={1} flexWrap="wrap">
             {tags.map((tag) => (
-              <Tag key={tag} size="sm">
+              <Tag key={tag} size="sm" colorScheme="purple" variant="solid">
                 {tag}
               </Tag>
             ))}
@@ -421,7 +431,7 @@ export default function DAGHistoryPage() {
         />
       ),
     }),
-  ], [targetUrl, token, limit, batchSize, handleMigrate, handleDelete]);
+  ], [targetUrl, token, limit, batchSize, handleMigrate, handleDelete, localAirflowVersion]);
 
   return (
     <Box>

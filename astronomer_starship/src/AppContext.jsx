@@ -38,6 +38,9 @@ const initialState = {
   // DAG History settings
   limit: 100,
   batchSize: 10,
+
+  // Local Airflow info
+  localAirflowVersion: null,
 };
 
 // ============================================================================
@@ -110,6 +113,8 @@ function reducer(state, action) {
       return { ...state, limit: action.limit };
     case 'set-batch-size':
       return { ...state, batchSize: action.batchSize };
+    case 'set-local-airflow-version':
+      return { ...state, localAirflowVersion: action.version };
     case 'reset':
       return initialState;
     case 'invalidate-token':

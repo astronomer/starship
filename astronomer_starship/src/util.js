@@ -136,3 +136,21 @@ export function getAstroEnvVarRoute(organizationId, deploymentId) {
 export function getHoustonRoute(basedomain) {
   return `https://houston.${basedomain}/v1/`;
 }
+
+/**
+ * Returns the DAG view URL based on Airflow version
+ * Airflow 2.x: /dags/{dag_id}/grid
+ * Airflow 3.x: /dags/{dag_id}
+ *
+ * @param {string} dagId - The DAG ID
+ * @param {string} airflowVersion - The Airflow version string (e.g., "2.8.1", "3.0.0")
+ * @returns {string} - The path to the DAG view
+ */
+export function getDagViewPath(dagId, airflowVersion) {
+  const majorVersion = parseInt(airflowVersion?.split('.')[0] || '2', 10);
+  if (majorVersion >= 3) {
+    return `/dags/${dagId}`;
+  }
+  // Airflow 2.x uses grid view
+  return `/dags/${dagId}/grid`;
+}
