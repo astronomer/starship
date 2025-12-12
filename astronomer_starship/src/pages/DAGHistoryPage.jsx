@@ -339,7 +339,7 @@ export default function DAGHistoryPage() {
         return (
           <HStack spacing={1} flexWrap="wrap">
             {tags.map((tag) => (
-              <Tag key={tag} size="sm" variant="ghost" colorScheme="brand">
+              <Tag key={tag} size="sm">
                 {tag}
               </Tag>
             ))}
