@@ -154,16 +154,23 @@ function DAGHistoryMigrateButton({
           return;
         }
 
-        // Then create task instances and task instance history records
-        const [taskInstanceCreateRes, taskInstanceHistoryCreateRes] = await Promise.all([
-          axios.post(proxyUrl(url + constants.TASK_INSTANCE_ROUTE), { task_instances: taskInstanceRes.data.task_instances }, { params: { dag_id: dagId }, headers: proxyHeaders(token) },),
-          axios.post(proxyUrl(url + constants.TASK_INSTANCE_HISTORY_ROUTE), { task_instances: taskInstanceHistoryRes.data.task_instances }, { params: { dag_id: dagId }, headers: proxyHeaders(token) },),
-        ]);
+        const taskInstanceCreateRes = await axios.post(
+          proxyUrl(url + constants.TASK_INSTANCE_ROUTE),
+          { task_instances: taskInstanceRes.data.task_instances },
+          { params: { dag_id: dagId }, headers: proxyHeaders(token) },
+        );
 
         if (taskInstanceCreateRes.status !== 200) {
           errFn({ err: { response: taskInstanceCreateRes } });
           return;
         }
+
+        // TODO only push Task Instance History if Airflow version 2.10+
+        const taskInstanceHistoryCreateRes = await axios.post(
+          proxyUrl(url + constants.TASK_INSTANCE_HISTORY_ROUTE),
+          { task_instances: taskInstanceHistoryRes.data.task_instances },
+          { params: { dag_id: dagId }, headers: proxyHeaders(token) },
+        );
 
         if (taskInstanceHistoryCreateRes.status !== 200) {
           errFn({ err: { response: taskInstanceHistoryCreateRes } });
