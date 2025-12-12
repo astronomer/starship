@@ -55,9 +55,9 @@ function DAGHistoryMigrateButton({
   const [exists, setExists] = useState(existsInRemote);
   const percent = 100;
 
-  function handleClick() {
+  async function handleClick() {
 
-    function deleteRuns() {
+    async function deleteRuns() {
       setLoadPerc(percent * 0.5);
       axios({
         method: 'delete',
@@ -91,7 +91,7 @@ function DAGHistoryMigrateButton({
     }
 
     if (exists) {
-      deleteRuns();
+      await deleteRuns();
       return;
     }
 
@@ -107,7 +107,7 @@ function DAGHistoryMigrateButton({
       setError(err);
     };
 
-    function setDagsData(dagRunCount) {
+    async function setDagsData(dagRunCount) {
       dispatch({
         type: 'set-dags-data',
         dagsData: {
@@ -120,67 +120,67 @@ function DAGHistoryMigrateButton({
       });
     }
 
-    function migrateBatch(limit, batchSize, offset = 0) {
+    async function migrateBatch(limit, batchSize, offset = 0) {
       const appliedBatchSize = Math.min(limit - offset, batchSize);
       try {
-        Promise.all([
+        const [dagRunsRes, taskInstanceRes, taskInstanceHistoryRes] = await Promise.all([
           // Get both DAG Runs and Task Instances locally
           axios.get(localRoute(constants.DAG_RUNS_ROUTE), { params: { dag_id: dagId, limit: appliedBatchSize, offset } }),
           axios.get(localRoute(constants.TASK_INSTANCE_ROUTE), { params: { dag_id: dagId, limit: appliedBatchSize, offset } }),
           axios.get(localRoute(constants.TASK_INSTANCE_HISTORY_ROUTE), { params: { dag_id: dagId, limit: appliedBatchSize, offset } }),
-        ]).then(
-          axios.spread((dagRunsRes, taskInstanceRes, taskInstanceHistoryRes) => {
-            // the total number of DAG Runs to migrate
-            const dagRunsToMigrateCount = Math.min(dagRunsRes.data.dag_run_count, limit);
+        ]);
 
-            // Stop if empty response
-            if (dagRunsRes.data.dag_runs.length === 0) {
-              // noinspection PointlessArithmeticExpressionJS
-              setLoadPerc(percent * 1);
-              setDagsData(dagRunsToMigrateCount);
-              setExists(offset > 0);
-              return;
-            }
-            // Then create DAG Runs
-            axios.post(
-              proxyUrl(url + constants.DAG_RUNS_ROUTE),
-              { dag_runs: dagRunsRes.data.dag_runs },
-              { params: { dag_id: dagId }, headers: proxyHeaders(token) },
-            ).then((dagRunCreateRes) => {
-              if (dagRunCreateRes.status !== 200) {
-                errFn({ err: { response: dagRunCreateRes } });
-                return;
-              }
+        // the total number of DAG Runs to migrate
+        const dagRunsToMigrateCount = Math.min(dagRunsRes.data.dag_run_count, limit);
 
-              // Then create task instances and task instance history records
-              Promise.all([
-                axios.post(proxyUrl(url + constants.TASK_INSTANCE_ROUTE), { task_instances: taskInstanceRes.data.task_instances }, { params: { dag_id: dagId }, headers: proxyHeaders(token) },),
-                axios.post(proxyUrl(url + constants.TASK_INSTANCE_HISTORY_ROUTE), { task_instances: taskInstanceHistoryRes.data.task_instances }, { params: { dag_id: dagId }, headers: proxyHeaders(token) },),
-              ]).then(
-                axios.spread((taskInstanceCreateRes, taskInstanceHistoryCreateRes) => {
-                  if (taskInstanceCreateRes.status !== 200) {
-                    errFn({ err: { response: taskInstanceCreateRes } });
-                    return;
-                  }
-                  if (taskInstanceHistoryCreateRes.status !== 200) {
-                    errFn({ err: { response: taskInstanceHistoryCreateRes } });
-                    return;
-                  }
-                  // continue with next batch if there are more DAG Runs to migrate
-                  if (dagRunCreateRes.data.dag_run_count < dagRunsToMigrateCount) {
-                    setLoadPerc(percent * dagRunCreateRes.data.dag_run_count / dagRunsToMigrateCount);
-                    migrateBatch(limit, batchSize, offset + batchSize);
-                    return;
-                  }
-                  // noinspection PointlessArithmeticExpressionJS
-                  setLoadPerc(percent * 1);
-                  setDagsData(dagRunsToMigrateCount);
-                  setExists(true);
-                }),
-              ).catch(errFn);
-            }).catch(errFn);
-          }),
-        ).catch(errFn);
+        // Stop if empty response
+        if (dagRunsRes.data.dag_runs.length === 0) {
+          // noinspection PointlessArithmeticExpressionJS
+          setLoadPerc(percent * 1);
+          await setDagsData(dagRunsToMigrateCount);
+          setExists(offset > 0);
+          return;
+        }
+
+        // Then create DAG Runs
+        const dagRunCreateRes = await axios.post(
+          proxyUrl(url + constants.DAG_RUNS_ROUTE),
+          { dag_runs: dagRunsRes.data.dag_runs },
+          { params: { dag_id: dagId }, headers: proxyHeaders(token) },
+        );
+
+        if (dagRunCreateRes.status !== 200) {
+          errFn({ err: { response: dagRunCreateRes } });
+          return;
+        }
+
+        // Then create task instances and task instance history records
+        const [taskInstanceCreateRes, taskInstanceHistoryCreateRes] = await Promise.all([
+          axios.post(proxyUrl(url + constants.TASK_INSTANCE_ROUTE), { task_instances: taskInstanceRes.data.task_instances }, { params: { dag_id: dagId }, headers: proxyHeaders(token) },),
+          axios.post(proxyUrl(url + constants.TASK_INSTANCE_HISTORY_ROUTE), { task_instances: taskInstanceHistoryRes.data.task_instances }, { params: { dag_id: dagId }, headers: proxyHeaders(token) },),
+        ]);
+
+        if (taskInstanceCreateRes.status !== 200) {
+          errFn({ err: { response: taskInstanceCreateRes } });
+          return;
+        }
+
+        if (taskInstanceHistoryCreateRes.status !== 200) {
+          errFn({ err: { response: taskInstanceHistoryCreateRes } });
+          return;
+        }
+
+        // continue with next batch if there are more DAG Runs to migrate
+        if (dagRunCreateRes.data.dag_run_count < dagRunsToMigrateCount) {
+          setLoadPerc(percent * dagRunCreateRes.data.dag_run_count / dagRunsToMigrateCount);
+          await migrateBatch(limit, batchSize, offset + batchSize);
+          return;
+        }
+
+        // noinspection PointlessArithmeticExpressionJS
+        setLoadPerc(percent * 1);
+        await setDagsData(dagRunsToMigrateCount);
+        setExists(true);
       } catch (err) {
         errFn(err);
       }
@@ -188,7 +188,7 @@ function DAGHistoryMigrateButton({
 
     // start migration
     setLoadPerc(percent * 0.01);
-    migrateBatch(limit, batchSize);
+    await migrateBatch(limit, batchSize);
   }
 
   return (
@@ -208,7 +208,7 @@ function DAGHistoryMigrateButton({
         colorScheme={
           exists ? 'red' : isDisabled ? 'gray' : error ? 'red' : 'teal'
         }
-        onClick={() => handleClick()}
+        onClick={handleClick}
       >
         {exists ? 'Delete'
           : loadPerc ? (
