@@ -85,35 +85,30 @@ export function proxyHeaders(token) {
  * @param dataDispatch - dispatch route to call to set the data variables
  * @param errorDispatch - dispatch route to call to set the error variable
  */
-export function fetchData(
-  localRouteUrl,
-  remoteRouteUrl,
-  token,
-  loadingDispatch,
-  dataDispatch,
-  errorDispatch,
-) {
+export async function fetchData(localRouteUrl, remoteRouteUrl, token, loadingDispatch, dataDispatch, errorDispatch) {
   if (loadingDispatch) {
     loadingDispatch();
   }
-  axios
-    .get(localRouteUrl)
-    .then((res) => {
-      axios
-        .get(proxyUrl(remoteRouteUrl), { headers: proxyHeaders(token) })
-        .then((rRes) => {
-          if (
-            res.status === 200 && res.headers['content-type'] === 'application/json' &&
-            rRes.status === 200 && res.headers['content-type'] === 'application/json'
-          ){
-            dataDispatch(res, rRes)
-          } else {
-            errorDispatch('Invalid response');
-          }
-        }) // , dispatch))
-        .catch((err) => errorDispatch(err)); // , dispatch));
-    })
-    .catch((err) => errorDispatch(err)); // , dispatch));
+
+  try {
+    const [localRes, remoteRes] = await Promise.all([
+      axios.get(localRouteUrl),
+      axios.get(proxyUrl(remoteRouteUrl), { headers: proxyHeaders(token) }),
+    ]);
+
+    if (
+      localRes.status === 200
+      && localRes.headers['content-type'] === 'application/json'
+      && remoteRes.status === 200
+      && remoteRes.headers['content-type'] === 'application/json'
+    ) {
+      dataDispatch(localRes, remoteRes);
+    } else {
+      errorDispatch(new Error('Invalid response: expected JSON content-type'));
+    }
+  } catch (err) {
+    errorDispatch(err);
+  }
 }
 
 export function objectWithoutKey(object, key) {
@@ -140,4 +135,22 @@ export function getAstroEnvVarRoute(organizationId, deploymentId) {
  */
 export function getHoustonRoute(basedomain) {
   return `https://houston.${basedomain}/v1/`;
+}
+
+/**
+ * Returns the DAG view URL based on Airflow version
+ * Airflow 2.x: /dags/{dag_id}/grid
+ * Airflow 3.x: /dags/{dag_id}
+ *
+ * @param {string} dagId - The DAG ID
+ * @param {string} airflowVersion - The Airflow version string (e.g., "2.8.1", "3.0.0")
+ * @returns {string} - The path to the DAG view
+ */
+export function getDagViewPath(dagId, airflowVersion) {
+  const majorVersion = parseInt(airflowVersion?.split('.')[0] || '2', 10);
+  if (majorVersion >= 3) {
+    return `/dags/${dagId}`;
+  }
+  // Airflow 2.x uses grid view
+  return `/dags/${dagId}/grid`;
 }

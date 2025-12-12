@@ -1,6 +1,4 @@
-import {
-  Box, Divider,
-} from '@chakra-ui/react';
+import { Box, Divider } from '@chakra-ui/react';
 import React from 'react';
 import PropTypes from 'prop-types';
 import PageLoading from './PageLoading';
@@ -12,15 +10,8 @@ export default function StarshipPage({
   return (
     <Box>
       {description}
-      <Divider marginY="5px" />
-      {loading || error ? (
-        <PageLoading loading={loading} error={error} />
-      ) : (
-        <DataTable
-          data={data}
-          columns={columns}
-        />
-      )}
+      <Divider my="3" />
+      {loading || error ? <PageLoading loading={loading} error={error} /> : <DataTable data={data} columns={columns} />}
     </Box>
   );
 }

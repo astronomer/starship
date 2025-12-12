@@ -1,68 +1,100 @@
-/* eslint-disable no-nested-ternary */
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import axios from 'axios';
 import { Button, useToast } from '@chakra-ui/react';
 import { MdErrorOutline, MdDeleteForever } from 'react-icons/md';
 import { GoUpload } from 'react-icons/go';
 import PropTypes from 'prop-types';
 
-function checkStatus(status, exists) {
-  if (status === 204)
-    return false;
-  return status === 200 || exists;
-}
-
+/**
+ * Button for migrating or deleting items between Airflow instances
+ */
 export default function MigrateButton({
-  route, headers, existsInRemote, sendData, isDisabled,
+  route,
+  headers,
+  existsInRemote,
+  sendData,
+  isDisabled,
+  onStatusChange,
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const toast = useToast();
   const [exists, setExists] = useState(existsInRemote);
-  function handleClick() {
+  const toast = useToast();
+
+  const handleClick = useCallback(async () => {
     setLoading(true);
-    axios({
-      method: exists ? 'delete' : 'post',
-      url: route,
-      headers,
-      data: sendData,
-    })
-      .then((res) => {
-        setLoading(false);
-        setExists(checkStatus(res.status, exists));
-        toast({
-          title: 'Success',
-          status: 'success',
-          isClosable: true,
-        })
-      })
-      .catch((err) => {
-        setExists(exists);
-        setLoading(false);
-        toast({
-          title: err.response?.data?.error || err.response?.data || err.message,
-          status: 'error',
-          isClosable: true,
-        });
-        setError(err);
+    setError(null);
+
+    try {
+      const response = await axios({
+        method: exists ? 'delete' : 'post',
+        url: route,
+        headers,
+        data: sendData,
       });
-  }
+
+      // Determine new status based on response
+      const isSuccess = [200, 201, 204].includes(response.status);
+      const newStatus = isSuccess ? !exists : exists;
+
+      setExists(newStatus);
+      onStatusChange?.(newStatus);
+
+      toast({
+        title: exists ? 'Deleted successfully' : 'Migrated successfully',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (err) {
+      setError(err);
+      toast({
+        title: 'Operation failed',
+        description: err.response?.data?.error || err.message,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [exists, route, headers, sendData, onStatusChange, toast]);
+
+  // Determine button appearance based on state
+  const getButtonProps = () => {
+    if (error) {
+      return {
+        colorScheme: 'red',
+        leftIcon: <MdErrorOutline />,
+        children: 'Error!',
+      };
+    }
+    if (exists) {
+      return {
+        colorScheme: 'red',
+        leftIcon: <MdDeleteForever />,
+        children: 'Delete',
+      };
+    }
+    return {
+      colorScheme: 'green',
+      leftIcon: <GoUpload />,
+      children: 'Migrate',
+    };
+  };
+
+  const buttonProps = getButtonProps();
+
   return (
     <Button
-      isDisabled={loading || isDisabled}
+      size="sm"
+      variant="outline"
+      isDisabled={isDisabled}
       isLoading={loading}
-      loadingText="Loading"
-      variant="solid"
-      leftIcon={(
-        error ? <MdErrorOutline /> : exists ? <MdDeleteForever /> : !loading ? <GoUpload /> : <span />
-        )}
-      colorScheme={
-        exists ? 'red' : loading ? 'teal' : error ? 'red' : 'teal'
-        }
-      onClick={() => handleClick()}
-    >
-      {exists ? 'Delete' : loading ? '' : error ? 'Error!' : 'Migrate'}
-    </Button>
+      loadingText={exists ? 'Deleting...' : 'Migrating...'}
+      onClick={handleClick}
+      {...buttonProps}
+    />
   );
 }
 
@@ -70,12 +102,14 @@ MigrateButton.propTypes = {
   route: PropTypes.string.isRequired,
   headers: PropTypes.objectOf(PropTypes.string),
   existsInRemote: PropTypes.bool,
-  // eslint-disable-next-line react/forbid-prop-types
   sendData: PropTypes.object.isRequired,
   isDisabled: PropTypes.bool,
+  onStatusChange: PropTypes.func,
 };
+
 MigrateButton.defaultProps = {
   headers: {},
   existsInRemote: false,
   isDisabled: false,
+  onStatusChange: undefined,
 };

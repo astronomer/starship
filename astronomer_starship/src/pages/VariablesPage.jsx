@@ -1,93 +1,184 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
 import {
-  Button, HStack, Spacer, Text,
+  Button, HStack, Text, useToast, Box, Heading, VStack, Stack,
 } from '@chakra-ui/react';
-import PropTypes from 'prop-types';
 import { RepeatIcon } from '@chakra-ui/icons';
+import axios from 'axios';
+
+import { useAppState, useAppDispatch } from '../AppContext';
 import MigrateButton from '../component/MigrateButton';
-import StarshipPage from '../component/StarshipPage';
+import ProgressSummary from '../component/ProgressSummary';
+import DataTable from '../component/DataTable';
+import PageLoading from '../component/PageLoading';
 import {
-  fetchData, localRoute, objectWithoutKey, proxyHeaders, proxyUrl, remoteRoute,
+  localRoute, objectWithoutKey, proxyHeaders, proxyUrl,
 } from '../util';
 import constants from '../constants';
 
 const columnHelper = createColumnHelper();
 
-function setVariablesData(localData, remoteData) {
-  return localData.map(
-    (d) => ({
-      ...d,
-      exists: remoteData.map(
-        ({ key }) => key,
-      ).includes(d.key),
-    }),
-  );
+function mergeData(localData, remoteData) {
+  return localData.map((item) => ({
+    ...item,
+    exists: remoteData.some((remote) => remote.key === item.key),
+  }));
 }
 
-export default function VariablesPage({ state, dispatch }) {
-  const [data, setData] = useState(
-    setVariablesData(state.variablesLocalData, state.variablesRemoteData),
-  );
-  const fetchPageData = () => fetchData(
-    localRoute(constants.VARIABLES_ROUTE),
-    remoteRoute(state.targetUrl, constants.VARIABLES_ROUTE),
-    state.token,
-    () => dispatch({ type: 'set-variables-loading' }),
-    (res, rRes) => dispatch({
-      type: 'set-variables-data', variablesLocalData: res.data, variablesRemoteData: rRes.data,
-    }),
-    (err) => dispatch({ type: 'set-variables-error', error: err }),
-  );
-  useEffect(() => fetchPageData(), []);
-  useEffect(
-    () => setData(setVariablesData(state.variablesLocalData, state.variablesRemoteData)),
-    [state],
-  );
+export default function VariablesPage() {
+  const { targetUrl, token } = useAppState();
+  const dispatch = useAppDispatch();
+  const toast = useToast();
 
-  // noinspection JSCheckFunctionSignatures
-  const columns = [
-    columnHelper.accessor('key'),
-    columnHelper.accessor('val'),
-    // columnHelper.accessor('exists'),
+  // Local state for this page only
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [data, setData] = useState([]);
+  const [isMigratingAll, setIsMigratingAll] = useState(false);
+
+  // Fetch data on mount and when dependencies change
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const [localRes, remoteRes] = await Promise.all([
+        axios.get(localRoute(constants.VARIABLES_ROUTE)),
+        axios.get(proxyUrl(targetUrl + constants.VARIABLES_ROUTE), {
+          headers: proxyHeaders(token),
+        }),
+      ]);
+
+      if (localRes.status === 200 && remoteRes.status === 200) {
+        setData(mergeData(localRes.data, remoteRes.data));
+      } else {
+        throw new Error('Invalid response from server');
+      }
+    } catch (err) {
+      setError(err);
+      // If unauthorized, invalidate the token
+      if (err.response?.status === 401) {
+        dispatch({ type: 'invalidate-token' });
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [targetUrl, token, dispatch]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Handle individual item status change
+  const handleItemStatusChange = useCallback((key, newStatus) => {
+    setData((prev) => prev.map((item) => (item.key === key ? { ...item, exists: newStatus } : item)));
+  }, []);
+
+  // Migrate all unmigrated items
+  const handleMigrateAll = async () => {
+    const unmigratedItems = data.filter((item) => !item.exists);
+    if (unmigratedItems.length === 0) return;
+
+    setIsMigratingAll(true);
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const item of unmigratedItems) {
+      try {
+        await axios.post(
+          proxyUrl(targetUrl + constants.VARIABLES_ROUTE),
+          objectWithoutKey(item, 'exists'),
+          { headers: proxyHeaders(token) },
+        );
+        successCount += 1;
+        setData((prev) => prev.map((d) => (d.key === item.key ? { ...d, exists: true } : d)));
+      } catch (err) {
+        errorCount += 1;
+      }
+    }
+
+    setIsMigratingAll(false);
+
+    toast({
+      title: successCount > 0
+        ? `Successfully migrated ${successCount} variable${successCount !== 1 ? 's' : ''}`
+        : 'Migration failed',
+      description: errorCount > 0 ? `${errorCount} item${errorCount !== 1 ? 's' : ''} failed` : undefined,
+      status: successCount > 0 ? (errorCount > 0 ? 'warning' : 'success') : 'error',
+      duration: 5000,
+      isClosable: true,
+    });
+  };
+
+  // Define columns
+  const columns = React.useMemo(() => [
+    columnHelper.accessor('key', { header: 'Key' }),
+    columnHelper.accessor('val', { header: 'Value' }),
     columnHelper.display({
       id: 'migrate',
       header: 'Migrate',
-      // eslint-disable-next-line react/no-unstable-nested-components
-      cell: (info) => (
+      meta: { align: 'right' },
+      cell: ({ row }) => (
         <MigrateButton
-          route={proxyUrl(state.targetUrl + constants.VARIABLES_ROUTE)}
-          headers={proxyHeaders(state.token)}
-          existsInRemote={info.row.original.exists}
-          sendData={{ ...objectWithoutKey(info.row.original, 'exists') }}
+          route={proxyUrl(targetUrl + constants.VARIABLES_ROUTE)}
+          headers={proxyHeaders(token)}
+          existsInRemote={row.original.exists}
+          sendData={objectWithoutKey(row.original, 'exists')}
+          onStatusChange={(newStatus) => handleItemStatusChange(row.original.key, newStatus)}
         />
       ),
     }),
-  ];
+  ], [targetUrl, token, handleItemStatusChange]);
+
+  // Calculate progress
+  const totalItems = data.length;
+  const migratedItems = data.filter((item) => item.exists).length;
+
   return (
-    <StarshipPage
-      description={(
-        <HStack>
-          <Text fontSize="xl">
-            Variables are a generic way to store and retrieve arbitrary content or settings
-            as a simple key value store within Airflow.
-            Variables can be defined via multiple mechanisms,
-            Starship only migrates values stored via the Airflow UI.
+    <Box>
+      <Stack
+        direction={{ base: 'column', md: 'row' }}
+        justify="space-between"
+        align={{ base: 'flex-start', md: 'center' }}
+        mb={3}
+      >
+        <Box>
+          <Heading size="md" mb={0.5}>Variables</Heading>
+          <Text fontSize="xs" color="gray.600">
+            Variables store arbitrary content as key-value pairs.
           </Text>
-          <Spacer />
-          <Button size="sm" leftIcon={<RepeatIcon />} onClick={() => fetchPageData()}>Reset</Button>
+        </Box>
+        <HStack>
+          <Button
+            size="sm"
+            leftIcon={<RepeatIcon />}
+            onClick={fetchData}
+            variant="outline"
+            isLoading={loading}
+          >
+            Refresh
+          </Button>
         </HStack>
-      )}
-      loading={state.variablesLoading}
-      data={data}
-      columns={columns}
-      error={state.error}
-      resetFn={fetchPageData}
-    />
+      </Stack>
+
+      <VStack spacing={3} align="stretch" w="100%">
+        {!loading && !error && (
+          <ProgressSummary
+            totalItems={totalItems}
+            migratedItems={migratedItems}
+            onMigrateAll={handleMigrateAll}
+            isMigratingAll={isMigratingAll}
+          />
+        )}
+
+        <Box>
+          {loading || error ? (
+            <PageLoading loading={loading} error={error} />
+          ) : (
+            <DataTable data={data} columns={columns} searchPlaceholder="Search variables..." />
+          )}
+        </Box>
+      </VStack>
+    </Box>
   );
 }
-VariablesPage.propTypes = {
-  // eslint-disable-next-line react/forbid-prop-types
-  state: PropTypes.object.isRequired,
-  dispatch: PropTypes.func.isRequired,
-};
