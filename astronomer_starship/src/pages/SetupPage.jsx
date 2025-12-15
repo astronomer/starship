@@ -60,26 +60,26 @@ import { getWorkspaceDeploymentsQuery } from '../constants';
 export default function SetupPage() {
   const state = useAppState();
   const dispatch = useAppDispatch();
-  
+
   // Collapsible section states
   const step1 = useDisclosure({ defaultIsOpen: true });
   const step2 = useDisclosure({ defaultIsOpen: false });
   const step3 = useDisclosure({ defaultIsOpen: false });
-  
+
   // Reset confirmation dialog
   const resetDialog = useDisclosure();
   const cancelRef = React.useRef();
-  
+
   // Animation states for checkmarks
   const [showStep1Check, setShowStep1Check] = useState(false);
   const [showStep2Check, setShowStep2Check] = useState(false);
   const [showStep3Check, setShowStep3Check] = useState(false);
-  
+
   // Step completion logic
   const isStep1Complete = state.isAstro !== undefined;
   const isStep2Complete = state.isValidUrl && state.token;
   const isStep3Complete = state.isAirflow && state.isStarship;
-  
+
   // Auto-open sections on mount based on completion state
   useEffect(() => {
     if (isStep1Complete && !isStep2Complete && !step2.isOpen) {
@@ -89,7 +89,7 @@ export default function SetupPage() {
       step3.onOpen();
     }
   }, [isStep1Complete, isStep2Complete, isStep3Complete, step2.isOpen, step3.isOpen]);
-  
+
   // Trigger animations when steps complete
   useEffect(() => {
     if (isStep1Complete && !showStep1Check) {
@@ -100,7 +100,7 @@ export default function SetupPage() {
       }
     }
   }, [isStep1Complete, showStep1Check, step2]);
-  
+
   useEffect(() => {
     if (isStep2Complete && !showStep2Check) {
       setShowStep2Check(true);
@@ -111,7 +111,7 @@ export default function SetupPage() {
       }, 1000);
     }
   }, [isStep2Complete, showStep2Check, step2, step3]);
-  
+
   useEffect(() => {
     if (isStep3Complete && !showStep3Check) {
       setShowStep3Check(true);

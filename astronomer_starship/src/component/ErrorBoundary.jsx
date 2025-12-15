@@ -127,4 +127,3 @@ ErrorFallback.propTypes = {
 
 
 export default ErrorBoundaryClass;
-
