@@ -64,6 +64,8 @@ export default function TelescopePage() {
         title: err.response?.data?.error || err.response?.data || err.message,
         status: 'error',
         isClosable: true,
+        variant: 'outline',
+        duration: 4000,
       });
       setError(err);
     } finally {

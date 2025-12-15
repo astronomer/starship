@@ -43,8 +43,9 @@ export default function MigrateButton({
       toast({
         title: exists ? 'Deleted successfully' : 'Migrated successfully',
         status: 'success',
-        duration: 3000,
+        duration: 4000,
         isClosable: true,
+        variant: 'outline',
       });
     } catch (err) {
       setError(err);
@@ -52,8 +53,9 @@ export default function MigrateButton({
         title: 'Operation failed',
         description: err.response?.data?.error || err.message,
         status: 'error',
-        duration: 5000,
+        duration: 4000,
         isClosable: true,
+        variant: 'outline',
       });
     } finally {
       setLoading(false);

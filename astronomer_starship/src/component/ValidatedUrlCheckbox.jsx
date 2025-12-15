@@ -131,7 +131,8 @@ const ValidatedUrlCheckbox = memo(function ValidatedUrlCheckbox({
               : 'The server returned an empty or invalid response. Please verify the endpoint is correct.',
             status: 'warning',
             isClosable: true,
-            duration: 7000,
+            duration: 4000,
+            variant: 'outline',
           });
         }
 
@@ -144,7 +145,8 @@ const ValidatedUrlCheckbox = memo(function ValidatedUrlCheckbox({
           description,
           status: 'error',
           isClosable: true,
-          duration: 8000,
+          duration: 4000,
+          variant: 'outline',
         });
         setValid(false);
       })

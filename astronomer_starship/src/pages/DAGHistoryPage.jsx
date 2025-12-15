@@ -5,7 +5,6 @@ import {
   Badge,
   Box,
   Button,
-  CircularProgress,
   FormControl,
   Heading,
   HStack,
@@ -68,18 +67,22 @@ function DAGHistoryMigrateButton({
   onMigrate = null,
   onDelete = null,
 }) {
-  const [loadPerc, setLoadPerc] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const toast = useToast();
   const [exists, setExists] = useState(existsInRemote);
+  const [isDeleting, setIsDeleting] = useState(false);
 
 const handleError = (err) => {
     setExists(false);
-    setLoadPerc(0);
+    setIsLoading(false);
+    setIsDeleting(false);
     toast({
       title: err.response?.data?.error || err.response?.data || err.message,
       status: 'error',
       isClosable: true,
+      variant: 'outline',
+      duration: 4000,
     });
     setError(err);
   };
@@ -87,7 +90,8 @@ const handleError = (err) => {
   const handleClick = async () => {
     if (exists) {
       // Delete
-      setLoadPerc(50);
+      setIsDeleting(true);
+      setIsLoading(true);
       try {
         const res = await axios({
           method: 'delete',
@@ -98,16 +102,19 @@ const handleError = (err) => {
         const newStatus = res.status !== 204;
         setExists(newStatus);
         onDelete?.(dagId);
-        setLoadPerc(100);
-        setTimeout(() => setLoadPerc(0), 500);
+        setTimeout(() => {
+          setIsLoading(false);
+          setIsDeleting(false);
+        }, 500);
       } catch (err) {
         handleError(err);
+        setIsDeleting(false);
       }
       return;
     }
 
     // Migrate
-    setLoadPerc(1);
+    setIsLoading(true);
 
     const migrateBatch = async (offset = 0) => {
       const appliedBatchSize = Math.min(limit - offset, batchSize);
@@ -121,10 +128,9 @@ const handleError = (err) => {
         const dagRunsToMigrateCount = Math.min(dagRunsRes.data.dag_run_count, limit);
 
         if (dagRunsRes.data.dag_runs.length === 0) {
-          setLoadPerc(100);
           setExists(offset > 0);
           onMigrate?.(dagId, dagRunsToMigrateCount);
-          setTimeout(() => setLoadPerc(0), 500);
+          setTimeout(() => setIsLoading(false), 500);
           return;
         }
 
@@ -152,13 +158,11 @@ const handleError = (err) => {
         ]);
 
         if (dagRunCreateRes.data.dag_run_count < dagRunsToMigrateCount) {
-          setLoadPerc((100 * dagRunCreateRes.data.dag_run_count) / dagRunsToMigrateCount);
           await migrateBatch(offset + batchSize);
         } else {
-          setLoadPerc(100);
           setExists(true);
           onMigrate?.(dagId, dagRunsToMigrateCount);
-          setTimeout(() => setLoadPerc(0), 500);
+          setTimeout(() => setIsLoading(false), 500);
         }
       } catch (err) {
         handleError(err);
@@ -173,12 +177,13 @@ const handleError = (err) => {
         <Button
           size="sm"
           variant="outline"
-          isDisabled={isDisabled || loadPerc > 0}
+          isDisabled={isDisabled}
+        isLoading={isLoading}
+        loadingText={isDeleting ? 'Deleting...' : 'Migrating...'}
         leftIcon={
           error ? <MdErrorOutline />
             : exists ? <MdDeleteForever />
               : isDisabled ? <MdWarning />
-                : loadPerc ? <span />
                   : <GoUpload />
         }
         colorScheme={undefined}
@@ -188,14 +193,13 @@ const handleError = (err) => {
           bg: exists || error ? 'error.50' : 'success.50',
         }}
         _disabled={{
-          color: 'brand.800',
-          borderColor: 'brand.700',
+          color: 'gray.600',
+          borderColor: 'gray.500',
           opacity: 1,
         }}
         onClick={handleClick}
       >
         {exists ? 'Delete'
-          : loadPerc ? <CircularProgress thickness="20px" size="30px" value={loadPerc} />
             : isDisabled ? 'Not Found'
               : error ? 'Error!'
                 : 'Migrate'}
@@ -275,7 +279,7 @@ export default function DAGHistoryPage() {
         return { ...item, [key]: { ...item[key], is_paused: res.data.is_paused } };
       }));
     } catch (err) {
-      toast({ title: err.message, status: 'error', isClosable: true });
+      toast({ title: err.message, status: 'error', isClosable: true, variant: 'outline', duration: 4000 });
     }
   }, [targetUrl, token, toast]);
 
@@ -300,7 +304,7 @@ export default function DAGHistoryPage() {
     });
 
     if (items.length === 0) {
-      toast({ title: `All ${isLocal ? 'local' : 'remote'} DAGs are already ${pause ? 'paused' : 'unpaused'}`, status: 'info', duration: 3000 });
+      toast({ title: `All ${isLocal ? 'local' : 'remote'} DAGs are already ${pause ? 'paused' : 'unpaused'}`, status: 'info', duration: 4000, variant: 'outline' });
       return;
     }
 
@@ -317,7 +321,8 @@ export default function DAGHistoryPage() {
     toast({
       title: `${pause ? 'Paused' : 'Unpaused'} ${successCount} ${isLocal ? 'local' : 'remote'} DAG${successCount !== 1 ? 's' : ''}`,
       status: 'success',
-      duration: 3000,
+      duration: 4000,
+      variant: 'outline',
     });
   }, [data, toast, handlePausedClick]);
 

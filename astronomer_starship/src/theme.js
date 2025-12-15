@@ -17,11 +17,11 @@ const theme = extendTheme({
   colors: {
     // Brand: Moonshot - Dark Purple/Navy (primary brand palette)
     brand: {
-      25: '#F8F8FF',
-      50: '#EBE9F8',
-      75: '#DCDBF1',
-      100: '#CCCDE9',
-      150: '#BDBFE2',
+      10: '#F8F8FF',
+      25: '#EBE9F8',
+      50: '#DCDBF1',
+      75: '#CCCDE9',
+      100: '#BDBFE2',
       200: '#A2A3D1',
       300: '#8887C0',
       400: '#6D6BAF',
@@ -123,13 +123,13 @@ const theme = extendTheme({
           color: 'brand.700',
           _hover: {
             bg: 'transparent',
-            color: 'brand.600',
+            color: 'brand.600 !important',
           },
           _disabled: { opacity: 0.4 },
           '&.active': {
-            boxShadow: 'inset 0 -5px 0 0 var(--chakra-colors-amethyst-600)',
+            boxShadow: 'inset 0 -5px 0 0 var(--chakra-colors-amethyst-500)',
             fontWeight: 'semibold',
-            color: 'brand.800',
+            color: 'brand.800 !important',
           },
         },
       },
@@ -156,6 +156,27 @@ const theme = extendTheme({
     Link: {
       baseStyle: {
         color: 'brand.400',
+      },
+    },
+
+    Table: {
+      variants: {
+        striped: {
+          th: {
+            borderBottom: '1px',
+            borderColor: 'brand.100',
+          },
+          tbody: {
+            tr: {
+              '&:nth-of-type(odd) td': {
+                bg: 'brand.10!important',
+              },
+              '&:nth-of-type(even) td': {
+                bg: 'transparent !important',
+              },
+            },
+          },
+        },
       },
     },
   },

@@ -105,8 +105,9 @@ export default function VariablesPage() {
         : 'Migration failed',
       description: errorCount > 0 ? `${errorCount} item${errorCount !== 1 ? 's' : ''} failed` : undefined,
       status: successCount > 0 ? (errorCount > 0 ? 'warning' : 'success') : 'error',
-      duration: 5000,
+      duration: 4000,
       isClosable: true,
+      variant: 'outline',
     });
   }, [data, targetUrl, token, toast]);
 

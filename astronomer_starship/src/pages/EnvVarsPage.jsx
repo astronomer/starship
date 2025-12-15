@@ -49,6 +49,8 @@ function EnvVarMigrateButton({
       title: err.response?.data?.error || err.response?.data || err.message,
       status: 'error',
       isClosable: true,
+      variant: 'outline',
+      duration: 4000,
     });
     setError(err);
   };
@@ -196,8 +198,9 @@ export default function EnvVarsPage() {
       title: 'Bulk migration not yet supported for Environment Variables',
       description: 'Please migrate environment variables individually',
       status: 'info',
-      duration: 5000,
+      duration: 4000,
       isClosable: true,
+      variant: 'outline',
     });
     setIsMigratingAll(false);
   }, [toast]);
