@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   Box,
   Button,
@@ -19,16 +19,17 @@ import {
   Stack,
 } from '@chakra-ui/react';
 import { GoDownload, GoUpload } from 'react-icons/go';
-import { RepeatIcon } from '@chakra-ui/icons';
+import { ArrowBackIcon, RepeatIcon } from '@chakra-ui/icons';
 import axios from 'axios';
 import { FaCheck } from 'react-icons/fa';
+import { NavLink } from 'react-router-dom';
 
-import { useAppState, useAppDispatch } from '../AppContext';
+import { useAppDispatch, useTelescopeConfig } from '../AppContext';
 import constants from '../constants';
 import { localRoute } from '../util';
 
 export default function TelescopePage() {
-  const { telescopeOrganizationId, telescopePresignedUrl } = useAppState();
+  const { telescopeOrganizationId, telescopePresignedUrl } = useTelescopeConfig();
   const dispatch = useAppDispatch();
 
   const [isUploading, setIsUploading] = useState(false);
@@ -52,7 +53,7 @@ export default function TelescopePage() {
     `${telescopeOrganizationId}.${new Date().toISOString().slice(0, 10)}.data.json`
   ), [telescopeOrganizationId]);
 
-  const handleUpload = async () => {
+  const handleUpload = useCallback(async () => {
     setIsUploading(true);
     setError(null);
     try {
@@ -68,14 +69,14 @@ export default function TelescopePage() {
     } finally {
       setIsUploading(false);
     }
-  };
+  }, [route, toast]);
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     dispatch({ type: 'set-telescope-org', telescopeOrganizationId: '' });
     dispatch({ type: 'set-telescope-presigned-url', telescopePresignedUrl: '' });
     setIsUploadComplete(false);
     setError(null);
-  };
+  }, [dispatch]);
 
   /* eslint-disable no-nested-ternary */
   return (
@@ -95,6 +96,15 @@ export default function TelescopePage() {
         <HStack>
           <Button
             size="sm"
+            leftIcon={<ArrowBackIcon />}
+            as={NavLink}
+            to="/setup"
+            variant="outline"
+          >
+            Back to Setup
+          </Button>
+          <Button
+            size="sm"
             leftIcon={<RepeatIcon />}
             onClick={handleReset}
             variant="outline"
@@ -105,14 +115,13 @@ export default function TelescopePage() {
       </Stack>
 
       <VStack spacing={3} align="stretch" w="100%">
-        <Box maxW="600px">
+        <Box maxW="xl">
           <FormControl marginY="2%">
-            <FormLabel htmlFor="telescopeOrg" fontSize="sm" fontWeight="semibold" mb={1}>
+            <FormLabel htmlFor="telescopeOrg" mb={1}>
               Organization
             </FormLabel>
             <InputGroup size="sm">
               <Input
-                size="sm"
                 id="telescopeOrg"
                 placeholder="Astronomer, LLC"
                 value={telescopeOrganizationId}
@@ -128,12 +137,11 @@ export default function TelescopePage() {
           </FormControl>
 
           <FormControl mb={2}>
-            <FormLabel htmlFor="telescopePresignedUrl" fontSize="sm" fontWeight="semibold" mb={1}>
+            <FormLabel htmlFor="telescopePresignedUrl" mb={1}>
               Pre-signed URL
             </FormLabel>
             <InputGroup size="sm">
               <Input
-                size="sm"
                 id="telescopePresignedUrl"
                 placeholder="https://storage.googleapis.com/astronomer-telescope/..."
                 value={telescopePresignedUrl}
@@ -151,10 +159,10 @@ export default function TelescopePage() {
 
           <HStack spacing={2}>
             <Tooltip hasArrow label="Upload the report via pre-signed url to Astronomer">
-              <Button
-                size="sm"
-                variant="outline"
-                leftIcon={isUploading ? <span /> : isUploadComplete ? <FaCheck /> : <GoUpload />}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  leftIcon={isUploading ? <span /> : isUploadComplete ? <FaCheck /> : <GoUpload />}
                 isDisabled={isUploading || isUploadComplete || !telescopePresignedUrl || !telescopeOrganizationId}
                 colorScheme={isUploadComplete ? 'green' : error ? 'red' : 'gray'}
                 onClick={handleUpload}
@@ -173,6 +181,7 @@ export default function TelescopePage() {
 
             <Tooltip hasArrow label="Download the report">
               <Button
+                size="sm"
                 leftIcon={<GoDownload />}
                 isDisabled={!telescopeOrganizationId}
                 href={route}

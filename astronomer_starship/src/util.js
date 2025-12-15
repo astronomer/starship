@@ -85,7 +85,14 @@ export function proxyHeaders(token) {
  * @param dataDispatch - dispatch route to call to set the data variables
  * @param errorDispatch - dispatch route to call to set the error variable
  */
-export async function fetchData(localRouteUrl, remoteRouteUrl, token, loadingDispatch, dataDispatch, errorDispatch) {
+export async function fetchData(
+  localRouteUrl,
+  remoteRouteUrl,
+  token,
+  loadingDispatch,
+  dataDispatch,
+  errorDispatch,
+) {
   if (loadingDispatch) {
     loadingDispatch();
   }

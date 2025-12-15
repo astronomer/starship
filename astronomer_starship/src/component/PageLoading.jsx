@@ -14,7 +14,7 @@ import PropTypes from 'prop-types';
 /**
  * Displays a loading spinner or error state for page data fetching
  */
-export default function PageLoading({ loading, error }) {
+export default function PageLoading({ loading = false, error = null }) {
   if (loading) {
     return (
       <Center py={12}>
@@ -54,9 +54,4 @@ PageLoading.propTypes = {
   error: PropTypes.shape({
     message: PropTypes.string,
   }),
-};
-
-PageLoading.defaultProps = {
-  loading: false,
-  error: null,
 };

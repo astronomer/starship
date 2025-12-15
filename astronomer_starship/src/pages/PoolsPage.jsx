@@ -6,7 +6,7 @@ import {
 import { RepeatIcon } from '@chakra-ui/icons';
 import axios from 'axios';
 
-import { useAppState, useAppDispatch } from '../AppContext';
+import { useAppDispatch, useTargetConfig } from '../AppContext';
 import MigrateButton from '../component/MigrateButton';
 import ProgressSummary from '../component/ProgressSummary';
 import DataTable from '../component/DataTable';
@@ -26,7 +26,7 @@ function mergeData(localData, remoteData) {
 }
 
 export default function PoolsPage() {
-  const { targetUrl, token } = useAppState();
+  const { targetUrl, token } = useTargetConfig();
   const dispatch = useAppDispatch();
   const toast = useToast();
 
@@ -76,7 +76,7 @@ export default function PoolsPage() {
   }, []);
 
   // Migrate all unmigrated items
-  const handleMigrateAll = async () => {
+  const handleMigrateAll = useCallback(async () => {
     const unmigratedItems = data.filter((item) => !item.exists);
     if (unmigratedItems.length === 0) return;
 
@@ -111,7 +111,7 @@ export default function PoolsPage() {
       duration: 5000,
       isClosable: true,
     });
-  };
+  }, [data, targetUrl, token, toast]);
 
   // Define columns
   const columns = React.useMemo(() => [

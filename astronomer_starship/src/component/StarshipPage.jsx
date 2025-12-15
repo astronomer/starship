@@ -5,7 +5,7 @@ import PageLoading from './PageLoading';
 import DataTable from './DataTable';
 
 export default function StarshipPage({
-  description, loading, error, data, columns,
+  description = '', loading = false, error = null, data = [], columns,
 }) {
   return (
     <Box>
@@ -24,10 +24,4 @@ StarshipPage.propTypes = {
   data: PropTypes.array,
   // eslint-disable-next-line react/forbid-prop-types
   columns: PropTypes.array.isRequired,
-};
-StarshipPage.defaultProps = {
-  description: '',
-  error: null,
-  loading: false,
-  data: [],
 };

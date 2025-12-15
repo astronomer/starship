@@ -50,9 +50,9 @@ function globalFilterFn(row, columnId, filterValue) {
 export default function DataTable({
   data,
   columns,
-  searchPlaceholder,
-  showSearch,
-  rightElement,
+  searchPlaceholder = 'Search...',
+  showSearch = true,
+  rightElement = null,
 }) {
   const [sorting, setSorting] = useState([]);
   const [globalFilter, setGlobalFilter] = useState('');
@@ -77,7 +77,7 @@ export default function DataTable({
       {showSearch && (
         <HStack mb={3} justify="space-between" align="center">
           <HStack spacing={3} flex={1}>
-            <InputGroup size="sm" maxW="300px">
+            <InputGroup size="sm" maxW="xs">
               <InputLeftElement pointerEvents="none">
                 <SearchIcon color="gray.400" />
               </InputLeftElement>
@@ -170,10 +170,4 @@ DataTable.propTypes = {
   searchPlaceholder: PropTypes.string,
   showSearch: PropTypes.bool,
   rightElement: PropTypes.node,
-};
-
-DataTable.defaultProps = {
-  searchPlaceholder: 'Search...',
-  showSearch: true,
-  rightElement: null,
 };

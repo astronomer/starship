@@ -19,7 +19,7 @@ import { CheckCircleIcon } from '@chakra-ui/icons';
 import { FiUpload } from 'react-icons/fi';
 
 export default function ProgressSummary({
-  totalItems, migratedItems, onMigrateAll, isMigratingAll,
+  totalItems, migratedItems, onMigrateAll, isMigratingAll = false,
 }) {
   const remainingItems = totalItems - migratedItems;
   const progressPercentage = totalItems > 0 ? (migratedItems / totalItems) * 100 : 0;
@@ -88,10 +88,10 @@ export default function ProgressSummary({
 
           {/* Migrate All Button */}
           <Box>
-            <Button
-              size="sm"
-              variant="outline"
-              leftIcon={<Icon as={FiUpload} />}
+              <Button
+                size="sm"
+                variant="outline"
+                leftIcon={<Icon as={FiUpload} />}
               colorScheme="brand"
               isDisabled={remainingItems === 0 || isMigratingAll}
               isLoading={isMigratingAll}
@@ -112,8 +112,4 @@ ProgressSummary.propTypes = {
   migratedItems: PropTypes.number.isRequired,
   onMigrateAll: PropTypes.func.isRequired,
   isMigratingAll: PropTypes.bool,
-};
-
-ProgressSummary.defaultProps = {
-  isMigratingAll: false,
 };

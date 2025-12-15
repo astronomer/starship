@@ -10,10 +10,10 @@ import PropTypes from 'prop-types';
  */
 export default function MigrateButton({
   route,
-  headers,
-  existsInRemote,
+  headers = {},
+  existsInRemote = false,
   sendData,
-  isDisabled,
+  isDisabled = false,
   onStatusChange,
 }) {
   const [loading, setLoading] = useState(false);
@@ -86,10 +86,10 @@ export default function MigrateButton({
   const buttonProps = getButtonProps();
 
   return (
-    <Button
-      size="sm"
-      variant="outline"
-      isDisabled={isDisabled}
+      <Button
+        size="sm"
+        variant="outline"
+        isDisabled={isDisabled}
       isLoading={loading}
       loadingText={exists ? 'Deleting...' : 'Migrating...'}
       onClick={handleClick}
@@ -105,11 +105,4 @@ MigrateButton.propTypes = {
   sendData: PropTypes.object.isRequired,
   isDisabled: PropTypes.bool,
   onStatusChange: PropTypes.func,
-};
-
-MigrateButton.defaultProps = {
-  headers: {},
-  existsInRemote: false,
-  isDisabled: false,
-  onStatusChange: undefined,
 };

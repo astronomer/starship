@@ -7,10 +7,11 @@ import {
   Navigate,
 } from 'react-router-dom';
 import {
-  Box, Button, Divider, Flex, Heading, Icon, Tooltip,
+  Box, Button, Divider, Flex, Heading, HStack, Icon, Image, Text, Tooltip,
 } from '@chakra-ui/react';
 import { GoRocket } from 'react-icons/go';
 import PropTypes from 'prop-types';
+import AstronomerLogo from './astronomer-logo.svg';
 
 import { AppProvider, useSetupComplete } from './AppContext';
 import SetupPage from './pages/SetupPage';
@@ -22,11 +23,11 @@ import DAGHistoryPage from './pages/DAGHistoryPage';
 import TelescopePage from './pages/TelescopePage';
 import './index.css';
 
-// ============================================================================
-// NAV BUTTON - Memoized for performance
-// ============================================================================
 const NavButton = memo(function NavButton({
-  to, label, isDisabled, disabledMessage,
+  to,
+  label,
+  isDisabled = false,
+  disabledMessage = '',
 }) {
   const button = (
     <Button
@@ -59,14 +60,6 @@ NavButton.propTypes = {
   disabledMessage: PropTypes.string,
 };
 
-NavButton.defaultProps = {
-  isDisabled: false,
-  disabledMessage: '',
-};
-
-// ============================================================================
-// NAV CONFIG - Define navigation items once
-// ============================================================================
 const NAV_ITEMS = [
   { to: '/setup', label: 'Setup', requiresSetup: false },
   { to: '/variables', label: 'Variables', requiresSetup: true },
@@ -78,15 +71,30 @@ const NAV_ITEMS = [
 
 const DISABLED_MESSAGE = 'Complete the Setup tab to configure your target Airflow instance before accessing migration features';
 
-// ============================================================================
-// APP LAYOUT
-// ============================================================================
 function AppLayout() {
   const isSetupComplete = useSetupComplete();
 
   return (
     <>
-      <Flex as="nav" boxShadow="sm" borderBottomWidth="1px" borderColor="gray.200">
+      <Flex
+        as="nav"
+        boxShadow="sm"
+        borderBottomWidth="1px"
+        borderColor="gray.200"
+        overflowX="auto"
+        overflowY="hidden"
+        flexWrap={{ base: 'nowrap', lg: 'wrap' }}
+        minH="12"
+        css={{
+          '&::-webkit-scrollbar': {
+            height: 'var(--chakra-space-1)',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            background: 'var(--chakra-colors-gray-300)',
+            borderRadius: 'var(--chakra-radii-sm)',
+          },
+        }}
+      >
         {NAV_ITEMS.map(({ to, label, requiresSetup }) => (
           <NavButton
             key={to}
@@ -97,16 +105,27 @@ function AppLayout() {
           />
         ))}
       </Flex>
-      <Box as="main" className="starship-page">
-        <Box as="header" mb={2}>
-          <Heading as="h1" size="xl" color="moonshot.700">
+      <Box
+        as="main"
+        flex="1"
+        minH="0"
+        overflowY="auto"
+        px={{ base: 2, md: 4, lg: 6 }}
+        pt={{ base: 2, md: 4, lg: 6 }}
+        pb={{ base: 10, md: 12 }}
+      >
+        <Box as="header" display="inline-block">
+          <Heading as="h1" size="xl">
             Starship
             {' '}
             <Icon as={GoRocket} />
           </Heading>
-          <Heading as="h2" size="xs" color="gray.500" fontWeight="normal">
-            By Astronomer
-          </Heading>
+          <HStack align="baseline" justify="flex-end">
+            <Text color="gray.500">
+              by
+            </Text>
+            <Image src={AstronomerLogo} alt="Astronomer" h="12px" />
+          </HStack>
         </Box>
         <Divider my={3} />
         <Outlet />
@@ -115,9 +134,6 @@ function AppLayout() {
   );
 }
 
-// ============================================================================
-// ROUTER - Created once at module level
-// ============================================================================
 const router = createHashRouter([
   {
     path: '/',
@@ -135,9 +151,6 @@ const router = createHashRouter([
   },
 ]);
 
-// ============================================================================
-// APP COMPONENT
-// ============================================================================
 export default function App() {
   return (
     <AppProvider>

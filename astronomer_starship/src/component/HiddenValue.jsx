@@ -4,7 +4,7 @@ import {
 } from '@chakra-ui/react';
 import PropTypes from 'prop-types';
 
-export default function HiddenValue({ value }) {
+export default function HiddenValue({ value = '' }) {
   const [show, setShow] = React.useState(false);
   const handleClick = () => setShow(!show);
 
@@ -23,4 +23,3 @@ export default function HiddenValue({ value }) {
   );
 }
 HiddenValue.propTypes = { value: PropTypes.string };
-HiddenValue.defaultProps = { value: '' };

@@ -10,7 +10,7 @@ import { FaCheck } from 'react-icons/fa';
 import { GoUpload } from 'react-icons/go';
 import { RepeatIcon } from '@chakra-ui/icons';
 
-import { useAppState, useAppDispatch } from '../AppContext';
+import { useAppDispatch, useTargetConfig } from '../AppContext';
 import ProgressSummary from '../component/ProgressSummary';
 import DataTable from '../component/DataTable';
 import PageLoading from '../component/PageLoading';
@@ -28,7 +28,14 @@ const columnHelper = createColumnHelper();
 
 // Custom migrate button for env vars (different API pattern)
 function EnvVarMigrateButton({
-  route, headers, existsInRemote, sendData, isAstro, deploymentId, releaseName, onStatusChange,
+  route,
+  headers = {},
+  existsInRemote = false,
+  sendData,
+  isAstro,
+  deploymentId = null,
+  releaseName = null,
+  onStatusChange = null,
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -122,13 +129,6 @@ EnvVarMigrateButton.propTypes = {
   onStatusChange: PropTypes.func,
 };
 
-EnvVarMigrateButton.defaultProps = {
-  headers: {},
-  existsInRemote: false,
-  deploymentId: null,
-  releaseName: null,
-  onStatusChange: null,
-};
 
 function mergeData(localData, remoteData) {
   return Object.entries(localData)
@@ -139,7 +139,7 @@ function mergeData(localData, remoteData) {
 export default function EnvVarsPage() {
   const {
     targetUrl, token, isAstro, organizationId, deploymentId, releaseName, urlOrgPart,
-  } = useAppState();
+  } = useTargetConfig();
   const dispatch = useAppDispatch();
   const toast = useToast();
 
@@ -191,7 +191,7 @@ export default function EnvVarsPage() {
     setData((prev) => prev.map((item) => (item.key === key ? { ...item, exists: newStatus } : item)));
   }, []);
 
-  const handleMigrateAll = async () => {
+  const handleMigrateAll = useCallback(() => {
     toast({
       title: 'Bulk migration not yet supported for Environment Variables',
       description: 'Please migrate environment variables individually',
@@ -200,7 +200,7 @@ export default function EnvVarsPage() {
       isClosable: true,
     });
     setIsMigratingAll(false);
-  };
+  }, [toast]);
 
   const columns = React.useMemo(() => [
     columnHelper.accessor('key', { header: 'Key' }),
@@ -248,7 +248,6 @@ export default function EnvVarsPage() {
         </Box>
         <HStack>
           <Button
-            size="sm"
             leftIcon={<RepeatIcon />}
             onClick={fetchData}
             variant="outline"

@@ -6,7 +6,7 @@ import {
 import { RepeatIcon } from '@chakra-ui/icons';
 import axios from 'axios';
 
-import { useAppState, useAppDispatch } from '../AppContext';
+import { useAppDispatch, useTargetConfig } from '../AppContext';
 import MigrateButton from '../component/MigrateButton';
 import HiddenValue from '../component/HiddenValue';
 import ProgressSummary from '../component/ProgressSummary';
@@ -27,7 +27,7 @@ function mergeData(localData, remoteData) {
 }
 
 export default function ConnectionsPage() {
-  const { targetUrl, token } = useAppState();
+  const { targetUrl, token } = useTargetConfig();
   const dispatch = useAppDispatch();
   const toast = useToast();
 
@@ -77,7 +77,7 @@ export default function ConnectionsPage() {
   }, []);
 
   // Migrate all unmigrated items
-  const handleMigrateAll = async () => {
+  const handleMigrateAll = useCallback(async () => {
     const unmigratedItems = data.filter((item) => !item.exists);
     if (unmigratedItems.length === 0) return;
 
@@ -112,7 +112,7 @@ export default function ConnectionsPage() {
       duration: 5000,
       isClosable: true,
     });
-  };
+  }, [data, targetUrl, token, toast]);
 
   // Define columns
   const columns = React.useMemo(() => [

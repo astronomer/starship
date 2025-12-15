@@ -1,12 +1,112 @@
 import {
   Checkbox, useBoolean, useToast, HStack, Spinner,
 } from '@chakra-ui/react';
-import React, { useEffect } from 'react';
+import React, { useEffect, memo } from 'react';
 import axios from 'axios';
 import PropTypes from 'prop-types';
 import { proxyHeaders, proxyUrl } from '../util';
 
-export default function ValidatedUrlCheckbox({
+/**
+ * Generates user-friendly error messages based on the error type and context
+ */
+function getErrorDetails(err, text, url) {
+  const resourceName = text === 'Airflow API' ? 'Airflow API' : text === 'Starship Plugin' ? 'Starship Plugin API' : text;
+  const status = err.response?.status;
+  const statusText = err.response?.statusText;
+
+  // Network errors (no response received)
+  if (err.code === 'ERR_NETWORK' || err.message === 'Network Error') {
+    return {
+      title: `Network error connecting to ${resourceName}`,
+      description: 'Unable to reach the server. This could be due to:\n• The URL is incorrect\n• The server is not running\n• A firewall or network issue is blocking the connection\n• CORS policy is blocking the request',
+    };
+  }
+
+  // Timeout errors
+  if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+    return {
+      title: `Connection timeout for ${resourceName}`,
+      description: 'The request took too long to complete. The server may be overloaded or unreachable. Please try again.',
+    };
+  }
+
+  // HTTP status-specific errors
+  switch (status) {
+    case 400:
+      return {
+        title: `Bad request to ${resourceName}`,
+        description: `The server rejected the request. ${err.response?.data?.error || err.response?.data?.message || 'Please verify the URL format is correct.'}`,
+      };
+
+    case 401:
+      return {
+        title: `Authentication failed for ${resourceName}`,
+        description: 'The provided token is invalid or expired. Please check your authentication token and ensure it has the required permissions.',
+      };
+
+    case 403:
+      return {
+        title: `Access denied to ${resourceName}`,
+        description: 'The token is valid but lacks permission to access this resource. Please verify the token has the correct scope and permissions for this deployment.',
+      };
+
+    case 404:
+      if (text === 'Starship Plugin') {
+        return {
+          title: 'Starship Plugin not found',
+          description: 'The Starship plugin is not installed or enabled on the target Airflow instance. Please ensure astronomer-starship is installed and the webserver has been restarted.',
+        };
+      }
+      return {
+        title: `${resourceName} endpoint not found`,
+        description: `The endpoint at "${url}" was not found. Please verify:\n• The URL is correct\n• The Airflow webserver is running\n• The API is accessible`,
+      };
+
+    case 500:
+      return {
+        title: `Server error from ${resourceName}`,
+        description: `The server encountered an internal error. ${err.response?.data?.error || err.response?.data?.message || 'Please check the target Airflow logs for more details.'}`,
+      };
+
+    case 502:
+      return {
+        title: `Bad gateway for ${resourceName}`,
+        description: 'The server received an invalid response from an upstream server. The Airflow webserver may be starting up or experiencing issues.',
+      };
+
+    case 503:
+      return {
+        title: `${resourceName} unavailable`,
+        description: 'The service is temporarily unavailable. The Airflow webserver may be starting up, overloaded, or under maintenance.',
+      };
+
+    case 504:
+      return {
+        title: `Gateway timeout for ${resourceName}`,
+        description: 'The server timed out waiting for a response. Please try again or check if the Airflow instance is responsive.',
+      };
+
+    default: {
+      // Generic error with as much detail as possible
+      const errorMessage = err.response?.data?.error
+        || err.response?.data?.message
+        || err.response?.data?.detail
+        || err.message
+        || (typeof err.response?.data === 'string' ? err.response?.data : null);
+
+      const description = errorMessage
+        ? (typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage))
+        : `An unexpected error occurred${status ? ` (HTTP ${status}${statusText ? `: ${statusText}` : ''})` : ''}. Please check the URL and try again.`;
+
+      return {
+        title: `Failed to validate ${resourceName}`,
+        description,
+      };
+    }
+  }
+}
+
+const ValidatedUrlCheckbox = memo(function ValidatedUrlCheckbox({
   text, url, valid, setValid, token, ...props
 }) {
   const [loading, setLoading] = useBoolean(true);
@@ -14,32 +114,38 @@ export default function ValidatedUrlCheckbox({
   useEffect(() => {
     // noinspection JSCheckFunctionSignatures
     axios
-      .get(proxyUrl(url), { headers: proxyHeaders(token) })
+      .get(proxyUrl(url), { headers: proxyHeaders(token), timeout: 30000 })
       .then((res) => {
         // Valid if it's a 200, has data, and is JSON
-        const isValid = res.status === 200 && res.data && res.headers['content-type'] === 'application/json';
+        const contentType = res.headers['content-type'] || '';
+        const isJson = contentType.includes('application/json');
+        const isValid = res.status === 200 && res.data && isJson;
+
+        if (!isValid && res.status === 200) {
+          // Got a 200 but response isn't what we expected
+          const resourceName = text === 'Airflow API' ? 'Airflow API' : text === 'Starship Plugin' ? 'Starship Plugin API' : text;
+          toast({
+            title: `Unexpected response from ${resourceName}`,
+            description: !isJson
+              ? 'The server returned a non-JSON response. You may have reached a login page or proxy. Please verify the URL and authentication.'
+              : 'The server returned an empty or invalid response. Please verify the endpoint is correct.',
+            status: 'warning',
+            isClosable: true,
+            duration: 7000,
+          });
+        }
+
         setValid(isValid);
       })
       .catch((err) => {
-        if (err.response?.status === 404) {
-          const resourceName = text === 'Airflow' ? 'Airflow API' : text === 'Starship' ? 'Starship API' : text;
-          toast({
-            title: `${resourceName} endpoint not found`,
-            description: `Unable to reach ${resourceName} at the specified URL. Please verify the URL is correct and that ${text} is accessible.`,
-            status: 'error',
-            isClosable: true,
-            duration: 5000,
-          });
-        } else {
-          const errorMessage = err.response?.data?.error || err.message || err.response?.data || 'Unknown error';
-          toast({
-            title: `Failed to validate ${text}`,
-            description: typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage),
-            status: 'error',
-            isClosable: true,
-            duration: 5000,
-          });
-        }
+        const { title, description } = getErrorDetails(err, text, url);
+        toast({
+          title,
+          description,
+          status: 'error',
+          isClosable: true,
+          duration: 8000,
+        });
         setValid(false);
       })
       .finally(() => setLoading.off());
@@ -60,7 +166,8 @@ export default function ValidatedUrlCheckbox({
       {loading && <Spinner size="sm" color="brand.400" thickness="2px" speed="0.8s" emptyColor="gray.200" />}
     </HStack>
   );
-}
+});
+
 ValidatedUrlCheckbox.propTypes = {
   text: PropTypes.string.isRequired,
   url: PropTypes.string.isRequired,
@@ -68,3 +175,5 @@ ValidatedUrlCheckbox.propTypes = {
   setValid: PropTypes.func.isRequired,
   token: PropTypes.string.isRequired,
 };
+
+export default ValidatedUrlCheckbox;

@@ -195,6 +195,7 @@ AppProvider.propTypes = {
 
 // ============================================================================
 // SELECTOR HOOKS - For optimized re-renders
+// These hooks help components subscribe to only the state they need
 // ============================================================================
 export function useSetupComplete() {
   const { isSetupComplete } = useAppState();
@@ -202,6 +203,22 @@ export function useSetupComplete() {
 }
 
 export function useTargetConfig() {
-  const { targetUrl, token, isAstro } = useAppState();
-  return { targetUrl, token, isAstro };
+  const {
+    targetUrl, token, isAstro, organizationId, deploymentId, localAirflowVersion,
+    releaseName, urlOrgPart,
+  } = useAppState();
+  return {
+    targetUrl, token, isAstro, organizationId, deploymentId, localAirflowVersion,
+    releaseName, urlOrgPart,
+  };
+}
+
+export function useDagHistoryConfig() {
+  const { limit, batchSize } = useAppState();
+  return { limit, batchSize };
+}
+
+export function useTelescopeConfig() {
+  const { telescopeOrganizationId, telescopePresignedUrl } = useAppState();
+  return { telescopeOrganizationId, telescopePresignedUrl };
 }
