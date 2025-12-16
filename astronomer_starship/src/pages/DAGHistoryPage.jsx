@@ -5,6 +5,7 @@ import {
   Badge,
   Box,
   Button,
+  CircularProgress,
   FormControl,
   Heading,
   HStack,
@@ -36,7 +37,9 @@ import { useAppDispatch, useTargetConfig, useDagHistoryConfig } from '../AppCont
 import DataTable from '../component/DataTable';
 import PageLoading from '../component/PageLoading';
 import TooltipHeader from '../component/TooltipHeader';
-import { localRoute, proxyHeaders, proxyUrl, getDagViewPath } from '../util';
+import {
+  localRoute, proxyHeaders, proxyUrl, getDagViewPath,
+} from '../util';
 import mergeDagData from '../utils/dagUtils';
 import constants from '../constants';
 
@@ -54,7 +57,6 @@ WithTooltip.propTypes = {
   children: PropTypes.node.isRequired,
 };
 
-
 // Migrate button for DAG history
 function DAGHistoryMigrateButton({
   url,
@@ -67,15 +69,17 @@ function DAGHistoryMigrateButton({
   onMigrate = null,
   onDelete = null,
 }) {
-  const [isLoading, setIsLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [error, setError] = useState(null);
   const toast = useToast();
   const [exists, setExists] = useState(existsInRemote);
   const [isDeleting, setIsDeleting] = useState(false);
 
-const handleError = (err) => {
+  const isLoading = progress > 0 && progress < 100;
+
+  const handleError = (err) => {
     setExists(false);
-    setIsLoading(false);
+    setProgress(0);
     setIsDeleting(false);
     toast({
       title: err.response?.data?.error || err.response?.data || err.message,
@@ -91,19 +95,20 @@ const handleError = (err) => {
     if (exists) {
       // Delete
       setIsDeleting(true);
-      setIsLoading(true);
+      setProgress(50);
       try {
-        const res = await axios({
+        await axios({
           method: 'delete',
           url: proxyUrl(url + constants.DAG_RUNS_ROUTE),
           headers: proxyHeaders(token),
           params: { dag_id: dagId },
         });
-        const newStatus = res.status !== 204;
-        setExists(newStatus);
+        // Delete succeeded - set exists to false regardless of status code
+        setExists(false);
         onDelete?.(dagId);
+        setProgress(100);
         setTimeout(() => {
-          setIsLoading(false);
+          setProgress(0);
           setIsDeleting(false);
         }, 500);
       } catch (err) {
@@ -114,23 +119,31 @@ const handleError = (err) => {
     }
 
     // Migrate
-    setIsLoading(true);
+    setProgress(1);
 
-    const migrateBatch = async (offset = 0) => {
+    const migrateBatch = async (offset = 0, totalCount = null) => {
       const appliedBatchSize = Math.min(limit - offset, batchSize);
       try {
         const [dagRunsRes, taskInstanceRes, taskInstanceHistoryRes] = await Promise.all([
-          axios.get(localRoute(constants.DAG_RUNS_ROUTE), { params: { dag_id: dagId, limit: appliedBatchSize, offset } }),
-          axios.get(localRoute(constants.TASK_INSTANCE_ROUTE), { params: { dag_id: dagId, limit: appliedBatchSize, offset } }),
-          axios.get(localRoute(constants.TASK_INSTANCE_HISTORY_ROUTE), { params: { dag_id: dagId, limit: appliedBatchSize, offset } }),
+          axios.get(localRoute(constants.DAG_RUNS_ROUTE), {
+            params: { dag_id: dagId, limit: appliedBatchSize, offset },
+          }),
+          axios.get(localRoute(constants.TASK_INSTANCE_ROUTE), {
+            params: { dag_id: dagId, limit: appliedBatchSize, offset },
+          }),
+          axios.get(localRoute(constants.TASK_INSTANCE_HISTORY_ROUTE), {
+            params: { dag_id: dagId, limit: appliedBatchSize, offset },
+          }),
         ]);
 
-        const dagRunsToMigrateCount = Math.min(dagRunsRes.data.dag_run_count, limit);
+        const dagRunsToMigrateCount = totalCount
+          || Math.min(dagRunsRes.data.dag_run_count, limit);
 
         if (dagRunsRes.data.dag_runs.length === 0) {
+          setProgress(100);
           setExists(offset > 0);
           onMigrate?.(dagId, dagRunsToMigrateCount);
-          setTimeout(() => setIsLoading(false), 500);
+          setTimeout(() => setProgress(0), 500);
           return;
         }
 
@@ -157,12 +170,17 @@ const handleError = (err) => {
           ),
         ]);
 
-        if (dagRunCreateRes.data.dag_run_count < dagRunsToMigrateCount) {
-          await migrateBatch(offset + batchSize);
+        const migratedCount = dagRunCreateRes.data.dag_run_count;
+        const newProgress = Math.min(99, Math.round((migratedCount / dagRunsToMigrateCount) * 100));
+        setProgress(newProgress);
+
+        if (migratedCount < dagRunsToMigrateCount) {
+          await migrateBatch(offset + batchSize, dagRunsToMigrateCount);
         } else {
+          setProgress(100);
           setExists(true);
           onMigrate?.(dagId, dagRunsToMigrateCount);
-          setTimeout(() => setIsLoading(false), 500);
+          setTimeout(() => setProgress(0), 500);
         }
       } catch (err) {
         handleError(err);
@@ -172,37 +190,73 @@ const handleError = (err) => {
     await migrateBatch(0);
   };
 
+  // Render progress indicator or button content
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <HStack spacing={2}>
+          <CircularProgress
+            value={progress}
+            size="20px"
+            thickness="10px"
+            color={isDeleting ? 'red.400' : 'green.400'}
+            trackColor="gray.200"
+            isIndeterminate={progress < 2}
+          />
+          <Text fontSize="xs">
+            {isDeleting ? 'Deleting' : 'Migrating'}
+            {' '}
+            {Math.round(progress)}
+            %
+          </Text>
+        </HStack>
+      );
+    }
+    if (exists) return 'Delete';
+    if (isDisabled) return 'Not Found';
+    if (error) return 'Error!';
+    return 'Migrate';
+  };
+
+  // Determine colors based on state
+  const isDeleteMode = exists || isDeleting;
+  const activeColor = isDeleteMode || error ? 'error.600' : 'success.600';
+  const activeBorderColor = isDeleteMode || error ? 'error.500' : 'success.500';
+  const activeHoverBg = isDeleteMode || error ? 'error.50' : 'success.50';
+
   return (
     <WithTooltip isDisabled={isDisabled}>
-        <Button
-          size="sm"
-          variant="outline"
-          isDisabled={isDisabled}
-        isLoading={isLoading}
-        loadingText={isDeleting ? 'Deleting...' : 'Migrating...'}
+      <Button
+        size="sm"
+        variant="outline"
+        isDisabled={isDisabled || isLoading}
         leftIcon={
-          error ? <MdErrorOutline />
-            : exists ? <MdDeleteForever />
-              : isDisabled ? <MdWarning />
+          isLoading ? null
+            : error ? <MdErrorOutline />
+              : exists ? <MdDeleteForever />
+                : isDisabled ? <MdWarning />
                   : <GoUpload />
         }
         colorScheme={undefined}
-        color={exists || error ? 'error.600' : 'success.600'}
-        borderColor={exists || error ? 'error.500' : 'success.500'}
+        color={activeColor}
+        borderColor={activeBorderColor}
         _hover={{
-          bg: exists || error ? 'error.50' : 'success.50',
+          bg: activeHoverBg,
         }}
-        _disabled={{
+        _disabled={isLoading ? {
+          color: activeColor,
+          borderColor: activeBorderColor,
+          opacity: 0.8,
+          cursor: 'progress',
+        } : {
           color: 'gray.600',
           borderColor: 'gray.500',
           opacity: 1,
         }}
         onClick={handleClick}
+        minW={isLoading ? '130px' : undefined}
       >
-        {exists ? 'Delete'
-            : isDisabled ? 'Not Found'
-              : error ? 'Error!'
-                : 'Migrate'}
+        {renderContent()}
       </Button>
     </WithTooltip>
   );
@@ -219,8 +273,6 @@ DAGHistoryMigrateButton.propTypes = {
   onMigrate: PropTypes.func,
   onDelete: PropTypes.func,
 };
-
-
 
 export default function DAGHistoryPage() {
   const { targetUrl, token, localAirflowVersion } = useTargetConfig();
@@ -279,7 +331,9 @@ export default function DAGHistoryPage() {
         return { ...item, [key]: { ...item[key], is_paused: res.data.is_paused } };
       }));
     } catch (err) {
-      toast({ title: err.message, status: 'error', isClosable: true, variant: 'outline', duration: 4000 });
+      toast({
+        title: err.message, status: 'error', isClosable: true, variant: 'outline', duration: 4000,
+      });
     }
   }, [targetUrl, token, toast]);
 
@@ -304,7 +358,9 @@ export default function DAGHistoryPage() {
     });
 
     if (items.length === 0) {
-      toast({ title: `All ${isLocal ? 'local' : 'remote'} DAGs are already ${pause ? 'paused' : 'unpaused'}`, status: 'info', duration: 4000, variant: 'outline' });
+      toast({
+        title: `All ${isLocal ? 'local' : 'remote'} DAGs are already ${pause ? 'paused' : 'unpaused'}`, status: 'info', duration: 4000, variant: 'outline',
+      });
       return;
     }
 
@@ -370,7 +426,12 @@ export default function DAGHistoryPage() {
     }),
     columnHelper.display({
       id: 'local_is_paused',
-      header: () => <>Local <TooltipHeader tooltip="Toggle to pause/unpause DAG in local" /></>,
+      header: () => (
+        <>
+          Local
+          <TooltipHeader tooltip="Toggle to pause/unpause DAG in local" />
+        </>
+      ),
       cell: ({ row }) => (
         <>
           <Switch
@@ -391,14 +452,21 @@ export default function DAGHistoryPage() {
       header: 'Local URL',
       cell: ({ row }) => (
         <Link isExternal href={localRoute(getDagViewPath(row.original.local.dag_id, localAirflowVersion))} color="brand.700">
-          View DAG <ExternalLinkIcon mx="2px" />
+          View DAG
+          {' '}
+          <ExternalLinkIcon mx="2px" />
         </Link>
       ),
     }),
     columnHelper.display({
       id: 'remote_is_paused',
-      header: () => <>Remote <TooltipHeader tooltip="Toggle to pause/unpause DAG in remote" /></>,
-      cell: ({ row }) => row.original.remote ? (
+      header: () => (
+        <>
+          Remote
+          <TooltipHeader tooltip="Toggle to pause/unpause DAG in remote" />
+        </>
+      ),
+      cell: ({ row }) => (row.original.remote ? (
         <>
           <Switch
             colorScheme="success"
@@ -411,16 +479,18 @@ export default function DAGHistoryPage() {
             </Badge>
           </Tooltip>
         </>
-      ) : null,
+      ) : null),
     }),
     columnHelper.display({
       id: 'remote_url',
       header: 'Remote URL',
-      cell: ({ row }) => row.original.remote ? (
+      cell: ({ row }) => (row.original.remote ? (
         <Link isExternal href={`${targetUrl}/dags/${row.original.remote.dag_id}`} color="brand.700">
-          View DAG <ExternalLinkIcon mx="2px" />
+          View DAG
+          {' '}
+          <ExternalLinkIcon mx="2px" />
         </Link>
-      ) : null,
+      ) : null),
     }),
     columnHelper.display({
       id: 'migrate',
@@ -436,7 +506,8 @@ export default function DAGHistoryPage() {
           existsInRemote={!!row.original.remote?.dag_run_count}
           isDisabled={
             !row.original.remote?.dag_id ? 'DAG not found in remote'
-              : !row.original.local.dag_run_count ? 'No DAG Runs to migrate'
+              : (!row.original.local.dag_run_count && !row.original.remote?.dag_run_count)
+                ? 'No DAG Runs to migrate'
                 : false
           }
           onMigrate={handleMigrate}
@@ -491,7 +562,7 @@ export default function DAGHistoryPage() {
       <HStack spacing={2} mb={3} justify="space-between">
         <HStack spacing={2}>
           <Text fontSize="sm" fontWeight="semibold" color="gray.600">Local:</Text>
-          <Button size="sm" leftIcon={<FiPause />} onClick={() => handleBulkPause(true, true)} colorScheme="orange" variant="outline" >
+          <Button size="sm" leftIcon={<FiPause />} onClick={() => handleBulkPause(true, true)} colorScheme="orange" variant="outline">
             Pause All
           </Button>
           <Button size="sm" leftIcon={<FiPlay />} onClick={() => handleBulkPause(true, false)} colorScheme="green" variant="outline">
@@ -500,10 +571,10 @@ export default function DAGHistoryPage() {
         </HStack>
         <HStack spacing={2}>
           <Text fontSize="sm" fontWeight="semibold" color="gray.600">Remote:</Text>
-          <Button size="sm" leftIcon={<FiPause />} onClick={() => handleBulkPause(false, true)} colorScheme="orange" variant="outline" >
+          <Button size="sm" leftIcon={<FiPause />} onClick={() => handleBulkPause(false, true)} colorScheme="orange" variant="outline">
             Pause All
           </Button>
-          <Button size="sm" leftIcon={<FiPlay />} onClick={() => handleBulkPause(false, false)} colorScheme="green" variant="outline" >
+          <Button size="sm" leftIcon={<FiPlay />} onClick={() => handleBulkPause(false, false)} colorScheme="green" variant="outline">
             Unpause All
           </Button>
         </HStack>

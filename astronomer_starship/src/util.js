@@ -38,6 +38,87 @@ export function getTargetUrlFromParts(urlOrgPart, urlDeploymentPart, isAstro) {
 }
 
 /**
+ * Parses an Airflow webserver URL and extracts the relevant parts.
+ * Supports both Astro and Software URL formats.
+ *
+ * Astro format: https://{org}.astronomer.run/{deployment}[/home]
+ * Software format: https://deployments.{basedomain}/{release-name}/airflow[/home]
+ *
+ * @param {string} url - The full Airflow webserver URL
+ * @returns {{ targetUrl: string, urlOrgPart: string, urlDeploymentPart: string,
+ *             isAstro: boolean, isValid: boolean }}
+ */
+export function parseAirflowUrl(url) {
+  const result = {
+    targetUrl: '',
+    urlOrgPart: '',
+    urlDeploymentPart: '',
+    isAstro: true,
+    isValid: false,
+  };
+
+  if (!url || typeof url !== 'string') {
+    return result;
+  }
+
+  // Clean and normalize URL
+  let cleanUrl = url.trim();
+
+  // Add https:// if no protocol specified
+  if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+    cleanUrl = `https://${cleanUrl}`;
+  }
+
+  try {
+    const parsed = new URL(cleanUrl);
+    const { hostname, pathname } = parsed;
+
+    // Check if it's Astro (*.astronomer.run)
+    if (hostname.endsWith('.astronomer.run')) {
+      result.isAstro = true;
+      // Extract org part (everything before .astronomer.run)
+      result.urlOrgPart = hostname.replace('.astronomer.run', '');
+
+      // Extract deployment part from pathname (first segment, ignoring /home)
+      const pathParts = pathname.split('/').filter(Boolean);
+      // Remove 'home' if it's the last segment
+      if (pathParts[pathParts.length - 1] === 'home') {
+        pathParts.pop();
+      }
+      result.urlDeploymentPart = pathParts[0] || '';
+
+      // Build clean target URL
+      if (result.urlOrgPart && result.urlDeploymentPart) {
+        result.targetUrl = `https://${result.urlOrgPart}.astronomer.run/${result.urlDeploymentPart}`;
+        result.isValid = true;
+      }
+    } else if (hostname.startsWith('deployments.')) {
+      // Software format
+      result.isAstro = false;
+      // Extract basedomain (everything after deployments.)
+      result.urlOrgPart = hostname.replace('deployments.', '');
+
+      // Extract release name from pathname
+      // pathname is like /release-name-1234/airflow/home
+      const pathParts = pathname.split('/').filter(Boolean);
+      // First part should be the release name
+      result.urlDeploymentPart = pathParts[0] || '';
+
+      // Build clean target URL
+      if (result.urlOrgPart && result.urlDeploymentPart) {
+        result.targetUrl = `https://deployments.${result.urlOrgPart}/${result.urlDeploymentPart}/airflow`;
+        result.isValid = true;
+      }
+    }
+  } catch {
+    // Invalid URL
+    return result;
+  }
+
+  return result;
+}
+
+/**
  * Returns the local URL for a given route by splitting at 'starship
  * @param route
  @returns {string}

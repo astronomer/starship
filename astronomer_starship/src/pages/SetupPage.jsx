@@ -10,6 +10,7 @@ import {
   Button,
   Card,
   CardBody,
+  Code,
   Collapse,
   Divider,
   FormControl,
@@ -18,15 +19,10 @@ import {
   FormLabel,
   Heading,
   HStack,
-  Icon,
-  IconButton,
   Input,
   InputGroup,
-  InputLeftAddon,
-  InputRightAddon,
   InputRightElement,
   Link,
-  Select,
   Stack,
   Text,
   Tooltip,
@@ -36,7 +32,6 @@ import {
 import {
   CheckIcon,
   ChevronDownIcon,
-  ChevronUpIcon,
   ExternalLinkIcon,
   InfoIcon,
   QuestionIcon,
@@ -50,7 +45,7 @@ import { useAppState, useAppDispatch } from '../AppContext';
 import ValidatedUrlCheckbox from '../component/ValidatedUrlCheckbox';
 import {
   getHoustonRoute,
-  getTargetUrlFromParts,
+  parseAirflowUrl,
   proxyHeaders,
   proxyUrl,
   tokenUrlFromAirflowUrl,
@@ -64,7 +59,6 @@ export default function SetupPage() {
   // Collapsible section states
   const step1 = useDisclosure({ defaultIsOpen: true });
   const step2 = useDisclosure({ defaultIsOpen: false });
-  const step3 = useDisclosure({ defaultIsOpen: false });
 
   // Reset confirmation dialog
   const resetDialog = useDisclosure();
@@ -73,51 +67,35 @@ export default function SetupPage() {
   // Animation states for checkmarks
   const [showStep1Check, setShowStep1Check] = useState(false);
   const [showStep2Check, setShowStep2Check] = useState(false);
-  const [showStep3Check, setShowStep3Check] = useState(false);
 
   // Step completion logic
-  const isStep1Complete = state.isAstro !== undefined;
-  const isStep2Complete = state.isValidUrl && state.token;
-  const isStep3Complete = state.isAirflow && state.isStarship;
+  const isStep1Complete = state.isValidUrl && state.token;
+  const isStep2Complete = state.isAirflow && state.isStarship;
 
   // Auto-open sections on mount based on completion state
   useEffect(() => {
     if (isStep1Complete && !isStep2Complete && !step2.isOpen) {
       step2.onOpen();
     }
-    if (isStep2Complete && !isStep3Complete && !step3.isOpen) {
-      step3.onOpen();
-    }
-  }, [isStep1Complete, isStep2Complete, isStep3Complete, step2.isOpen, step3.isOpen]);
+  }, [isStep1Complete, isStep2Complete, step2.isOpen]);
 
   // Trigger animations when steps complete
   useEffect(() => {
     if (isStep1Complete && !showStep1Check) {
       setShowStep1Check(true);
-      // Open next section when step 1 is complete
-      if (!step2.isOpen) {
-        setTimeout(() => step2.onOpen(), 300);
-      }
+      setTimeout(() => {
+        step1.onClose();
+        step2.onOpen();
+      }, 1000);
     }
-  }, [isStep1Complete, showStep1Check, step2]);
+  }, [isStep1Complete, showStep1Check, step1, step2]);
 
   useEffect(() => {
     if (isStep2Complete && !showStep2Check) {
       setShowStep2Check(true);
-      setTimeout(() => {
-        step2.onClose();
-        // Open next section when step 2 is complete
-        step3.onOpen();
-      }, 1000);
+      setTimeout(() => step2.onClose(), 1000);
     }
-  }, [isStep2Complete, showStep2Check, step2, step3]);
-
-  useEffect(() => {
-    if (isStep3Complete && !showStep3Check) {
-      setShowStep3Check(true);
-      setTimeout(() => step3.onClose(), 1000);
-    }
-  }, [isStep3Complete, showStep3Check, step3]);
+  }, [isStep2Complete, showStep2Check, step2]);
 
   // Fetch workspace/deployment info for Software
   useEffect(() => {
@@ -182,7 +160,13 @@ export default function SetupPage() {
           </Text>
         </Box>
         <HStack>
-          <Button size="sm" leftIcon={<IoTelescopeOutline />} as={NavLink} to="/telescope" variant="outline">
+          <Button
+            size="sm"
+            leftIcon={<IoTelescopeOutline />}
+            as={NavLink}
+            to="/telescope"
+            variant="outline"
+          >
             Telescope
           </Button>
           <Button
@@ -198,67 +182,262 @@ export default function SetupPage() {
       </Stack>
 
       <VStack spacing={3} align="stretch" w="100%">
-        {/* Step 1: Product Selector */}
+        {/* Step 1: URL & Token Input */}
         <Card>
           <CardBody py={3}>
             <VStack align="stretch" spacing={2}>
-              <HStack mb={1}>
-                <Box
-                  display="inline-flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  w={6}
-                  h={6}
-                  borderRadius="full"
-                  bg={isStep1Complete ? 'success.500' : 'brand.500'}
-                  color="white"
-                  fontWeight="bold"
-                  fontSize="xs"
-                  mr={2}
-                  transition="all 0.3s"
-                >
-                  {isStep1Complete && showStep1Check ? '✓' : '1'}
-                </Box>
-                <Heading size="sm">Select Product</Heading>
-                <Tooltip
-                  label="Choose whether you're migrating to Astro (cloud) or Astro Private Cloud (self-hosted)"
-                  placement="top"
-                  hasArrow
-                >
-                  <QuestionIcon color="gray.400" boxSize={3} cursor="help" />
-                </Tooltip>
+              <HStack
+                mb={1}
+                justify="space-between"
+                cursor={isStep1Complete ? 'pointer' : 'default'}
+                onClick={isStep1Complete ? step1.onToggle : undefined}
+                _hover={isStep1Complete ? { bg: 'gray.50' } : undefined}
+                transition="background 0.2s"
+                borderRadius="md"
+                px={2}
+                py={1}
+                mx={-2}
+              >
+                <HStack>
+                  <Box
+                    display="inline-flex"
+                    alignItems="center"
+                    justifyContent="center"
+                    w={6}
+                    h={6}
+                    borderRadius="full"
+                    bg={isStep1Complete ? 'success.500' : 'brand.500'}
+                    color="white"
+                    fontWeight="bold"
+                    fontSize="xs"
+                    mr={2}
+                    transition="all 0.3s"
+                  >
+                    {isStep1Complete && showStep1Check ? '✓' : '1'}
+                  </Box>
+                  <Heading size="sm">Configure Target Airflow</Heading>
+                  <Tooltip
+                    label="Enter the URL and authentication token for your target deployment"
+                    placement="top"
+                    hasArrow
+                  >
+                    <QuestionIcon color="gray.400" boxSize={3} cursor="help" />
+                  </Tooltip>
+                </HStack>
+                {isStep1Complete && (
+                  <ChevronDownIcon
+                    boxSize={4}
+                    transform={step1.isOpen ? 'rotate(180deg)' : 'rotate(0deg)'}
+                    transition="transform 0.2s"
+                  />
+                )}
               </HStack>
               <Collapse in={step1.isOpen} animateOpacity>
-                <FormControl className="setup-form-field" isRequired>
-                  <FormLabel htmlFor="product-select" mb={1}>
-                    Astronomer Product
-                  </FormLabel>
-                  <Select
-                    id="product-select"
+                <FormControl
+                  className="setup-form-field"
+                  isInvalid={state.isTouched && !state.isValidUrl}
+                  isRequired
+                >
+                  <HStack mb={1}>
+                    <FormLabel mb={0}>Airflow URL</FormLabel>
+                    <Tooltip
+                      label="Copy the webserver URL from your Astronomer deployment"
+                      placement="top"
+                      hasArrow
+                    >
+                      <InfoIcon color="gray.400" boxSize={3} cursor="help" />
+                    </Tooltip>
+                  </HStack>
+                  <Input
                     size="sm"
-                    maxW="xs"
-                    value={state.isAstro ? 'astro' : 'software'}
+                    placeholder="https://..."
+                    value={state.targetUrl}
+                    isInvalid={state.isTouched && !state.isValidUrl}
                     onChange={(e) => {
-                      const newIsAstro = e.target.value === 'astro';
-                      if (newIsAstro !== state.isAstro) {
+                      const parsed = parseAirflowUrl(e.target.value);
+                      // Auto-detect product type if URL is valid
+                      if (parsed.isValid && parsed.isAstro !== state.isAstro) {
                         dispatch({ type: 'toggle-is-astro' });
                       }
+                      dispatch({
+                        type: 'set-url',
+                        targetUrl: parsed.isValid ? parsed.targetUrl : e.target.value,
+                        urlOrgPart: parsed.urlOrgPart,
+                        urlDeploymentPart: parsed.urlDeploymentPart,
+                      });
                     }}
-                    focusBorderColor="brand.400"
-                  >
-                    <option value="astro">Astro</option>
-                    <option value="software">Astro Private Cloud (Software)</option>
-                  </Select>
+                  />
                   <FormHelperText fontSize="xs">
-                    Select the Astronomer product you are migrating to
+                    Paste the full webserver URL of your target Airflow deployment
                   </FormHelperText>
+                  <FormErrorMessage>Please enter a valid Airflow URL</FormErrorMessage>
+                </FormControl>
+
+                {/* URL Format Guidance */}
+                <Box
+                  mt={3}
+                  p={3}
+                  bg="gray.50"
+                  borderRadius="md"
+                  borderWidth="1px"
+                  borderColor="gray.200"
+                >
+                  <Text fontSize="xs" fontWeight="semibold" color="gray.600" mb={2}>
+                    Supported URL Formats
+                  </Text>
+                  <VStack align="stretch" spacing={2}>
+                    <Box>
+                      <Text fontSize="2xs" color="gray.500" mb={0.5}>
+                        Astro (Cloud)
+                      </Text>
+                      <Code fontSize="2xs" px={2} py={1} borderRadius="sm" display="block">
+                        https://claaabbbcccddd.astronomer.run/aabbccdd
+                      </Code>
+                    </Box>
+                    <Box>
+                      <Text fontSize="2xs" color="gray.500" mb={0.5}>
+                        Astro Private Cloud (Software)
+                      </Text>
+                      <Code fontSize="2xs" px={2} py={1} borderRadius="sm" display="block">
+                        https://deployments.basedomain.com/release-name-1234/airflow
+                      </Code>
+                    </Box>
+                  </VStack>
+                </Box>
+
+                <Divider my={3} />
+
+                <FormControl
+                  isInvalid={state.isTokenTouched && !state.token}
+                  className="setup-form-field"
+                >
+                  <HStack mb={1}>
+                    <FormLabel mb={0}>Authentication Token</FormLabel>
+                    <Tooltip
+                      label={
+                        state.isAstro
+                          ? 'Use an Organization, Workspace, or Personal access token'
+                          : 'Use a Workspace or Deployment service account token'
+                      }
+                      placement="top"
+                      hasArrow
+                    >
+                      <InfoIcon color="gray.400" boxSize={3} cursor="help" />
+                    </Tooltip>
+                  </HStack>
+                  <InputGroup size="sm">
+                    <Input
+                      type="password"
+                      autoComplete="off"
+                      value={state.token || ''}
+                      isInvalid={state.isTokenTouched && !state.token}
+                      placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      onChange={(e) => dispatch({ type: 'set-token', token: e.target.value })}
+                    />
+                    {state.isTokenTouched && state.token && (
+                      <InputRightElement>
+                        <CheckIcon color="success.500" />
+                      </InputRightElement>
+                    )}
+                  </InputGroup>
+                  {state.isAstro ? (
+                    <FormHelperText>
+                      Provide a token:
+                      {' '}
+                      <Tooltip
+                        label="Organization tokens have access to all workspaces and deployments"
+                        hasArrow
+                      >
+                        <Link
+                          isExternal
+                          href="https://docs.astronomer.io/astro/organization-api-tokens"
+                        >
+                          Organization
+                          <ExternalLinkIcon mx="2px" />
+                        </Link>
+                      </Tooltip>
+                      ,
+                      {' '}
+                      <Tooltip
+                        label="Workspace tokens have access to all deployments in a workspace"
+                        hasArrow
+                      >
+                        <Link
+                          isExternal
+                          href="https://docs.astronomer.io/astro/workspace-api-tokens"
+                        >
+                          Workspace
+                          <ExternalLinkIcon mx="2px" />
+                        </Link>
+                      </Tooltip>
+                      ,
+                      {' '}
+                      <Tooltip label="Personal tokens are user-specific access tokens" hasArrow>
+                        <Link isExternal href={tokenUrlFromAirflowUrl(state.targetUrl)}>
+                          Personal
+                          <ExternalLinkIcon mx="2px" />
+                        </Link>
+                      </Tooltip>
+                      .
+                    </FormHelperText>
+                  ) : (
+                    <FormHelperText>
+                      Provide a token:
+                      {' '}
+                      <Tooltip
+                        label="Workspace service accounts have access to all deployments"
+                        hasArrow
+                      >
+                        <Link
+                          isExternal
+                          href="https://docs.astronomer.io/software/manage-workspaces#service-accounts"
+                        >
+                          Workspace
+                          <ExternalLinkIcon mx="2px" />
+                        </Link>
+                      </Tooltip>
+                      ,
+                      {' '}
+                      <Tooltip
+                        label="Deployment service accounts are deployment-specific tokens"
+                        hasArrow
+                      >
+                        <Link
+                          isExternal
+                          href="https://docs.astronomer.io/software/ci-cd#step-1-create-a-service-account"
+                        >
+                          Deployment
+                          <ExternalLinkIcon mx="2px" />
+                        </Link>
+                      </Tooltip>
+                      {state.targetUrl.startsWith('https://') && state.isValidUrl && (
+                        <>
+                          ,
+                          {' '}
+                          <Tooltip
+                            label="Personal tokens are user-specific access tokens"
+                            hasArrow
+                          >
+                            <Link isExternal href={tokenUrlFromAirflowUrl(state.targetUrl)}>
+                              Personal
+                              <ExternalLinkIcon mx="2px" />
+                            </Link>
+                          </Tooltip>
+                        </>
+                      )}
+                      .
+                    </FormHelperText>
+                  )}
+                  <FormErrorMessage>
+                    Please input a valid authentication token
+                  </FormErrorMessage>
                 </FormControl>
               </Collapse>
             </VStack>
           </CardBody>
         </Card>
 
-        {/* Step 2: URL Input */}
+        {/* Step 2: Connection Status */}
         <Card
           opacity={isStep1Complete ? 1 : 0.5}
           pointerEvents={isStep1Complete ? 'auto' : 'none'}
@@ -295,9 +474,9 @@ export default function SetupPage() {
                   >
                     {isStep2Complete && showStep2Check ? '✓' : '2'}
                   </Box>
-                  <Heading size="sm">Configure Target Airflow</Heading>
+                  <Heading size="sm">Connection Status</Heading>
                   <Tooltip
-                    label="Enter the URL and authentication token for your target Airflow deployment"
+                    label="Verifies that both Airflow API and Starship plugin are accessible"
                     placement="top"
                     hasArrow
                   >
@@ -313,288 +492,6 @@ export default function SetupPage() {
                 )}
               </HStack>
               <Collapse in={step2.isOpen} animateOpacity>
-                <FormControl
-                  className="setup-form-field"
-                  isInvalid={state.isTouched && !state.isValidUrl}
-                  isRequired
-                >
-                  <HStack mb={1}>
-                    <FormLabel mb={0}>Airflow URL</FormLabel>
-                    <Tooltip
-                      label={
-                        state.isAstro
-                          ? 'Find your deployment URL in the Astro Cloud UI under Deployment Settings'
-                          : 'Find your deployment URL in the Software UI or from your platform team'
-                      }
-                      placement="top"
-                      hasArrow
-                    >
-                      <InfoIcon color="gray.400" boxSize={3} cursor="help" />
-                    </Tooltip>
-                  </HStack>
-                  {state.isAstro ? (
-                    <Stack direction={{ base: 'column', lg: 'row' }} spacing={2}>
-                      <InputGroup size="sm">
-                        <InputLeftAddon>https://</InputLeftAddon>
-                        <Input
-                          id="astroUrlOrgPart"
-                          placeholder="claaabbbcccddd"
-                          value={state.urlOrgPart}
-                          isInvalid={state.isTouched && !state.isValidUrl}
-                          onChange={(e) => dispatch({
-                            type: 'set-url',
-                            targetUrl: getTargetUrlFromParts(
-                              e.target.value,
-                              state.urlDeploymentPart,
-                              state.isAstro,
-                            ),
-                            urlDeploymentPart: state.urlDeploymentPart,
-                            urlOrgPart: e.target.value,
-                          })}
-                        />
-                        <InputRightAddon>.astronomer.run/</InputRightAddon>
-                      </InputGroup>
-                      <InputGroup size="sm">
-                        <Input
-                          placeholder="aabbccdd"
-                          value={state.urlDeploymentPart}
-                          isInvalid={state.isTouched && !state.isValidUrl}
-                          onChange={(e) => dispatch({
-                            type: 'set-url',
-                            targetUrl: getTargetUrlFromParts(
-                              state.urlOrgPart,
-                              e.target.value,
-                              state.isAstro,
-                            ),
-                            urlOrgPart: state.urlOrgPart,
-                            urlDeploymentPart: e.target.value,
-                          })}
-                        />
-                        <InputRightAddon>/home</InputRightAddon>
-                      </InputGroup>
-                    </Stack>
-                  ) : (
-                    <Stack direction={{ base: 'column', lg: 'row' }} spacing={2}>
-                      <InputGroup size="sm">
-                        <InputLeftAddon>https://deployments.</InputLeftAddon>
-                        <Input
-                          placeholder="basedomain.com"
-                          value={state.urlOrgPart}
-                          isInvalid={state.isTouched && !state.isValidUrl}
-                          onChange={(e) => dispatch({
-                            type: 'set-url',
-                            targetUrl: getTargetUrlFromParts(
-                              e.target.value,
-                              state.urlDeploymentPart,
-                              state.isAstro,
-                            ),
-                            urlOrgPart: e.target.value,
-                            urlDeploymentPart: state.urlDeploymentPart,
-                          })}
-                        />
-                        <InputRightAddon>/</InputRightAddon>
-                      </InputGroup>
-                      <InputGroup size="sm">
-                        <Input
-                          placeholder="release-name-1234"
-                          value={state.urlDeploymentPart}
-                          isInvalid={state.isTouched && !state.isValidUrl}
-                          onChange={(e) => dispatch({
-                            type: 'set-url',
-                            targetUrl: getTargetUrlFromParts(
-                              state.urlOrgPart,
-                              e.target.value,
-                              state.isAstro,
-                            ),
-                            urlOrgPart: state.urlOrgPart,
-                            urlDeploymentPart: e.target.value,
-                          })}
-                        />
-                        <InputRightAddon>/airflow/home</InputRightAddon>
-                      </InputGroup>
-                    </Stack>
-                  )}
-                  <FormHelperText fontSize="xs">
-                    Enter the URL of the Airflow instance you are migrating to
-                  </FormHelperText>
-                  <FormErrorMessage>Please fill both parts of the URL</FormErrorMessage>
-                </FormControl>
-
-                <Divider my={2} />
-
-                <FormControl
-                  isInvalid={state.isTokenTouched && !state.token}
-                  className="setup-form-field"
-                >
-                  <HStack mb={1}>
-                    <FormLabel mb={0}>Authentication Token</FormLabel>
-                    <Tooltip
-                      label={
-                        state.isAstro
-                          ? 'Use an Organization, Workspace, or Personal access token with read/write permissions'
-                          : 'Use a Workspace or Deployment service account token with appropriate permissions'
-                      }
-                      placement="top"
-                      hasArrow
-                    >
-                      <InfoIcon color="gray.400" boxSize={3} cursor="help" />
-                    </Tooltip>
-                  </HStack>
-                  <InputGroup size="sm">
-                    <Input
-                      type="password"
-                      autoComplete="off"
-                      value={state.token || ''}
-                      isInvalid={state.isTokenTouched && !state.token}
-                      placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                      onChange={(e) => dispatch({ type: 'set-token', token: e.target.value })}
-                    />
-                    {state.isTokenTouched && state.token && (
-                      <InputRightElement>
-                        <CheckIcon color="success.500" />
-                      </InputRightElement>
-                    )}
-                  </InputGroup>
-                  {state.isAstro ? (
-                    <FormHelperText>
-                      Provide a token:{' '}
-                      <Tooltip
-                        label="Organization tokens have access to all workspaces and deployments"
-                        hasArrow
-                      >
-                        <Link
-                          isExternal
-                          href="https://docs.astronomer.io/astro/organization-api-tokens#create-an-organization-api-token"
-                        >
-                          Organization<ExternalLinkIcon mx="2px" />
-                        </Link>
-                      </Tooltip>
-                      ,{' '}
-                      <Tooltip
-                        label="Workspace tokens have access to all deployments in a workspace"
-                        hasArrow
-                      >
-                        <Link
-                          isExternal
-                          href="https://docs.astronomer.io/astro/workspace-api-tokens#create-a-workspace-api-token"
-                        >
-                          Workspace<ExternalLinkIcon mx="2px" />
-                        </Link>
-                      </Tooltip>
-                      ,{' '}
-                      <Tooltip label="Personal tokens are user-specific access tokens" hasArrow>
-                        <Link isExternal href={tokenUrlFromAirflowUrl(state.targetUrl)}>
-                          Personal<ExternalLinkIcon mx="2px" />
-                        </Link>
-                      </Tooltip>
-                      .
-                    </FormHelperText>
-                  ) : (
-                    <FormHelperText>
-                      Provide a token:{' '}
-                      <Tooltip
-                        label="Workspace service accounts have access to all deployments in a workspace"
-                        hasArrow
-                      >
-                        <Link
-                          isExternal
-                          href="https://docs.astronomer.io/software/manage-workspaces#service-accounts"
-                        >
-                          Workspace<ExternalLinkIcon mx="2px" />
-                        </Link>
-                      </Tooltip>
-                      ,{' '}
-                      <Tooltip
-                        label="Deployment service accounts are deployment-specific tokens"
-                        hasArrow
-                      >
-                        <Link
-                          isExternal
-                          href="https://docs.astronomer.io/software/ci-cd#step-1-create-a-service-account"
-                        >
-                          Deployment<ExternalLinkIcon mx="2px" />
-                        </Link>
-                      </Tooltip>
-                      {state.targetUrl.startsWith('https://') && state.isValidUrl && (
-                        <>
-                          ,{' '}
-                          <Tooltip
-                            label="Personal tokens are user-specific access tokens"
-                            hasArrow
-                          >
-                            <Link isExternal href={tokenUrlFromAirflowUrl(state.targetUrl)}>
-                              Personal<ExternalLinkIcon mx="2px" />
-                            </Link>
-                          </Tooltip>
-                        </>
-                      )}
-                      .
-                    </FormHelperText>
-                  )}
-                  <FormErrorMessage>
-                    Please input a valid authentication token
-                  </FormErrorMessage>
-                </FormControl>
-              </Collapse>
-            </VStack>
-          </CardBody>
-        </Card>
-
-        {/* Step 3: Connection Status */}
-        <Card
-          opacity={isStep2Complete ? 1 : 0.5}
-          pointerEvents={isStep2Complete ? 'auto' : 'none'}
-          transition="all 0.3s"
-        >
-          <CardBody py={3}>
-            <VStack align="stretch" spacing={2}>
-              <HStack
-                mb={1}
-                justify="space-between"
-                cursor={isStep3Complete ? 'pointer' : 'default'}
-                onClick={isStep3Complete ? step3.onToggle : undefined}
-                _hover={isStep3Complete ? { bg: 'gray.50' } : undefined}
-                transition="background 0.2s"
-                borderRadius="md"
-                px={2}
-                py={1}
-                mx={-2}
-              >
-                <HStack>
-                  <Box
-                    display="inline-flex"
-                    alignItems="center"
-                    justifyContent="center"
-                    w={6}
-                    h={6}
-                    borderRadius="full"
-                    bg={isStep3Complete ? 'success.500' : 'purple.500'}
-                    color="white"
-                    fontWeight="bold"
-                    fontSize="xs"
-                    mr={2}
-                    transition="all 0.3s"
-                  >
-                    {isStep3Complete && showStep3Check ? '✓' : '3'}
-                  </Box>
-                  <Heading size="sm">Connection Status</Heading>
-                  <Tooltip
-                    label="Verifies that both Airflow API and Starship plugin are accessible"
-                    placement="top"
-                    hasArrow
-                  >
-                    <QuestionIcon color="gray.400" boxSize={3} cursor="help" />
-                  </Tooltip>
-                </HStack>
-                {isStep3Complete && (
-                  <ChevronDownIcon
-                    boxSize={4}
-                    transform={step3.isOpen ? 'rotate(180deg)' : 'rotate(0deg)'}
-                    transition="transform 0.2s"
-                  />
-                )}
-              </HStack>
-              <Collapse in={step3.isOpen} animateOpacity>
                 <Box>
                   <Text fontSize="xs" color="gray.600" mb={1.5}>
                     Verifying connectivity to your target Airflow instance
@@ -645,7 +542,7 @@ export default function SetupPage() {
                     </>
                   ) : (
                     <Text fontSize="sm" color="gray.500" fontStyle="italic">
-                      Complete Step 2 to verify connections
+                      Complete Step 1 to verify connections
                     </Text>
                   )}
                 </Box>
@@ -655,7 +552,7 @@ export default function SetupPage() {
         </Card>
 
         {/* Success Message - Show when all steps complete */}
-        {isStep3Complete && (
+        {isStep2Complete && (
           <Card bg="success.50" borderColor="success.500" borderWidth="1px">
             <CardBody py={4}>
               <VStack align="stretch" spacing={3}>
@@ -666,7 +563,8 @@ export default function SetupPage() {
                   </Heading>
                 </HStack>
                 <Text fontSize="sm" color="gray.700">
-                  Your Starship configuration is ready. You can now migrate your Airflow metadata by using the navigation links at the top of the page.
+                  Your Starship configuration is ready. You can now migrate your Airflow
+                  metadata by using the navigation links at the top of the page.
                 </Text>
               </VStack>
             </CardBody>
@@ -702,10 +600,8 @@ export default function SetupPage() {
                   resetDialog.onClose();
                   setShowStep1Check(false);
                   setShowStep2Check(false);
-                  setShowStep3Check(false);
                   step1.onOpen();
                   step2.onOpen();
-                  step3.onOpen();
                 }}
                 ml={3}
                 size="sm"
