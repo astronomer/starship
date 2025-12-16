@@ -11,6 +11,19 @@ const constants = Object.freeze({
 });
 export default constants;
 
+/**
+ * Route paths for navigation (without leading slash for router config)
+ */
+export const ROUTES = Object.freeze({
+  SETUP: 'setup',
+  VARIABLES: 'variables',
+  CONNECTIONS: 'connections',
+  POOLS: 'pools',
+  ENV_VARS: 'env',
+  DAGS: 'dags',
+  TELESCOPE: 'telescope',
+});
+
 export const updateDeploymentVariablesMutation = `
 mutation UpdateDeploymentVariables(
   $deploymentUuid:Uuid!,

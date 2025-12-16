@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, Suspense, lazy } from 'react';
 import {
   createHashRouter,
   RouterProvider,
@@ -7,23 +7,35 @@ import {
   Navigate,
 } from 'react-router-dom';
 import {
-  Box, Button, Divider, Flex, Heading, HStack, Icon, Image, Text, Tooltip,
+  Box, Button, Divider, Flex, Heading, HStack, Icon, Image, Spinner, Text, Tooltip,
 } from '@chakra-ui/react';
 import { GoRocket } from 'react-icons/go';
 import PropTypes from 'prop-types';
 import AstronomerLogo from './astronomer-logo.svg';
 
 import { AppProvider, useSetupComplete } from './AppContext';
-import SetupPage from './pages/SetupPage';
-import VariablesPage from './pages/VariablesPage';
-import ConnectionsPage from './pages/ConnectionsPage';
-import PoolsPage from './pages/PoolsPage';
-import EnvVarsPage from './pages/EnvVarsPage';
-import DAGHistoryPage from './pages/DAGHistoryPage';
-import TelescopePage from './pages/TelescopePage';
+import { ROUTES } from './constants';
 import './index.css';
 
-const NavButton = memo(function NavButton({
+// Lazy load page components for better initial bundle size
+const SetupPage = lazy(() => import('./pages/SetupPage'));
+const VariablesPage = lazy(() => import('./pages/VariablesPage'));
+const ConnectionsPage = lazy(() => import('./pages/ConnectionsPage'));
+const PoolsPage = lazy(() => import('./pages/PoolsPage'));
+const EnvVarsPage = lazy(() => import('./pages/EnvVarsPage'));
+const DAGHistoryPage = lazy(() => import('./pages/DAGHistoryPage'));
+const TelescopePage = lazy(() => import('./pages/TelescopePage'));
+
+// Loading fallback for lazy-loaded pages
+function PageLoader() {
+  return (
+    <Box display="flex" justifyContent="center" alignItems="center" minH="200px">
+      <Spinner size="lg" color="brand.500" thickness="3px" />
+    </Box>
+  );
+}
+
+function NavButtonComponent({
   to,
   label,
   isDisabled = false,
@@ -51,22 +63,24 @@ const NavButton = memo(function NavButton({
   }
 
   return button;
-});
+}
 
-NavButton.propTypes = {
+NavButtonComponent.propTypes = {
   to: PropTypes.string.isRequired,
   label: PropTypes.string.isRequired,
   isDisabled: PropTypes.bool,
   disabledMessage: PropTypes.string,
 };
 
+const NavButton = memo(NavButtonComponent);
+
 const NAV_ITEMS = [
-  { to: '/setup', label: 'Setup', requiresSetup: false },
-  { to: '/variables', label: 'Variables', requiresSetup: true },
-  { to: '/connections', label: 'Connections', requiresSetup: true },
-  { to: '/pools', label: 'Pools', requiresSetup: true },
-  { to: '/env', label: 'Environment Variables', requiresSetup: true },
-  { to: '/dags', label: 'DAG History', requiresSetup: true },
+  { to: `/${ROUTES.SETUP}`, label: 'Setup', requiresSetup: false },
+  { to: `/${ROUTES.VARIABLES}`, label: 'Variables', requiresSetup: true },
+  { to: `/${ROUTES.CONNECTIONS}`, label: 'Connections', requiresSetup: true },
+  { to: `/${ROUTES.POOLS}`, label: 'Pools', requiresSetup: true },
+  { to: `/${ROUTES.ENV_VARS}`, label: 'Environment Variables', requiresSetup: true },
+  { to: `/${ROUTES.DAGS}`, label: 'DAG History', requiresSetup: true },
 ];
 
 const DISABLED_MESSAGE = 'Complete the Setup tab to configure your target Airflow instance before accessing migration features';
@@ -128,7 +142,9 @@ function AppLayout() {
           </HStack>
         </Box>
         <Divider my={3} />
-        <Outlet />
+        <Suspense fallback={<PageLoader />}>
+          <Outlet />
+        </Suspense>
       </Box>
     </>
   );
@@ -139,14 +155,14 @@ const router = createHashRouter([
     path: '/',
     element: <AppLayout />,
     children: [
-      { index: true, element: <Navigate to="/setup" replace /> },
-      { path: 'setup', element: <SetupPage /> },
-      { path: 'variables', element: <VariablesPage /> },
-      { path: 'connections', element: <ConnectionsPage /> },
-      { path: 'pools', element: <PoolsPage /> },
-      { path: 'env', element: <EnvVarsPage /> },
-      { path: 'dags', element: <DAGHistoryPage /> },
-      { path: 'telescope', element: <TelescopePage /> },
+      { index: true, element: <Navigate to={ROUTES.SETUP} replace /> },
+      { path: ROUTES.SETUP, element: <SetupPage /> },
+      { path: ROUTES.VARIABLES, element: <VariablesPage /> },
+      { path: ROUTES.CONNECTIONS, element: <ConnectionsPage /> },
+      { path: ROUTES.POOLS, element: <PoolsPage /> },
+      { path: ROUTES.ENV_VARS, element: <EnvVarsPage /> },
+      { path: ROUTES.DAGS, element: <DAGHistoryPage /> },
+      { path: ROUTES.TELESCOPE, element: <TelescopePage /> },
     ],
   },
 ]);

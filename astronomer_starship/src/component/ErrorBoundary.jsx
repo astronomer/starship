@@ -17,10 +17,6 @@ import {
  * Error Boundary component to catch and display React errors gracefully
  */
 class ErrorBoundaryClass extends React.Component {
-  static defaultProps = {
-    fallback: null,
-  };
-
   constructor(props) {
     super(props);
     this.state = { hasError: false, error: null, errorInfo: null };
@@ -34,6 +30,7 @@ class ErrorBoundaryClass extends React.Component {
     this.setState({ errorInfo });
     // Log to console in development
     if (process.env.NODE_ENV === 'development') {
+      // eslint-disable-next-line no-console
       console.error('ErrorBoundary caught an error:', error, errorInfo);
     }
   }
@@ -65,6 +62,10 @@ ErrorBoundaryClass.propTypes = {
   fallback: PropTypes.node,
 };
 
+ErrorBoundaryClass.defaultProps = {
+  fallback: null,
+};
+
 /**
  * Fallback UI component shown when an error occurs
  */
@@ -94,7 +95,9 @@ function ErrorFallback({ error = null, errorInfo = null, onReset }) {
             Try Again
           </Button>
           <Button size="sm" variant="ghost" onClick={onToggle}>
-            {isOpen ? 'Hide' : 'Show'} Error Details
+            {isOpen ? 'Hide' : 'Show'}
+            {' '}
+            Error Details
           </Button>
           <Collapse in={isOpen}>
             <Box
@@ -124,6 +127,5 @@ ErrorFallback.propTypes = {
   }),
   onReset: PropTypes.func.isRequired,
 };
-
 
 export default ErrorBoundaryClass;

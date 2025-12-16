@@ -1,12 +1,11 @@
 import React, {
-  createContext, useContext, useReducer, useEffect, useCallback,
+  createContext, useContext, useReducer, useEffect, useMemo,
 } from 'react';
 import PropTypes from 'prop-types';
 import { getTargetUrlFromParts } from './util';
 
-// ============================================================================
 // INITIAL STATE - Only setup/configuration state, NOT page data
-// ============================================================================
+
 const initialState = {
   // Target deployment configuration
   targetUrl: '',
@@ -43,9 +42,8 @@ const initialState = {
   localAirflowVersion: null,
 };
 
-// ============================================================================
 // REDUCER
-// ============================================================================
+
 function calculateIsSetupComplete(state, overrides = {}) {
   const merged = { ...state, ...overrides };
   return !!(merged.isStarship && merged.isAirflow && merged.token && merged.isValidUrl);
@@ -118,21 +116,21 @@ function reducer(state, action) {
     case 'reset':
       return initialState;
     case 'invalidate-token':
-      return { ...state, isSetupComplete: false, isTokenTouched: false, token: null };
+      return {
+        ...state, isSetupComplete: false, isTokenTouched: false, token: null,
+      };
     default:
       return state;
   }
 }
 
-// ============================================================================
 // CONTEXT
-// ============================================================================
+
 const AppStateContext = createContext(undefined);
 const AppDispatchContext = createContext(undefined);
 
-// ============================================================================
 // HOOKS
-// ============================================================================
+
 export function useAppState() {
   const context = useContext(AppStateContext);
   if (context === undefined) {
@@ -149,9 +147,8 @@ export function useAppDispatch() {
   return context;
 }
 
-// ============================================================================
 // PROVIDER COMPONENT
-// ============================================================================
+
 const STORAGE_KEY = 'starship-config';
 
 function getInitialState() {
@@ -193,32 +190,49 @@ AppProvider.propTypes = {
   children: PropTypes.node.isRequired,
 };
 
-// ============================================================================
 // SELECTOR HOOKS - For optimized re-renders
 // These hooks help components subscribe to only the state they need
-// ============================================================================
+
 export function useSetupComplete() {
   const { isSetupComplete } = useAppState();
   return isSetupComplete;
 }
 
 export function useTargetConfig() {
-  const {
-    targetUrl, token, isAstro, organizationId, deploymentId, localAirflowVersion,
-    releaseName, urlOrgPart,
-  } = useAppState();
-  return {
-    targetUrl, token, isAstro, organizationId, deploymentId, localAirflowVersion,
-    releaseName, urlOrgPart,
-  };
+  const state = useAppState();
+  return useMemo(() => ({
+    targetUrl: state.targetUrl,
+    token: state.token,
+    isAstro: state.isAstro,
+    organizationId: state.organizationId,
+    deploymentId: state.deploymentId,
+    localAirflowVersion: state.localAirflowVersion,
+    releaseName: state.releaseName,
+    urlOrgPart: state.urlOrgPart,
+  }), [
+    state.targetUrl,
+    state.token,
+    state.isAstro,
+    state.organizationId,
+    state.deploymentId,
+    state.localAirflowVersion,
+    state.releaseName,
+    state.urlOrgPart,
+  ]);
 }
 
 export function useDagHistoryConfig() {
-  const { limit, batchSize } = useAppState();
-  return { limit, batchSize };
+  const state = useAppState();
+  return useMemo(() => ({
+    limit: state.limit,
+    batchSize: state.batchSize,
+  }), [state.limit, state.batchSize]);
 }
 
 export function useTelescopeConfig() {
-  const { telescopeOrganizationId, telescopePresignedUrl } = useAppState();
-  return { telescopeOrganizationId, telescopePresignedUrl };
+  const state = useAppState();
+  return useMemo(() => ({
+    telescopeOrganizationId: state.telescopeOrganizationId,
+    telescopePresignedUrl: state.telescopePresignedUrl,
+  }), [state.telescopeOrganizationId, state.telescopePresignedUrl]);
 }

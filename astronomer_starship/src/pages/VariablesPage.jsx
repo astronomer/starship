@@ -1,139 +1,72 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useMemo } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
 import {
-  Button, HStack, Text, useToast, Box, Heading, VStack, Stack,
+  Button, HStack, Text, Box, Heading, VStack, Stack,
 } from '@chakra-ui/react';
 import { RepeatIcon } from '@chakra-ui/icons';
-import axios from 'axios';
 
-import { useAppDispatch, useTargetConfig } from '../AppContext';
+import useMigrationData from '../hooks/useMigrationData';
 import MigrateButton from '../component/MigrateButton';
 import ProgressSummary from '../component/ProgressSummary';
 import DataTable from '../component/DataTable';
 import PageLoading from '../component/PageLoading';
-import {
-  localRoute, objectWithoutKey, proxyHeaders, proxyUrl,
-} from '../util';
+import { objectWithoutKey, proxyHeaders, proxyUrl } from '../util';
 import constants from '../constants';
 
 const columnHelper = createColumnHelper();
 
-function mergeData(localData, remoteData) {
-  return localData.map((item) => ({
-    ...item,
-    exists: remoteData.some((remote) => remote.key === item.key),
-  }));
-}
-
-export default function VariablesPage() {
-  const { targetUrl, token } = useTargetConfig();
-  const dispatch = useAppDispatch();
-  const toast = useToast();
-
-  // Local state for this page only
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [data, setData] = useState([]);
-  const [isMigratingAll, setIsMigratingAll] = useState(false);
-
-  // Fetch data on mount and when dependencies change
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const [localRes, remoteRes] = await Promise.all([
-        axios.get(localRoute(constants.VARIABLES_ROUTE)),
-        axios.get(proxyUrl(targetUrl + constants.VARIABLES_ROUTE), {
-          headers: proxyHeaders(token),
-        }),
-      ]);
-
-      if (localRes.status === 200 && remoteRes.status === 200) {
-        setData(mergeData(localRes.data, remoteRes.data));
-      } else {
-        throw new Error('Invalid response from server');
-      }
-    } catch (err) {
-      setError(err);
-      // If unauthorized, invalidate the token
-      if (err.response?.status === 401) {
-        dispatch({ type: 'invalidate-token' });
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [targetUrl, token, dispatch]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  // Handle individual item status change
-  const handleItemStatusChange = useCallback((key, newStatus) => {
-    setData((prev) => prev.map((item) => (item.key === key ? { ...item, exists: newStatus } : item)));
-  }, []);
-
-  // Migrate all unmigrated items
-  const handleMigrateAll = useCallback(async () => {
-    const unmigratedItems = data.filter((item) => !item.exists);
-    if (unmigratedItems.length === 0) return;
-
-    setIsMigratingAll(true);
-    let successCount = 0;
-    let errorCount = 0;
-
-    for (const item of unmigratedItems) {
-      try {
-        await axios.post(
-          proxyUrl(targetUrl + constants.VARIABLES_ROUTE),
-          objectWithoutKey(item, 'exists'),
-          { headers: proxyHeaders(token) },
-        );
-        successCount += 1;
-        setData((prev) => prev.map((d) => (d.key === item.key ? { ...d, exists: true } : d)));
-      } catch (err) {
-        errorCount += 1;
-      }
-    }
-
-    setIsMigratingAll(false);
-
-    toast({
-      title: successCount > 0
-        ? `Successfully migrated ${successCount} variable${successCount !== 1 ? 's' : ''}`
-        : 'Migration failed',
-      description: errorCount > 0 ? `${errorCount} item${errorCount !== 1 ? 's' : ''} failed` : undefined,
-      status: successCount > 0 ? (errorCount > 0 ? 'warning' : 'success') : 'error',
-      duration: 4000,
-      isClosable: true,
-      variant: 'outline',
-    });
-  }, [data, targetUrl, token, toast]);
-
-  // Define columns
-  const columns = React.useMemo(() => [
+/**
+ * Creates column definitions for the variables table.
+ * Defined outside component to avoid unstable nested components.
+ */
+function createColumns(targetUrl, token, handleItemStatusChange) {
+  return [
     columnHelper.accessor('key', { header: 'Key' }),
     columnHelper.accessor('val', { header: 'Value' }),
     columnHelper.display({
       id: 'migrate',
       header: 'Migrate',
       meta: { align: 'right' },
-      cell: ({ row }) => (
-        <MigrateButton
-          route={proxyUrl(targetUrl + constants.VARIABLES_ROUTE)}
-          headers={proxyHeaders(token)}
-          existsInRemote={row.original.exists}
-          sendData={objectWithoutKey(row.original, 'exists')}
-          onStatusChange={(newStatus) => handleItemStatusChange(row.original.key, newStatus)}
-        />
-      ),
+      cell: (info) => {
+        const { original } = info.row;
+        return (
+          <MigrateButton
+            route={proxyUrl(targetUrl + constants.VARIABLES_ROUTE)}
+            headers={proxyHeaders(token)}
+            existsInRemote={original.exists}
+            sendData={objectWithoutKey(original, 'exists')}
+            onStatusChange={(newStatus) => handleItemStatusChange(original.key, newStatus)}
+            itemName={`variable "${original.key}"`}
+          />
+        );
+      },
     }),
-  ], [targetUrl, token, handleItemStatusChange]);
+  ];
+}
 
-  // Calculate progress
-  const totalItems = data.length;
-  const migratedItems = data.filter((item) => item.exists).length;
+export default function VariablesPage() {
+  const {
+    loading,
+    error,
+    data,
+    isMigratingAll,
+    totalItems,
+    migratedItems,
+    fetchData,
+    handleItemStatusChange,
+    handleMigrateAll,
+    targetUrl,
+    token,
+  } = useMigrationData({
+    route: constants.VARIABLES_ROUTE,
+    idField: 'key',
+    itemName: 'variable',
+  });
+
+  const columns = useMemo(
+    () => createColumns(targetUrl, token, handleItemStatusChange),
+    [targetUrl, token, handleItemStatusChange],
+  );
 
   return (
     <Box>

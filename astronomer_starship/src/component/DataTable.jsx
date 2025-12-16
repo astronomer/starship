@@ -91,7 +91,12 @@ export default function DataTable({
             </InputGroup>
             {globalFilter && (
               <Text fontSize="sm" color="gray.500">
-                {rowCount} of {totalCount} items
+                {rowCount}
+                {' '}
+                of
+                {totalCount}
+                {' '}
+                items
               </Text>
             )}
           </HStack>
@@ -165,7 +170,9 @@ export default function DataTable({
 }
 
 DataTable.propTypes = {
+  // eslint-disable-next-line react/forbid-prop-types
   data: PropTypes.arrayOf(PropTypes.object).isRequired,
+  // eslint-disable-next-line react/forbid-prop-types
   columns: PropTypes.arrayOf(PropTypes.object).isRequired,
   searchPlaceholder: PropTypes.string,
   showSearch: PropTypes.bool,

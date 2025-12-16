@@ -119,9 +119,10 @@ export function parseAirflowUrl(url) {
 }
 
 /**
- * Returns the local URL for a given route by splitting at 'starship
- * @param route
- @returns {string}
+ * Returns the local URL for a given route by splitting at 'starship'
+ *
+ * @param {string} route - The route to append
+ * @returns {string} - The full local URL
  */
 export function localRoute(route) {
   const localUrl = window.location.href.split('/starship', 1)[0];
@@ -130,9 +131,10 @@ export function localRoute(route) {
 
 /**
  * Returns the remote URL for a given route by combining the target URL and route
- * @param targetUrl
- * @param route
- @returns {string}
+ *
+ * @param {string} targetUrl - The base target URL
+ * @param {string} route - The route to append
+ * @returns {string} - The full remote URL
  */
 export function remoteRoute(targetUrl, route) {
   return targetUrl + route;
@@ -140,16 +142,19 @@ export function remoteRoute(targetUrl, route) {
 
 /**
  * Returns the local proxy URL for a given URL (to avoid CORS issues)
- * @param url
- * @returns {string}
+ *
+ * @param {string} url - The URL to proxy
+ * @returns {string} - The proxied URL
  */
 export function proxyUrl(url) {
   return localRoute(`/starship/proxy?url=${encodeURIComponent(url)}`);
 }
+
 /**
  * Returns the headers for the proxy (to avoid CORS issues)
- * @param token
- * @returns {{STARSHIP_PROXY_TOKEN}}
+ *
+ * @param {string} token - The authentication token
+ * @returns {Object} - Headers object with Starship-Proxy-Token
  */
 export function proxyHeaders(token) {
   return {

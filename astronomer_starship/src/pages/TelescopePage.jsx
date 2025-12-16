@@ -161,11 +161,16 @@ export default function TelescopePage() {
 
           <HStack spacing={2}>
             <Tooltip hasArrow label="Upload the report via pre-signed url to Astronomer">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  leftIcon={isUploading ? <span /> : isUploadComplete ? <FaCheck /> : <GoUpload />}
-                isDisabled={isUploading || isUploadComplete || !telescopePresignedUrl || !telescopeOrganizationId}
+              <Button
+                size="sm"
+                variant="outline"
+                leftIcon={isUploading ? <span /> : isUploadComplete ? <FaCheck /> : <GoUpload />}
+                isDisabled={
+                  isUploading
+                  || isUploadComplete
+                  || !telescopePresignedUrl
+                  || !telescopeOrganizationId
+                }
                 colorScheme={isUploadComplete ? 'green' : error ? 'red' : 'gray'}
                 onClick={handleUpload}
               >

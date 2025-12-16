@@ -15,7 +15,7 @@ import {
 import { CheckCircleIcon } from '@chakra-ui/icons';
 import { FiUpload } from 'react-icons/fi';
 
-function StatFeature({ label, value, color }) {
+function StatFeature({ label, value, color = 'gray.700' }) {
   return (
     <VStack spacing={0} align="center" h="full" minW="70px">
       <Text fontSize="xs" color="gray.500" textTransform="uppercase" letterSpacing="wide">
@@ -35,12 +35,8 @@ StatFeature.propTypes = {
   color: PropTypes.string,
 };
 
-StatFeature.defaultProps = {
-  color: 'gray.700',
-};
-
 export default function ProgressSummary({
-  totalItems, migratedItems, onMigrateAll, isMigratingAll,
+  totalItems, migratedItems, onMigrateAll, isMigratingAll = false,
 }) {
   const remainingItems = totalItems - migratedItems;
   const progressPercentage = totalItems > 0 ? (migratedItems / totalItems) * 100 : 0;
@@ -117,8 +113,4 @@ ProgressSummary.propTypes = {
   migratedItems: PropTypes.number.isRequired,
   onMigrateAll: PropTypes.func.isRequired,
   isMigratingAll: PropTypes.bool,
-};
-
-ProgressSummary.defaultProps = {
-  isMigratingAll: false,
 };

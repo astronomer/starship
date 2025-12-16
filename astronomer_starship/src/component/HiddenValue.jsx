@@ -22,4 +22,6 @@ export default function HiddenValue({ value = '' }) {
     </InputGroup>
   );
 }
-HiddenValue.propTypes = { value: PropTypes.string };
+HiddenValue.propTypes = {
+  value: PropTypes.string,
+};

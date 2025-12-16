@@ -1,11 +1,11 @@
-/* eslint-disable no-nested-ternary */
-import React, { useEffect, useState, useCallback } from 'react';
+import React, {
+  useEffect, useState, useCallback, useMemo,
+} from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
 import {
   Badge,
   Box,
   Button,
-  CircularProgress,
   FormControl,
   Heading,
   HStack,
@@ -25,10 +25,7 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react';
-import PropTypes from 'prop-types';
 import axios from 'axios';
-import { MdErrorOutline, MdDeleteForever, MdWarning } from 'react-icons/md';
-import { GoUpload } from 'react-icons/go';
 import humanFormat from 'human-format';
 import { ExternalLinkIcon, RepeatIcon } from '@chakra-ui/icons';
 import { FiPause, FiPlay } from 'react-icons/fi';
@@ -37,6 +34,7 @@ import { useAppDispatch, useTargetConfig, useDagHistoryConfig } from '../AppCont
 import DataTable from '../component/DataTable';
 import PageLoading from '../component/PageLoading';
 import TooltipHeader from '../component/TooltipHeader';
+import DAGHistoryMigrateButton from '../component/DAGHistoryMigrateButton';
 import {
   localRoute, proxyHeaders, proxyUrl, getDagViewPath,
 } from '../util';
@@ -45,234 +43,210 @@ import constants from '../constants';
 
 const columnHelper = createColumnHelper();
 
-// Helper component
-function WithTooltip({ isDisabled = false, children }) {
-  return isDisabled ? (
-    <Tooltip hasArrow label={isDisabled}>{children}</Tooltip>
-  ) : children;
-}
-
-WithTooltip.propTypes = {
-  isDisabled: PropTypes.oneOfType([PropTypes.bool, PropTypes.string]),
-  children: PropTypes.node.isRequired,
-};
-
-// Migrate button for DAG history
-function DAGHistoryMigrateButton({
-  url,
-  token,
-  dagId,
-  limit = 1000,
-  batchSize = 100,
-  existsInRemote = false,
-  isDisabled = false,
-  onMigrate = null,
-  onDelete = null,
-}) {
-  const [progress, setProgress] = useState(0);
-  const [error, setError] = useState(null);
-  const toast = useToast();
-  const [exists, setExists] = useState(existsInRemote);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  const isLoading = progress > 0 && progress < 100;
-
-  const handleError = (err) => {
-    setExists(false);
-    setProgress(0);
-    setIsDeleting(false);
-    toast({
-      title: err.response?.data?.error || err.response?.data || err.message,
-      status: 'error',
-      isClosable: true,
-      variant: 'outline',
-      duration: 4000,
-    });
-    setError(err);
-  };
-
-  const handleClick = async () => {
-    if (exists) {
-      // Delete
-      setIsDeleting(true);
-      setProgress(50);
-      try {
-        await axios({
-          method: 'delete',
-          url: proxyUrl(url + constants.DAG_RUNS_ROUTE),
-          headers: proxyHeaders(token),
-          params: { dag_id: dagId },
-        });
-        // Delete succeeded - set exists to false regardless of status code
-        setExists(false);
-        onDelete?.(dagId);
-        setProgress(100);
-        setTimeout(() => {
-          setProgress(0);
-          setIsDeleting(false);
-        }, 500);
-      } catch (err) {
-        handleError(err);
-        setIsDeleting(false);
-      }
-      return;
-    }
-
-    // Migrate
-    setProgress(1);
-
-    const migrateBatch = async (offset = 0, totalCount = null) => {
-      const appliedBatchSize = Math.min(limit - offset, batchSize);
-      try {
-        const [dagRunsRes, taskInstanceRes, taskInstanceHistoryRes] = await Promise.all([
-          axios.get(localRoute(constants.DAG_RUNS_ROUTE), {
-            params: { dag_id: dagId, limit: appliedBatchSize, offset },
-          }),
-          axios.get(localRoute(constants.TASK_INSTANCE_ROUTE), {
-            params: { dag_id: dagId, limit: appliedBatchSize, offset },
-          }),
-          axios.get(localRoute(constants.TASK_INSTANCE_HISTORY_ROUTE), {
-            params: { dag_id: dagId, limit: appliedBatchSize, offset },
-          }),
-        ]);
-
-        const dagRunsToMigrateCount = totalCount
-          || Math.min(dagRunsRes.data.dag_run_count, limit);
-
-        if (dagRunsRes.data.dag_runs.length === 0) {
-          setProgress(100);
-          setExists(offset > 0);
-          onMigrate?.(dagId, dagRunsToMigrateCount);
-          setTimeout(() => setProgress(0), 500);
-          return;
-        }
-
-        const dagRunCreateRes = await axios.post(
-          proxyUrl(url + constants.DAG_RUNS_ROUTE),
-          { dag_runs: dagRunsRes.data.dag_runs },
-          { params: { dag_id: dagId }, headers: proxyHeaders(token) },
-        );
-
-        if (dagRunCreateRes.status !== 200) {
-          throw new Error('Failed to create DAG runs');
-        }
-
-        await Promise.all([
-          axios.post(
-            proxyUrl(url + constants.TASK_INSTANCE_ROUTE),
-            { task_instances: taskInstanceRes.data.task_instances },
-            { params: { dag_id: dagId }, headers: proxyHeaders(token) },
-          ),
-          axios.post(
-            proxyUrl(url + constants.TASK_INSTANCE_HISTORY_ROUTE),
-            { task_instances: taskInstanceHistoryRes.data.task_instances },
-            { params: { dag_id: dagId }, headers: proxyHeaders(token) },
-          ),
-        ]);
-
-        const migratedCount = dagRunCreateRes.data.dag_run_count;
-        const newProgress = Math.min(99, Math.round((migratedCount / dagRunsToMigrateCount) * 100));
-        setProgress(newProgress);
-
-        if (migratedCount < dagRunsToMigrateCount) {
-          await migrateBatch(offset + batchSize, dagRunsToMigrateCount);
-        } else {
-          setProgress(100);
-          setExists(true);
-          onMigrate?.(dagId, dagRunsToMigrateCount);
-          setTimeout(() => setProgress(0), 500);
-        }
-      } catch (err) {
-        handleError(err);
-      }
-    };
-
-    await migrateBatch(0);
-  };
-
-  // Render progress indicator or button content
-  const renderContent = () => {
-    if (isLoading) {
-      return (
-        <HStack spacing={2}>
-          <CircularProgress
-            value={progress}
-            size="20px"
-            thickness="10px"
-            color={isDeleting ? 'red.400' : 'green.400'}
-            trackColor="gray.200"
-            isIndeterminate={progress < 2}
-          />
-          <Text fontSize="xs">
-            {isDeleting ? 'Deleting' : 'Migrating'}
-            {' '}
-            {Math.round(progress)}
-            %
-          </Text>
-        </HStack>
-      );
-    }
-    if (exists) return 'Delete';
-    if (isDisabled) return 'Not Found';
-    if (error) return 'Error!';
-    return 'Migrate';
-  };
-
-  // Determine colors based on state
-  const isDeleteMode = exists || isDeleting;
-  const activeColor = isDeleteMode || error ? 'error.600' : 'success.600';
-  const activeBorderColor = isDeleteMode || error ? 'error.500' : 'success.500';
-  const activeHoverBg = isDeleteMode || error ? 'error.50' : 'success.50';
-
+// Cell renderer functions - defined outside component to avoid unstable nested components
+function renderDagId(info) {
+  const { row, getValue } = info;
   return (
-    <WithTooltip isDisabled={isDisabled}>
-      <Button
-        size="sm"
-        variant="outline"
-        isDisabled={isDisabled || isLoading}
-        leftIcon={
-          isLoading ? null
-            : error ? <MdErrorOutline />
-              : exists ? <MdDeleteForever />
-                : isDisabled ? <MdWarning />
-                  : <GoUpload />
-        }
-        colorScheme={undefined}
-        color={activeColor}
-        borderColor={activeBorderColor}
-        _hover={{
-          bg: activeHoverBg,
-        }}
-        _disabled={isLoading ? {
-          color: activeColor,
-          borderColor: activeBorderColor,
-          opacity: 0.8,
-          cursor: 'progress',
-        } : {
-          color: 'gray.600',
-          borderColor: 'gray.500',
-          opacity: 1,
-        }}
-        onClick={handleClick}
-        minW={isLoading ? '130px' : undefined}
-      >
-        {renderContent()}
-      </Button>
-    </WithTooltip>
+    <Tooltip hasArrow label={`File: ${row.original.local.fileloc}`}>
+      <Text fontWeight="semibold">
+        {getValue()}
+      </Text>
+    </Tooltip>
   );
 }
 
-DAGHistoryMigrateButton.propTypes = {
-  url: PropTypes.string.isRequired,
-  token: PropTypes.string.isRequired,
-  dagId: PropTypes.string.isRequired,
-  limit: PropTypes.number,
-  batchSize: PropTypes.number,
-  existsInRemote: PropTypes.bool,
-  isDisabled: PropTypes.oneOfType([PropTypes.bool, PropTypes.string]),
-  onMigrate: PropTypes.func,
-  onDelete: PropTypes.func,
-};
+function renderTags(info) {
+  const tags = info.getValue();
+  if (!tags || tags.length === 0) return null;
+  return (
+    <HStack spacing={1} flexWrap="wrap">
+      {tags.map((tag) => (
+        <Tag key={tag} size="sm" colorScheme="amethyst" variant="solid">
+          {tag}
+        </Tag>
+      ))}
+    </HStack>
+  );
+}
+
+function renderSchedule(info) {
+  return info.getValue() || 'None';
+}
+
+/**
+ * Creates column definitions for the DAG history table.
+ * Defined outside component to avoid unstable nested components.
+ */
+function createColumns(config) {
+  const {
+    targetUrl, token, limit, batchSize, handleMigrate,
+    handleDelete, localAirflowVersion, handlePausedClick,
+  } = config;
+
+  return [
+    columnHelper.accessor((row) => row.local.dag_id, {
+      id: 'dagId',
+      header: 'ID',
+      cell: renderDagId,
+    }),
+    columnHelper.accessor((row) => row.local.tags, {
+      id: 'tags',
+      header: 'Tags',
+      cell: renderTags,
+    }),
+    columnHelper.accessor((row) => row.local.schedule_interval, {
+      id: 'schedule',
+      header: 'Schedule',
+      cell: renderSchedule,
+    }),
+    columnHelper.accessor((row) => row.local.description, {
+      id: 'description',
+      header: 'Description',
+    }),
+    columnHelper.accessor((row) => row.local.owners, {
+      id: 'owners',
+      header: 'Owners',
+    }),
+    columnHelper.display({
+      id: 'local_is_paused',
+      header: () => (
+        <>
+          Local
+          <TooltipHeader tooltip="Toggle to pause/unpause DAG in local" />
+        </>
+      ),
+      cell: (info) => {
+        const { original } = info.row;
+        return (
+          <>
+            <Switch
+              colorScheme="success"
+              isChecked={!original.local.is_paused}
+              onChange={() => handlePausedClick(
+                !original.local.is_paused,
+                original.local.dag_id,
+                true,
+              )}
+            />
+            <Tooltip hasArrow label="DAG Run Count">
+              <Badge
+                mx={1}
+                fontSize="sm"
+                variant="outline"
+                colorScheme={original.local.dag_run_count > 0 ? 'teal' : 'red'}
+              >
+                {humanFormat(original.local.dag_run_count)}
+              </Badge>
+            </Tooltip>
+          </>
+        );
+      },
+    }),
+    columnHelper.display({
+      id: 'local_url',
+      header: 'Local URL',
+      cell: (info) => {
+        const { original } = info.row;
+        return (
+          <Link
+            isExternal
+            href={localRoute(getDagViewPath(original.local.dag_id, localAirflowVersion))}
+            color="brand.700"
+          >
+            View DAG
+            {' '}
+            <ExternalLinkIcon mx="2px" />
+          </Link>
+        );
+      },
+    }),
+    columnHelper.display({
+      id: 'remote_is_paused',
+      header: () => (
+        <>
+          Remote
+          <TooltipHeader tooltip="Toggle to pause/unpause DAG in remote" />
+        </>
+      ),
+      cell: (info) => {
+        const { original } = info.row;
+        if (!original.remote) return null;
+        return (
+          <>
+            <Switch
+              colorScheme="success"
+              isChecked={!original.remote?.is_paused}
+              onChange={() => handlePausedClick(
+                !original.remote?.is_paused,
+                original.local.dag_id,
+                false,
+              )}
+            />
+            <Tooltip hasArrow label="DAG Run Count">
+              <Badge
+                mx={1}
+                fontSize="sm"
+                variant="outline"
+                colorScheme={original.remote?.dag_run_count > 0 ? 'teal' : 'red'}
+              >
+                {humanFormat(original.remote?.dag_run_count || 0)}
+              </Badge>
+            </Tooltip>
+          </>
+        );
+      },
+    }),
+    columnHelper.display({
+      id: 'remote_url',
+      header: 'Remote URL',
+      cell: (info) => {
+        const { original } = info.row;
+        if (!original.remote) return null;
+        return (
+          <Link
+            isExternal
+            href={`${targetUrl}/dags/${original.remote.dag_id}`}
+            color="brand.700"
+          >
+            View DAG
+            {' '}
+            <ExternalLinkIcon mx="2px" />
+          </Link>
+        );
+      },
+    }),
+    columnHelper.display({
+      id: 'migrate',
+      header: 'Migrate',
+      meta: { align: 'right' },
+      cell: (info) => {
+        const { original } = info.row;
+
+        // Determine disabled state
+        let isDisabledReason = false;
+        if (!original.remote?.dag_id) {
+          isDisabledReason = 'DAG not found in remote';
+        } else if (!original.local.dag_run_count && !original.remote?.dag_run_count) {
+          isDisabledReason = 'No DAG Runs to migrate';
+        }
+
+        return (
+          <DAGHistoryMigrateButton
+            url={targetUrl}
+            token={token}
+            dagId={original.local.dag_id}
+            limit={Number(limit)}
+            batchSize={Number(batchSize)}
+            existsInRemote={!!original.remote?.dag_run_count}
+            isDisabled={isDisabledReason}
+            onMigrate={handleMigrate}
+            onDelete={handleDelete}
+          />
+        );
+      },
+    }),
+  ];
+}
 
 export default function DAGHistoryPage() {
   const { targetUrl, token, localAirflowVersion } = useTargetConfig();
@@ -322,9 +296,15 @@ export default function DAGHistoryPage() {
   }, [fetchData]);
 
   const handlePausedClick = useCallback(async (isPaused, dagId, isLocal) => {
-    const url = isLocal ? localRoute(constants.DAGS_ROUTE) : proxyUrl(targetUrl + constants.DAGS_ROUTE);
+    const url = isLocal
+      ? localRoute(constants.DAGS_ROUTE)
+      : proxyUrl(targetUrl + constants.DAGS_ROUTE);
     try {
-      const res = await axios.patch(url, { dag_id: dagId, is_paused: isPaused }, { headers: proxyHeaders(token) });
+      const res = await axios.patch(
+        url,
+        { dag_id: dagId, is_paused: isPaused },
+        { headers: proxyHeaders(token) },
+      );
       setData((prev) => prev.map((item) => {
         if (item.local.dag_id !== dagId) return item;
         const key = isLocal ? 'local' : 'remote';
@@ -332,7 +312,12 @@ export default function DAGHistoryPage() {
       }));
     } catch (err) {
       toast({
-        title: err.message, status: 'error', isClosable: true, variant: 'outline', duration: 4000,
+        title: 'Failed to update DAG pause state',
+        description: err.message,
+        status: 'error',
+        isClosable: true,
+        variant: 'outline',
+        duration: 6000,
       });
     }
   }, [targetUrl, token, toast]);
@@ -359,14 +344,20 @@ export default function DAGHistoryPage() {
 
     if (items.length === 0) {
       toast({
-        title: `All ${isLocal ? 'local' : 'remote'} DAGs are already ${pause ? 'paused' : 'unpaused'}`, status: 'info', duration: 4000, variant: 'outline',
+        title: 'No changes needed',
+        description: `All ${isLocal ? 'local' : 'remote'} DAGs are already ${pause ? 'paused' : 'active'}`,
+        status: 'info',
+        duration: 4000,
+        variant: 'outline',
       });
       return;
     }
 
     let successCount = 0;
+    // eslint-disable-next-line no-restricted-syntax
     for (const item of items) {
       try {
+        // eslint-disable-next-line no-await-in-loop
         await handlePausedClick(pause, item.local.dag_id, isLocal);
         successCount += 1;
       } catch (err) {
@@ -374,162 +365,60 @@ export default function DAGHistoryPage() {
       }
     }
 
+    const dagLabel = successCount !== 1 ? 'DAGs' : 'DAG';
+    const locationLabel = isLocal ? 'local' : 'remote';
+    const failedCount = items.length - successCount;
     toast({
-      title: `${pause ? 'Paused' : 'Unpaused'} ${successCount} ${isLocal ? 'local' : 'remote'} DAG${successCount !== 1 ? 's' : ''}`,
-      status: 'success',
+      title: `${pause ? 'Paused' : 'Activated'} ${successCount} ${locationLabel} ${dagLabel}`,
+      description: failedCount > 0
+        ? `${failedCount} ${failedCount !== 1 ? 'DAGs' : 'DAG'} failed to update`
+        : `Successfully updated ${locationLabel} Airflow instance`,
+      status: failedCount > 0 ? 'warning' : 'success',
       duration: 4000,
       variant: 'outline',
     });
   }, [data, toast, handlePausedClick]);
 
-  const columns = React.useMemo(() => [
-    columnHelper.accessor((row) => row.local.dag_id, {
-      id: 'dagId',
-      header: 'ID',
-      cell: ({ row, getValue }) => (
-        <Tooltip hasArrow label={`File: ${row.original.local.fileloc}`}>
-          <Text fontWeight="semibold">
-            {getValue()}
-          </Text>
-        </Tooltip>
-      ),
+  const columns = useMemo(
+    () => createColumns({
+      targetUrl,
+      token,
+      limit,
+      batchSize,
+      handleMigrate,
+      handleDelete,
+      localAirflowVersion,
+      handlePausedClick,
     }),
-    columnHelper.accessor((row) => row.local.tags, {
-      id: 'tags',
-      header: 'Tags',
-      cell: ({ getValue }) => {
-        const tags = getValue();
-        if (!tags || tags.length === 0) return null;
-        return (
-          <HStack spacing={1} flexWrap="wrap">
-            {tags.map((tag) => (
-              <Tag key={tag} size="sm" colorScheme="amethyst" variant="solid">
-                {tag}
-              </Tag>
-            ))}
-          </HStack>
-        );
-      },
-    }),
-    columnHelper.accessor((row) => row.local.schedule_interval, {
-      id: 'schedule',
-      header: 'Schedule',
-      cell: ({ getValue }) => getValue() || 'None',
-    }),
-    columnHelper.accessor((row) => row.local.description, {
-      id: 'description',
-      header: 'Description',
-    }),
-    columnHelper.accessor((row) => row.local.owners, {
-      id: 'owners',
-      header: 'Owners',
-    }),
-    columnHelper.display({
-      id: 'local_is_paused',
-      header: () => (
-        <>
-          Local
-          <TooltipHeader tooltip="Toggle to pause/unpause DAG in local" />
-        </>
-      ),
-      cell: ({ row }) => (
-        <>
-          <Switch
-            colorScheme="success"
-            isChecked={!row.original.local.is_paused}
-            onChange={() => handlePausedClick(!row.original.local.is_paused, row.original.local.dag_id, true)}
-          />
-          <Tooltip hasArrow label="DAG Run Count">
-            <Badge mx={1} fontSize="sm" variant="outline" colorScheme={row.original.local.dag_run_count > 0 ? 'teal' : 'red'}>
-              {humanFormat(row.original.local.dag_run_count)}
-            </Badge>
-          </Tooltip>
-        </>
-      ),
-    }),
-    columnHelper.display({
-      id: 'local_url',
-      header: 'Local URL',
-      cell: ({ row }) => (
-        <Link isExternal href={localRoute(getDagViewPath(row.original.local.dag_id, localAirflowVersion))} color="brand.700">
-          View DAG
-          {' '}
-          <ExternalLinkIcon mx="2px" />
-        </Link>
-      ),
-    }),
-    columnHelper.display({
-      id: 'remote_is_paused',
-      header: () => (
-        <>
-          Remote
-          <TooltipHeader tooltip="Toggle to pause/unpause DAG in remote" />
-        </>
-      ),
-      cell: ({ row }) => (row.original.remote ? (
-        <>
-          <Switch
-            colorScheme="success"
-            isChecked={!row.original.remote?.is_paused}
-            onChange={() => handlePausedClick(!row.original.remote?.is_paused, row.original.local.dag_id, false)}
-          />
-          <Tooltip hasArrow label="DAG Run Count">
-            <Badge mx={1} fontSize="sm" variant="outline" colorScheme={row.original.remote?.dag_run_count > 0 ? 'teal' : 'red'}>
-              {humanFormat(row.original.remote?.dag_run_count || 0)}
-            </Badge>
-          </Tooltip>
-        </>
-      ) : null),
-    }),
-    columnHelper.display({
-      id: 'remote_url',
-      header: 'Remote URL',
-      cell: ({ row }) => (row.original.remote ? (
-        <Link isExternal href={`${targetUrl}/dags/${row.original.remote.dag_id}`} color="brand.700">
-          View DAG
-          {' '}
-          <ExternalLinkIcon mx="2px" />
-        </Link>
-      ) : null),
-    }),
-    columnHelper.display({
-      id: 'migrate',
-      header: 'Migrate',
-      meta: { align: 'right' },
-      cell: ({ row }) => (
-        <DAGHistoryMigrateButton
-          url={targetUrl}
-          token={token}
-          dagId={row.original.local.dag_id}
-          limit={Number(limit)}
-          batchSize={Number(batchSize)}
-          existsInRemote={!!row.original.remote?.dag_run_count}
-          isDisabled={
-            !row.original.remote?.dag_id ? 'DAG not found in remote'
-              : (!row.original.local.dag_run_count && !row.original.remote?.dag_run_count)
-                ? 'No DAG Runs to migrate'
-                : false
-          }
-          onMigrate={handleMigrate}
-          onDelete={handleDelete}
-        />
-      ),
-    }),
-  ], [targetUrl, token, limit, batchSize, handleMigrate, handleDelete, localAirflowVersion]);
+    [
+      targetUrl, token, limit, batchSize, handleMigrate,
+      handleDelete, localAirflowVersion, handlePausedClick,
+    ],
+  );
 
   return (
     <Box>
-      <Stack direction={{ base: 'column', md: 'row' }} justify="space-between" align={{ base: 'flex-start', md: 'center' }} mb={3}>
+      <Stack
+        direction={{ base: 'column', md: 'row' }}
+        justify="space-between"
+        align={{ base: 'flex-start', md: 'center' }}
+        mb={3}
+      >
         <Box>
           <Heading size="md" mb={0.5}>DAG History</Heading>
-          <Text fontSize="xs" color="gray.600">Migrate DAGs and task history to prevent rescheduling.</Text>
+          <Text fontSize="xs" color="gray.600">
+            Migrate DAGs and task history to prevent rescheduling.
+          </Text>
         </Box>
         <HStack spacing={2}>
           <Tooltip hasArrow label="Total DAG Runs to migrate">
             <FormControl minW="40">
               <InputGroup size="sm">
                 <InputLeftAddon># DAG Runs</InputLeftAddon>
-                <NumberInput value={limit} onChange={(val) => dispatch({ type: 'set-limit', limit: Number(val) })}>
+                <NumberInput
+                  value={limit}
+                  onChange={(val) => dispatch({ type: 'set-limit', limit: Number(val) })}
+                >
                   <NumberInputField />
                   <NumberInputStepper>
                     <NumberIncrementStepper />
@@ -543,7 +432,10 @@ export default function DAGHistoryPage() {
             <FormControl minW="40">
               <InputGroup size="sm">
                 <InputLeftAddon>Batch Size</InputLeftAddon>
-                <NumberInput value={batchSize} onChange={(val) => dispatch({ type: 'set-batch-size', batchSize: Number(val) })}>
+                <NumberInput
+                  value={batchSize}
+                  onChange={(val) => dispatch({ type: 'set-batch-size', batchSize: Number(val) })}
+                >
                   <NumberInputField />
                   <NumberInputStepper>
                     <NumberIncrementStepper />
@@ -553,7 +445,14 @@ export default function DAGHistoryPage() {
               </InputGroup>
             </FormControl>
           </Tooltip>
-          <Button size="sm" leftIcon={<RepeatIcon />} onClick={fetchData} variant="outline" isLoading={loading} flexShrink={0}>
+          <Button
+            size="sm"
+            leftIcon={<RepeatIcon />}
+            onClick={fetchData}
+            variant="outline"
+            isLoading={loading}
+            flexShrink={0}
+          >
             Refresh
           </Button>
         </HStack>
@@ -562,19 +461,43 @@ export default function DAGHistoryPage() {
       <HStack spacing={2} mb={3} justify="space-between">
         <HStack spacing={2}>
           <Text fontSize="sm" fontWeight="semibold" color="gray.600">Local:</Text>
-          <Button size="sm" leftIcon={<FiPause />} onClick={() => handleBulkPause(true, true)} colorScheme="orange" variant="outline">
+          <Button
+            size="sm"
+            leftIcon={<FiPause />}
+            onClick={() => handleBulkPause(true, true)}
+            colorScheme="orange"
+            variant="outline"
+          >
             Pause All
           </Button>
-          <Button size="sm" leftIcon={<FiPlay />} onClick={() => handleBulkPause(true, false)} colorScheme="green" variant="outline">
+          <Button
+            size="sm"
+            leftIcon={<FiPlay />}
+            onClick={() => handleBulkPause(true, false)}
+            colorScheme="green"
+            variant="outline"
+          >
             Unpause All
           </Button>
         </HStack>
         <HStack spacing={2}>
           <Text fontSize="sm" fontWeight="semibold" color="gray.600">Remote:</Text>
-          <Button size="sm" leftIcon={<FiPause />} onClick={() => handleBulkPause(false, true)} colorScheme="orange" variant="outline">
+          <Button
+            size="sm"
+            leftIcon={<FiPause />}
+            onClick={() => handleBulkPause(false, true)}
+            colorScheme="orange"
+            variant="outline"
+          >
             Pause All
           </Button>
-          <Button size="sm" leftIcon={<FiPlay />} onClick={() => handleBulkPause(false, false)} colorScheme="green" variant="outline">
+          <Button
+            size="sm"
+            leftIcon={<FiPlay />}
+            onClick={() => handleBulkPause(false, false)}
+            colorScheme="green"
+            variant="outline"
+          >
             Unpause All
           </Button>
         </HStack>
@@ -585,7 +508,11 @@ export default function DAGHistoryPage() {
           {loading || error ? (
             <PageLoading loading={loading} error={error} />
           ) : (
-            <DataTable data={data} columns={columns} searchPlaceholder="Search DAGs by ID, tags, owners..." />
+            <DataTable
+              data={data}
+              columns={columns}
+              searchPlaceholder="Search DAGs by ID, tags, owners..."
+            />
           )}
         </Box>
       </VStack>

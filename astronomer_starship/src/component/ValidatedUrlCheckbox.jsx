@@ -9,8 +9,14 @@ import { proxyHeaders, proxyUrl } from '../util';
 /**
  * Generates user-friendly error messages based on the error type and context
  */
+function getResourceName(text) {
+  if (text === 'Airflow API') return 'Airflow API';
+  if (text === 'Starship Plugin') return 'Starship Plugin API';
+  return text;
+}
+
 function getErrorDetails(err, text, url) {
-  const resourceName = text === 'Airflow API' ? 'Airflow API' : text === 'Starship Plugin' ? 'Starship Plugin API' : text;
+  const resourceName = getResourceName(text);
   const status = err.response?.status;
   const statusText = err.response?.statusText;
 
@@ -94,9 +100,18 @@ function getErrorDetails(err, text, url) {
         || err.message
         || (typeof err.response?.data === 'string' ? err.response?.data : null);
 
-      const description = errorMessage
-        ? (typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage))
-        : `An unexpected error occurred${status ? ` (HTTP ${status}${statusText ? `: ${statusText}` : ''})` : ''}. Please check the URL and try again.`;
+      let description;
+      if (errorMessage) {
+        description = typeof errorMessage === 'string'
+          ? errorMessage
+          : JSON.stringify(errorMessage);
+      } else {
+        let statusInfo = '';
+        if (status) {
+          statusInfo = statusText ? ` (HTTP ${status}: ${statusText})` : ` (HTTP ${status})`;
+        }
+        description = `An unexpected error occurred${statusInfo}. Please check the URL and try again.`;
+      }
 
       return {
         title: `Failed to validate ${resourceName}`,
@@ -106,9 +121,9 @@ function getErrorDetails(err, text, url) {
   }
 }
 
-const ValidatedUrlCheckbox = memo(function ValidatedUrlCheckbox({
+const ValidatedUrlCheckbox = memo(({
   text, url, valid, setValid, token, ...props
-}) {
+}) => {
   const [loading, setLoading] = useBoolean(true);
   const toast = useToast();
   useEffect(() => {
@@ -123,9 +138,8 @@ const ValidatedUrlCheckbox = memo(function ValidatedUrlCheckbox({
 
         if (!isValid && res.status === 200) {
           // Got a 200 but response isn't what we expected
-          const resourceName = text === 'Airflow API' ? 'Airflow API' : text === 'Starship Plugin' ? 'Starship Plugin API' : text;
           toast({
-            title: `Unexpected response from ${resourceName}`,
+            title: `Unexpected response from ${getResourceName(text)}`,
             description: !isJson
               ? 'The server returned a non-JSON response. You may have reached a login page or proxy. Please verify the URL and authentication.'
               : 'The server returned an empty or invalid response. Please verify the endpoint is correct.',
@@ -151,7 +165,7 @@ const ValidatedUrlCheckbox = memo(function ValidatedUrlCheckbox({
         setValid(false);
       })
       .finally(() => setLoading.off());
-  }, [url, token]);
+  }, [url, token, text]);
 
   return (
     <HStack spacing={2}>
@@ -177,5 +191,7 @@ ValidatedUrlCheckbox.propTypes = {
   setValid: PropTypes.func.isRequired,
   token: PropTypes.string.isRequired,
 };
+
+ValidatedUrlCheckbox.displayName = 'ValidatedUrlCheckbox';
 
 export default ValidatedUrlCheckbox;
