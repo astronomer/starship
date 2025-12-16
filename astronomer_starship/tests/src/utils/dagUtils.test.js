@@ -1,4 +1,3 @@
-/* eslint-disable import/no-extraneous-dependencies */
 import { describe, expect, test } from 'vitest';
 import mergeDagData from '../../../src/utils/dagUtils';
 

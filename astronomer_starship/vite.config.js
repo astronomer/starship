@@ -9,7 +9,7 @@ const enableProfiling = process.env.PROFILE === 'true';
 // Enable bundle analysis when ANALYZE env var is set
 const enableAnalyze = process.env.ANALYZE === 'true';
 
-export default defineConfig(({ mode }) => ({
+export default defineConfig(() => ({
   plugins: [
     react({
       // Enable fast refresh for better DX

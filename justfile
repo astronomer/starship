@@ -62,11 +62,11 @@ test-cicd:
 
 # Lint the frontend code
 lint-frontend:
-    cd astronomer_starship && npx eslint .. --ext js,jsx --report-unused-disable-directives --max-warnings 0
+    cd astronomer_starship && npx eslint src tests --ext js,jsx --report-unused-disable-directives --max-warnings 0
 
 # Lint the backend code
 lint-backend:
-    ruff -c pyproject.toml
+    ruff check .
 
 # Run all linting
 lint: lint-frontend lint-backend

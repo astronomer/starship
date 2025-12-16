@@ -1,4 +1,3 @@
-/* eslint-disable import/no-extraneous-dependencies */
 import { describe, expect, test } from 'vitest';
 import constants, { ROUTES } from '../../src/constants';
 

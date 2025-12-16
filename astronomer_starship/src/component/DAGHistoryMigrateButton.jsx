@@ -1,11 +1,7 @@
 /* eslint-disable no-nested-ternary */
 import React, { useState } from 'react';
 import {
-  Button,
-  CircularProgress,
-  HStack,
-  Text,
-  useToast,
+  Button, CircularProgress, HStack, Text, useToast,
 } from '@chakra-ui/react';
 import PropTypes from 'prop-types';
 import axios from 'axios';
@@ -99,8 +95,7 @@ function DAGHistoryMigrateButton({
           }),
         ]);
 
-        const dagRunsToMigrateCount = totalCount
-          || Math.min(dagRunsRes.data.dag_run_count, limit);
+        const dagRunsToMigrateCount = totalCount || Math.min(dagRunsRes.data.dag_run_count, limit);
 
         if (dagRunsRes.data.dag_runs.length === 0) {
           setProgress(100);
@@ -120,24 +115,28 @@ function DAGHistoryMigrateButton({
           throw new Error('Failed to create DAG runs');
         }
 
-        await Promise.all([
-          axios.post(
-            proxyUrl(url + constants.TASK_INSTANCE_ROUTE),
-            { task_instances: taskInstanceRes.data.task_instances },
-            { params: { dag_id: dagId }, headers: proxyHeaders(token) },
-          ),
-          axios.post(
-            proxyUrl(url + constants.TASK_INSTANCE_HISTORY_ROUTE),
-            { task_instances: taskInstanceHistoryRes.data.task_instances },
-            { params: { dag_id: dagId }, headers: proxyHeaders(token) },
-          ),
-        ]);
+        // Create Task Instances first, then Task Instance History to avoid FK race conditions where
+        // history is inserted before corresponding task instances exist in the target DB.
+        const taskInstanceCreateRes = await axios.post(
+          proxyUrl(url + constants.TASK_INSTANCE_ROUTE),
+          { task_instances: taskInstanceRes.data.task_instances },
+          { params: { dag_id: dagId }, headers: proxyHeaders(token) },
+        );
+        if (taskInstanceCreateRes.status !== 200) {
+          throw new Error('Failed to create task instances');
+        }
+
+        const taskInstanceHistoryCreateRes = await axios.post(
+          proxyUrl(url + constants.TASK_INSTANCE_HISTORY_ROUTE),
+          { task_instances: taskInstanceHistoryRes.data.task_instances },
+          { params: { dag_id: dagId }, headers: proxyHeaders(token) },
+        );
+        if (taskInstanceHistoryCreateRes.status !== 200) {
+          throw new Error('Failed to create task instance history');
+        }
 
         const migratedCount = dagRunCreateRes.data.dag_run_count;
-        const newProgress = Math.min(
-          99,
-          Math.round((migratedCount / dagRunsToMigrateCount) * 100),
-        );
+        const newProgress = Math.min(99, Math.round((migratedCount / dagRunsToMigrateCount) * 100));
         setProgress(newProgress);
 
         if (migratedCount < dagRunsToMigrateCount) {
@@ -197,11 +196,15 @@ function DAGHistoryMigrateButton({
         variant="outline"
         isDisabled={isDisabled || isLoading}
         leftIcon={
-          isLoading ? null
-            : error ? <MdErrorOutline />
-              : exists ? <MdDeleteForever />
-                : isDisabled ? <MdWarning />
-                  : <GoUpload />
+          isLoading ? null : error ? (
+            <MdErrorOutline />
+          ) : exists ? (
+            <MdDeleteForever />
+          ) : isDisabled ? (
+            <MdWarning />
+          ) : (
+            <GoUpload />
+          )
         }
         colorScheme={undefined}
         color={activeColor}
@@ -209,16 +212,18 @@ function DAGHistoryMigrateButton({
         _hover={{
           bg: activeHoverBg,
         }}
-        _disabled={isLoading ? {
-          color: activeColor,
-          borderColor: activeBorderColor,
-          opacity: 0.8,
-          cursor: 'progress',
-        } : {
-          color: 'gray.600',
-          borderColor: 'gray.500',
-          opacity: 1,
-        }}
+        _disabled={
+          isLoading ? {
+            color: activeColor,
+            borderColor: activeBorderColor,
+            opacity: 0.8,
+            cursor: 'progress',
+          } : {
+            color: 'gray.600',
+            borderColor: 'gray.500',
+            opacity: 1,
+          }
+        }
         onClick={handleClick}
         minW={isLoading ? '130px' : undefined}
       >
