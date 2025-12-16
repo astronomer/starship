@@ -141,13 +141,13 @@ function DAGHistoryMigrateButton({
         }
 
         const migratedCount = dagRunCreateRes.data.dag_run_count;
-        const newProgress = Math.min(
-          99,
-          Math.round((migratedCount / dagRunsToMigrateCount) * 100),
-        );
-        setProgress(newProgress);
 
         if (migratedCount < dagRunsToMigrateCount) {
+          const newProgress = Math.min(
+            99,
+            Math.round((migratedCount / dagRunsToMigrateCount) * 100),
+          );
+          setProgress(newProgress);
           await migrateBatch(offset + batchSize, dagRunsToMigrateCount);
         } else {
           setProgress(100);
