@@ -120,18 +120,25 @@ function DAGHistoryMigrateButton({
           throw new Error('Failed to create DAG runs');
         }
 
-        await Promise.all([
-          axios.post(
-            proxyUrl(url + constants.TASK_INSTANCE_ROUTE),
-            { task_instances: taskInstanceRes.data.task_instances },
-            { params: { dag_id: dagId }, headers: proxyHeaders(token) },
-          ),
-          axios.post(
-            proxyUrl(url + constants.TASK_INSTANCE_HISTORY_ROUTE),
-            { task_instances: taskInstanceHistoryRes.data.task_instances },
-            { params: { dag_id: dagId }, headers: proxyHeaders(token) },
-          ),
-        ]);
+        const taskInstanceCreateRes = await axios.post(
+          proxyUrl(url + constants.TASK_INSTANCE_ROUTE),
+          { task_instances: taskInstanceRes.data.task_instances },
+          { params: { dag_id: dagId }, headers: proxyHeaders(token) },
+        );
+
+        if (taskInstanceCreateRes.status !== 200) {
+          throw new Error('Failed to create task instances');
+        }
+
+        const taskInstanceHistoryCreateRes = await axios.post(
+          proxyUrl(url + constants.TASK_INSTANCE_HISTORY_ROUTE),
+          { task_instances: taskInstanceHistoryRes.data.task_instances },
+          { params: { dag_id: dagId }, headers: proxyHeaders(token) },
+        );
+
+        if (taskInstanceHistoryCreateRes.status !== 200) {
+          throw new Error('Failed to create task instance history');
+        }
 
         const migratedCount = dagRunCreateRes.data.dag_run_count;
         const newProgress = Math.min(
