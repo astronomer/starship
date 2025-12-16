@@ -179,6 +179,15 @@ const theme = extendTheme({
         },
       },
     },
+
+    Alert: {
+      baseStyle: {
+        container: {
+          opacity: '1 !important',
+          backdropFilter: 'none',
+        },
+      },
+    },
   },
 
   styles: {
@@ -202,6 +211,11 @@ const theme = extendTheme({
         minH: 0,
         maxH: '100vh',
         overflowY: 'auto',
+      },
+      // Ensure toasts are never transparent
+      '.chakra-toast, .chakra-toast__inner, .chakra-alert': {
+        opacity: '1 !important',
+        backdropFilter: 'none !important',
       },
     },
   },
