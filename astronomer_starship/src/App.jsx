@@ -1,129 +1,176 @@
-/* eslint-disable no-nested-ternary */
-import React, { useEffect, useReducer } from 'react';
+import React, { memo, Suspense, lazy } from 'react';
 import {
-  Box, Button, Divider, Flex, Heading, Icon,
+  createHashRouter,
+  RouterProvider,
+  Outlet,
+  NavLink,
+  Navigate,
+} from 'react-router-dom';
+import {
+  Box, Button, Divider, Flex, Heading, HStack, Icon, Image, Spinner, Text, Tooltip,
 } from '@chakra-ui/react';
 import { GoRocket } from 'react-icons/go';
-import {
-  Outlet, NavLink, Route, Navigate, createHashRouter, createRoutesFromElements,
-} from 'react-router-dom';
-import { RouterProvider } from 'react-router';
-import VariablesPage from './pages/VariablesPage';
-import ConnectionsPage from './pages/ConnectionsPage';
-import PoolsPage from './pages/PoolsPage';
-import EnvVarsPage from './pages/EnvVarsPage';
-import DAGHistoryPage from './pages/DAGHistoryPage';
-import SetupPage from './pages/SetupPage';
-import {
-  getInitialState, initialState, reducer,
-} from './State';
+import PropTypes from 'prop-types';
+import AstronomerLogo from './astronomer-logo.svg';
+
+import { AppProvider, useSetupComplete } from './AppContext';
+import { ROUTES } from './constants';
 import './index.css';
-import AppLoading from './component/AppLoading';
-import TelescopePage from './pages/TelescopePage';
+
+// Lazy load page components for better initial bundle size
+const SetupPage = lazy(() => import('./pages/SetupPage'));
+const VariablesPage = lazy(() => import('./pages/VariablesPage'));
+const ConnectionsPage = lazy(() => import('./pages/ConnectionsPage'));
+const PoolsPage = lazy(() => import('./pages/PoolsPage'));
+const EnvVarsPage = lazy(() => import('./pages/EnvVarsPage'));
+const DAGHistoryPage = lazy(() => import('./pages/DAGHistoryPage'));
+const TelescopePage = lazy(() => import('./pages/TelescopePage'));
+
+// Loading fallback for lazy-loaded pages
+function PageLoader() {
+  return (
+    <Box display="flex" justifyContent="center" alignItems="center" minH="200px">
+      <Spinner size="lg" color="brand.500" thickness="3px" />
+    </Box>
+  );
+}
+
+function NavButtonComponent({
+  to,
+  label,
+  isDisabled = false,
+  disabledMessage = '',
+}) {
+  const button = (
+    <Button
+      as={isDisabled ? 'button' : NavLink}
+      to={isDisabled ? undefined : to}
+      variant="navLink"
+      isDisabled={isDisabled}
+    >
+      {label}
+    </Button>
+  );
+
+  if (isDisabled && disabledMessage) {
+    return (
+      <Tooltip label={disabledMessage} hasArrow placement="bottom">
+        <Box as="span" display="inline-block">
+          {button}
+        </Box>
+      </Tooltip>
+    );
+  }
+
+  return button;
+}
+
+NavButtonComponent.propTypes = {
+  to: PropTypes.string.isRequired,
+  label: PropTypes.string.isRequired,
+  isDisabled: PropTypes.bool,
+  disabledMessage: PropTypes.string,
+};
+
+const NavButton = memo(NavButtonComponent);
+
+const NAV_ITEMS = [
+  { to: `/${ROUTES.SETUP}`, label: 'Setup', requiresSetup: false },
+  { to: `/${ROUTES.VARIABLES}`, label: 'Variables', requiresSetup: true },
+  { to: `/${ROUTES.CONNECTIONS}`, label: 'Connections', requiresSetup: true },
+  { to: `/${ROUTES.POOLS}`, label: 'Pools', requiresSetup: true },
+  { to: `/${ROUTES.ENV_VARS}`, label: 'Environment Variables', requiresSetup: true },
+  { to: `/${ROUTES.DAGS}`, label: 'DAG History', requiresSetup: true },
+];
+
+const DISABLED_MESSAGE = 'Complete the Setup tab to configure your target Airflow instance before accessing migration features';
+
+function AppLayout() {
+  const isSetupComplete = useSetupComplete();
+
+  return (
+    <>
+      <Flex
+        as="nav"
+        boxShadow="sm"
+        borderBottomWidth="1px"
+        borderColor="gray.200"
+        overflowX="auto"
+        overflowY="hidden"
+        flexWrap={{ base: 'nowrap', lg: 'wrap' }}
+        minH="12"
+        css={{
+          '&::-webkit-scrollbar': {
+            height: 'var(--chakra-space-1)',
+          },
+          '&::-webkit-scrollbar-thumb': {
+            background: 'var(--chakra-colors-gray-300)',
+            borderRadius: 'var(--chakra-radii-sm)',
+          },
+        }}
+      >
+        {NAV_ITEMS.map(({ to, label, requiresSetup }) => (
+          <NavButton
+            key={to}
+            to={to}
+            label={label}
+            isDisabled={requiresSetup && !isSetupComplete}
+            disabledMessage={requiresSetup ? DISABLED_MESSAGE : ''}
+          />
+        ))}
+      </Flex>
+      <Box
+        as="main"
+        flex="1"
+        minH="0"
+        overflowY="auto"
+        px={{ base: 2, md: 4, lg: 6 }}
+        pt={{ base: 2, md: 4, lg: 6 }}
+        pb={{ base: 10, md: 12 }}
+      >
+        <Box as="header" display="inline-block">
+          <Heading as="h1" size="xl">
+            Starship
+            {' '}
+            <Icon as={GoRocket} />
+          </Heading>
+          <HStack align="baseline" justify="flex-end">
+            <Text color="gray.500">
+              by
+            </Text>
+            <Image src={AstronomerLogo} alt="Astronomer" h="12px" />
+          </HStack>
+        </Box>
+        <Divider my={3} />
+        <Suspense fallback={<PageLoader />}>
+          <Outlet />
+        </Suspense>
+      </Box>
+    </>
+  );
+}
+
+const router = createHashRouter([
+  {
+    path: '/',
+    element: <AppLayout />,
+    children: [
+      { index: true, element: <Navigate to={ROUTES.SETUP} replace /> },
+      { path: ROUTES.SETUP, element: <SetupPage /> },
+      { path: ROUTES.VARIABLES, element: <VariablesPage /> },
+      { path: ROUTES.CONNECTIONS, element: <ConnectionsPage /> },
+      { path: ROUTES.POOLS, element: <PoolsPage /> },
+      { path: ROUTES.ENV_VARS, element: <EnvVarsPage /> },
+      { path: ROUTES.DAGS, element: <DAGHistoryPage /> },
+      { path: ROUTES.TELESCOPE, element: <TelescopePage /> },
+    ],
+  },
+]);
 
 export default function App() {
-  const [state, dispatch] = useReducer(reducer, initialState, getInitialState);
-  useEffect(() => {
-    localStorage.setItem('state', JSON.stringify(state));
-  }, [state]);
-  const router = createHashRouter(
-    createRoutesFromElements(
-      <Route
-        path="/"
-        element={(
-          <>
-            <Flex
-              as="nav"
-              boxShadow="0 1px 0 0 #e2e8f0"
-              id="starship-navbar"
-            >
-              <Button
-                className={({ isActive, isPending }) => (isPending ? 'pending' : isActive ? 'active' : '')}
-                w="100%"
-                as={NavLink}
-                to="/setup"
-              >
-                Setup
-              </Button>
-              <Button
-                className={({ isActive, isPending }) => (isPending ? 'pending' : isActive ? 'active' : '')}
-                w="100%"
-                isDisabled={!state.isSetupComplete}
-                as={NavLink}
-                style={!state.isSetupComplete ? { pointerEvents: 'none' } : {}}
-                to="/variables"
-              >
-                Variables
-              </Button>
-              <Button
-                className={({ isActive, isPending }) => (isPending ? 'pending' : isActive ? 'active' : '')}
-                w="100%"
-                isDisabled={!state.isSetupComplete}
-                style={!state.isSetupComplete ? { pointerEvents: 'none' } : {}}
-                as={NavLink}
-                to="/connections"
-              >
-                Connections
-              </Button>
-              <Button
-                className={({ isActive, isPending }) => (isPending ? 'pending' : isActive ? 'active' : '')}
-                w="100%"
-                isDisabled={!state.isSetupComplete}
-                style={!state.isSetupComplete ? { pointerEvents: 'none' } : {}}
-                as={NavLink}
-                to="/pools"
-              >
-                Pools
-              </Button>
-              <Button
-                className={({ isActive, isPending }) => (isPending ? 'pending' : isActive ? 'active' : '')}
-                w="100%"
-                isDisabled={!state.isSetupComplete}
-                style={!state.isSetupComplete ? { pointerEvents: 'none' } : {}}
-                as={NavLink}
-                to="/env"
-              >
-                Environment Variables
-              </Button>
-              <Button
-                className={({ isActive, isPending }) => (isPending ? 'pending' : isActive ? 'active' : '')}
-                w="100%"
-                isDisabled={!state.isSetupComplete}
-                style={!state.isSetupComplete ? { pointerEvents: 'none' } : {}}
-                as={NavLink}
-                to="/dags"
-              >
-                DAG History
-              </Button>
-            </Flex>
-            <Box as="main" className="starship-page">
-              <Box as="header" className="starship-logo">
-                <Heading color="Gray.600" as="h1" size="2xl" noOfLines={1}>
-                  Starship
-                  {' '}
-                  <Icon as={GoRocket} />
-                </Heading>
-                <Heading color="Gray.400" size="sm" noOfLines={1}>By Astronomer</Heading>
-              </Box>
-              <Divider marginY="5px" />
-              <AppLoading />
-              <Outlet />
-            </Box>
-          </>
-        )}
-      >
-        <Route index element={<Navigate to="/setup" replace />} />
-        <Route path="setup" element={<SetupPage key="setup" state={state} dispatch={dispatch} />} />
-        <Route path="variables" element={<VariablesPage key="variables" state={state} dispatch={dispatch} />} />
-        <Route path="connections" element={<ConnectionsPage key="connections" state={state} dispatch={dispatch} />} />
-        <Route path="pools" element={<PoolsPage key="pools" state={state} dispatch={dispatch} />} />
-        <Route path="env" element={<EnvVarsPage key="env-vars" state={state} dispatch={dispatch} />} />
-        <Route path="dags" element={<DAGHistoryPage key="dag-history" state={state} dispatch={dispatch} />} />
-        <Route path="telescope" element={<TelescopePage key="telescope" state={state} dispatch={dispatch} />} />
-     </Route>,
-    ),
-  );
   return (
-    <RouterProvider router={router} />
+    <AppProvider>
+      <RouterProvider router={router} />
+    </AppProvider>
   );
 }

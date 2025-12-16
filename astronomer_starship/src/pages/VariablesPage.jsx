@@ -1,93 +1,118 @@
-import React, { useEffect, useState } from 'react';
+import React, { useMemo } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
 import {
-  Button, HStack, Spacer, Text,
+  Button, HStack, Text, Box, Heading, VStack, Stack,
 } from '@chakra-ui/react';
-import PropTypes from 'prop-types';
 import { RepeatIcon } from '@chakra-ui/icons';
+
+import useMigrationData from '../hooks/useMigrationData';
 import MigrateButton from '../component/MigrateButton';
-import StarshipPage from '../component/StarshipPage';
-import {
-  fetchData, localRoute, objectWithoutKey, proxyHeaders, proxyUrl, remoteRoute,
-} from '../util';
+import ProgressSummary from '../component/ProgressSummary';
+import DataTable from '../component/DataTable';
+import PageLoading from '../component/PageLoading';
+import { objectWithoutKey, proxyHeaders, proxyUrl } from '../util';
 import constants from '../constants';
 
 const columnHelper = createColumnHelper();
 
-function setVariablesData(localData, remoteData) {
-  return localData.map(
-    (d) => ({
-      ...d,
-      exists: remoteData.map(
-        ({ key }) => key,
-      ).includes(d.key),
-    }),
-  );
-}
-
-export default function VariablesPage({ state, dispatch }) {
-  const [data, setData] = useState(
-    setVariablesData(state.variablesLocalData, state.variablesRemoteData),
-  );
-  const fetchPageData = () => fetchData(
-    localRoute(constants.VARIABLES_ROUTE),
-    remoteRoute(state.targetUrl, constants.VARIABLES_ROUTE),
-    state.token,
-    () => dispatch({ type: 'set-variables-loading' }),
-    (res, rRes) => dispatch({
-      type: 'set-variables-data', variablesLocalData: res.data, variablesRemoteData: rRes.data,
-    }),
-    (err) => dispatch({ type: 'set-variables-error', error: err }),
-  );
-  useEffect(() => fetchPageData(), []);
-  useEffect(
-    () => setData(setVariablesData(state.variablesLocalData, state.variablesRemoteData)),
-    [state],
-  );
-
-  // noinspection JSCheckFunctionSignatures
-  const columns = [
-    columnHelper.accessor('key'),
-    columnHelper.accessor('val'),
-    // columnHelper.accessor('exists'),
+/**
+ * Creates column definitions for the variables table.
+ * Defined outside component to avoid unstable nested components.
+ */
+function createColumns(targetUrl, token, handleItemStatusChange) {
+  return [
+    columnHelper.accessor('key', { header: 'Key' }),
+    columnHelper.accessor('val', { header: 'Value' }),
     columnHelper.display({
       id: 'migrate',
       header: 'Migrate',
-      // eslint-disable-next-line react/no-unstable-nested-components
-      cell: (info) => (
-        <MigrateButton
-          route={proxyUrl(state.targetUrl + constants.VARIABLES_ROUTE)}
-          headers={proxyHeaders(state.token)}
-          existsInRemote={info.row.original.exists}
-          sendData={{ ...objectWithoutKey(info.row.original, 'exists') }}
-        />
-      ),
+      meta: { align: 'right' },
+      cell: (info) => {
+        const { original } = info.row;
+        return (
+          <MigrateButton
+            route={proxyUrl(targetUrl + constants.VARIABLES_ROUTE)}
+            headers={proxyHeaders(token)}
+            existsInRemote={original.exists}
+            sendData={objectWithoutKey(original, 'exists')}
+            onStatusChange={(newStatus) => handleItemStatusChange(original.key, newStatus)}
+            itemName={`variable "${original.key}"`}
+          />
+        );
+      },
     }),
   ];
+}
+
+export default function VariablesPage() {
+  const {
+    loading,
+    error,
+    data,
+    isMigratingAll,
+    totalItems,
+    migratedItems,
+    fetchData,
+    handleItemStatusChange,
+    handleMigrateAll,
+    targetUrl,
+    token,
+  } = useMigrationData({
+    route: constants.VARIABLES_ROUTE,
+    idField: 'key',
+    itemName: 'variable',
+  });
+
+  const columns = useMemo(
+    () => createColumns(targetUrl, token, handleItemStatusChange),
+    [targetUrl, token, handleItemStatusChange],
+  );
+
   return (
-    <StarshipPage
-      description={(
-        <HStack>
-          <Text fontSize="xl">
-            Variables are a generic way to store and retrieve arbitrary content or settings
-            as a simple key value store within Airflow.
-            Variables can be defined via multiple mechanisms,
-            Starship only migrates values stored via the Airflow UI.
+    <Box>
+      <Stack
+        direction={{ base: 'column', md: 'row' }}
+        justify="space-between"
+        align={{ base: 'flex-start', md: 'center' }}
+        mb={3}
+      >
+        <Box>
+          <Heading size="md" mb={0.5}>Variables</Heading>
+          <Text fontSize="xs" color="gray.600">
+            Variables store arbitrary content as key-value pairs.
           </Text>
-          <Spacer />
-          <Button size="sm" leftIcon={<RepeatIcon />} onClick={() => fetchPageData()}>Reset</Button>
+        </Box>
+        <HStack>
+          <Button
+            size="sm"
+            leftIcon={<RepeatIcon />}
+            onClick={fetchData}
+            variant="outline"
+            isLoading={loading}
+          >
+            Refresh
+          </Button>
         </HStack>
-      )}
-      loading={state.variablesLoading}
-      data={data}
-      columns={columns}
-      error={state.error}
-      resetFn={fetchPageData}
-    />
+      </Stack>
+
+      <VStack spacing={3} align="stretch" w="100%">
+        {!loading && !error && (
+          <ProgressSummary
+            totalItems={totalItems}
+            migratedItems={migratedItems}
+            onMigrateAll={handleMigrateAll}
+            isMigratingAll={isMigratingAll}
+          />
+        )}
+
+        <Box>
+          {loading || error ? (
+            <PageLoading loading={loading} error={error} />
+          ) : (
+            <DataTable data={data} columns={columns} searchPlaceholder="Search variables..." />
+          )}
+        </Box>
+      </VStack>
+    </Box>
   );
 }
-VariablesPage.propTypes = {
-  // eslint-disable-next-line react/forbid-prop-types
-  state: PropTypes.object.isRequired,
-  dispatch: PropTypes.func.isRequired,
-};

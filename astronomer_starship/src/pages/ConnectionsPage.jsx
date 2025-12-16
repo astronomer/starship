@@ -1,105 +1,138 @@
-import React, { useEffect, useState } from 'react';
+import React, { useMemo } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
 import {
-  Button, HStack, Spacer, Text,
+  Button, HStack, Text, Box, Heading, VStack, Stack,
 } from '@chakra-ui/react';
-import PropTypes from 'prop-types';
 import { RepeatIcon } from '@chakra-ui/icons';
-import StarshipPage from '../component/StarshipPage';
+
+import useMigrationData from '../hooks/useMigrationData';
 import MigrateButton from '../component/MigrateButton';
 import HiddenValue from '../component/HiddenValue';
-import {
-  fetchData, localRoute, objectWithoutKey, proxyHeaders, proxyUrl, remoteRoute,
-} from '../util';
+import ProgressSummary from '../component/ProgressSummary';
+import DataTable from '../component/DataTable';
+import PageLoading from '../component/PageLoading';
+import { objectWithoutKey, proxyHeaders, proxyUrl } from '../util';
 import constants from '../constants';
 
 const columnHelper = createColumnHelper();
-const passwordColumn = columnHelper.accessor('password', {
-  id: 'password', cell: (props) => <HiddenValue value={props.getValue()} />,
-});
-const extraColumn = columnHelper.accessor('extra', {
-  id: 'extra', cell: (props) => <HiddenValue value={props.getValue()} />,
-});
 
-function setConnectionsData(localData, remoteData) {
-  return localData.map(
-    (d) => ({
-      ...d,
-      exists: remoteData.map(
-        // eslint-disable-next-line camelcase
-        ({ conn_id }) => conn_id,
-      ).includes(d.conn_id),
-    }),
-  );
+/**
+ * Renders a hidden value cell.
+ */
+function renderHiddenValue(info) {
+  return <HiddenValue value={info.getValue()} />;
 }
 
-export default function ConnectionsPage({ state, dispatch }) {
-  const [data, setData] = useState(
-    setConnectionsData(state.connectionsLocalData, state.connectionsRemoteData),
-  );
-  const fetchPageData = () => fetchData(
-    localRoute(constants.CONNECTIONS_ROUTE),
-    remoteRoute(state.targetUrl, constants.CONNECTIONS_ROUTE),
-    state.token,
-    () => dispatch({ type: 'set-connections-loading' }),
-    (res, rRes) => dispatch({
-      type: 'set-connections-data', connectionsLocalData: res.data, connectionsRemoteData: rRes.data,
+/**
+ * Creates column definitions for the connections table.
+ * Defined outside component to avoid unstable nested components.
+ */
+function createColumns(targetUrl, token, handleItemStatusChange) {
+  return [
+    columnHelper.accessor('conn_id', { header: 'Connection ID' }),
+    columnHelper.accessor('conn_type', { header: 'Type' }),
+    columnHelper.accessor('host', { header: 'Host' }),
+    columnHelper.accessor('port', { header: 'Port' }),
+    columnHelper.accessor('schema', { header: 'Schema' }),
+    columnHelper.accessor('login', { header: 'Login' }),
+    columnHelper.accessor('password', {
+      header: 'Password',
+      cell: renderHiddenValue,
     }),
-    (err) => dispatch({ type: 'set-connections-error', error: err }),
-  );
-  useEffect(() => fetchPageData(), []);
-  useEffect(
-    () => setData(setConnectionsData(state.connectionsLocalData, state.connectionsRemoteData)),
-    [state],
-  );
-
-  // noinspection JSCheckFunctionSignatures
-  const columns = [
-    columnHelper.accessor('conn_id'),
-    columnHelper.accessor('conn_type'),
-    columnHelper.accessor('host'),
-    columnHelper.accessor('port'),
-    columnHelper.accessor('schema'),
-    columnHelper.accessor('login'),
-    passwordColumn,
-    extraColumn,
+    columnHelper.accessor('extra', {
+      header: 'Extra',
+      cell: renderHiddenValue,
+    }),
     columnHelper.display({
       id: 'migrate',
       header: 'Migrate',
-      // eslint-disable-next-line react/no-unstable-nested-components
-      cell: (info) => (
-        <MigrateButton
-          route={proxyUrl(state.targetUrl + constants.CONNECTIONS_ROUTE)}
-          headers={proxyHeaders(state.token)}
-          existsInRemote={info.row.original.exists}
-          sendData={{ ...objectWithoutKey(info.row.original, 'exists') }}
-        />
-      ),
+      meta: { align: 'right' },
+      cell: (info) => {
+        const { original } = info.row;
+        return (
+          <MigrateButton
+            route={proxyUrl(targetUrl + constants.CONNECTIONS_ROUTE)}
+            headers={proxyHeaders(token)}
+            existsInRemote={original.exists}
+            sendData={objectWithoutKey(original, 'exists')}
+            onStatusChange={(newStatus) => handleItemStatusChange(original.conn_id, newStatus)}
+            itemName={`connection "${original.conn_id}"`}
+          />
+        );
+      },
     }),
   ];
+}
+
+export default function ConnectionsPage() {
+  const {
+    loading,
+    error,
+    data,
+    isMigratingAll,
+    totalItems,
+    migratedItems,
+    fetchData,
+    handleItemStatusChange,
+    handleMigrateAll,
+    targetUrl,
+    token,
+  } = useMigrationData({
+    route: constants.CONNECTIONS_ROUTE,
+    idField: 'conn_id',
+    itemName: 'connection',
+  });
+
+  const columns = useMemo(
+    () => createColumns(targetUrl, token, handleItemStatusChange),
+    [targetUrl, token, handleItemStatusChange],
+  );
+
   return (
-    <StarshipPage
-      description={(
-        <HStack>
-          <Text fontSize="xl">
-            Airflow Connection objects are used for storing credentials and other information
-            necessary for connecting to external services.
-            Connections can be defined via multiple mechanisms,
-            Starship only migrates values stored via the Airflow UI.
+    <Box>
+      <Stack
+        direction={{ base: 'column', md: 'row' }}
+        justify="space-between"
+        align={{ base: 'flex-start', md: 'center' }}
+        mb={3}
+      >
+        <Box>
+          <Heading size="md" mb={0.5}>Connections</Heading>
+          <Text fontSize="xs" color="gray.600">
+            Airflow Connection objects store credentials for external services.
           </Text>
-          <Spacer />
-          <Button size="sm" leftIcon={<RepeatIcon />} onClick={() => fetchPageData()}>Reset</Button>
+        </Box>
+        <HStack>
+          <Button
+            size="sm"
+            leftIcon={<RepeatIcon />}
+            onClick={fetchData}
+            variant="outline"
+            isLoading={loading}
+          >
+            Refresh
+          </Button>
         </HStack>
-      )}
-      loading={state.connectionsLoading}
-      data={data}
-      columns={columns}
-      error={state.error}
-    />
+      </Stack>
+
+      <VStack spacing={3} align="stretch" w="100%">
+        {!loading && !error && (
+          <ProgressSummary
+            totalItems={totalItems}
+            migratedItems={migratedItems}
+            onMigrateAll={handleMigrateAll}
+            isMigratingAll={isMigratingAll}
+          />
+        )}
+
+        <Box>
+          {loading || error ? (
+            <PageLoading loading={loading} error={error} />
+          ) : (
+            <DataTable data={data} columns={columns} searchPlaceholder="Search connections..." />
+          )}
+        </Box>
+      </VStack>
+    </Box>
   );
 }
-ConnectionsPage.propTypes = {
-  // eslint-disable-next-line react/forbid-prop-types
-  state: PropTypes.object.isRequired,
-  dispatch: PropTypes.func.isRequired,
-};

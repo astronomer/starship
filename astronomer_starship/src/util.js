@@ -38,9 +38,91 @@ export function getTargetUrlFromParts(urlOrgPart, urlDeploymentPart, isAstro) {
 }
 
 /**
- * Returns the local URL for a given route by splitting at 'starship
- * @param route
- @returns {string}
+ * Parses an Airflow webserver URL and extracts the relevant parts.
+ * Supports both Astro and Software URL formats.
+ *
+ * Astro format: https://{org}.astronomer.run/{deployment}[/home]
+ * Software format: https://deployments.{basedomain}/{release-name}/airflow[/home]
+ *
+ * @param {string} url - The full Airflow webserver URL
+ * @returns {{ targetUrl: string, urlOrgPart: string, urlDeploymentPart: string,
+ *             isAstro: boolean, isValid: boolean }}
+ */
+export function parseAirflowUrl(url) {
+  const result = {
+    targetUrl: '',
+    urlOrgPart: '',
+    urlDeploymentPart: '',
+    isAstro: true,
+    isValid: false,
+  };
+
+  if (!url || typeof url !== 'string') {
+    return result;
+  }
+
+  // Clean and normalize URL
+  let cleanUrl = url.trim();
+
+  // Add https:// if no protocol specified
+  if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+    cleanUrl = `https://${cleanUrl}`;
+  }
+
+  try {
+    const parsed = new URL(cleanUrl);
+    const { hostname, pathname } = parsed;
+
+    // Check if it's Astro (*.astronomer.run)
+    if (hostname.endsWith('.astronomer.run')) {
+      result.isAstro = true;
+      // Extract org part (everything before .astronomer.run)
+      result.urlOrgPart = hostname.replace('.astronomer.run', '');
+
+      // Extract deployment part from pathname (first segment, ignoring /home)
+      const pathParts = pathname.split('/').filter(Boolean);
+      // Remove 'home' if it's the last segment
+      if (pathParts[pathParts.length - 1] === 'home') {
+        pathParts.pop();
+      }
+      result.urlDeploymentPart = pathParts[0] || '';
+
+      // Build clean target URL
+      if (result.urlOrgPart && result.urlDeploymentPart) {
+        result.targetUrl = `https://${result.urlOrgPart}.astronomer.run/${result.urlDeploymentPart}`;
+        result.isValid = true;
+      }
+    } else if (hostname.startsWith('deployments.')) {
+      // Software format
+      result.isAstro = false;
+      // Extract basedomain (everything after deployments.)
+      result.urlOrgPart = hostname.replace('deployments.', '');
+
+      // Extract release name from pathname
+      // pathname is like /release-name-1234/airflow/home
+      const pathParts = pathname.split('/').filter(Boolean);
+      // First part should be the release name
+      result.urlDeploymentPart = pathParts[0] || '';
+
+      // Build clean target URL
+      if (result.urlOrgPart && result.urlDeploymentPart) {
+        result.targetUrl = `https://deployments.${result.urlOrgPart}/${result.urlDeploymentPart}/airflow`;
+        result.isValid = true;
+      }
+    }
+  } catch {
+    // Invalid URL
+    return result;
+  }
+
+  return result;
+}
+
+/**
+ * Returns the local URL for a given route by splitting at 'starship'
+ *
+ * @param {string} route - The route to append
+ * @returns {string} - The full local URL
  */
 export function localRoute(route) {
   const localUrl = window.location.href.split('/starship', 1)[0];
@@ -49,9 +131,10 @@ export function localRoute(route) {
 
 /**
  * Returns the remote URL for a given route by combining the target URL and route
- * @param targetUrl
- * @param route
- @returns {string}
+ *
+ * @param {string} targetUrl - The base target URL
+ * @param {string} route - The route to append
+ * @returns {string} - The full remote URL
  */
 export function remoteRoute(targetUrl, route) {
   return targetUrl + route;
@@ -59,16 +142,19 @@ export function remoteRoute(targetUrl, route) {
 
 /**
  * Returns the local proxy URL for a given URL (to avoid CORS issues)
- * @param url
- * @returns {string}
+ *
+ * @param {string} url - The URL to proxy
+ * @returns {string} - The proxied URL
  */
 export function proxyUrl(url) {
   return localRoute(`/starship/proxy?url=${encodeURIComponent(url)}`);
 }
+
 /**
  * Returns the headers for the proxy (to avoid CORS issues)
- * @param token
- * @returns {{STARSHIP_PROXY_TOKEN}}
+ *
+ * @param {string} token - The authentication token
+ * @returns {Object} - Headers object with Starship-Proxy-Token
  */
 export function proxyHeaders(token) {
   return {
@@ -85,7 +171,7 @@ export function proxyHeaders(token) {
  * @param dataDispatch - dispatch route to call to set the data variables
  * @param errorDispatch - dispatch route to call to set the error variable
  */
-export function fetchData(
+export async function fetchData(
   localRouteUrl,
   remoteRouteUrl,
   token,
@@ -96,24 +182,26 @@ export function fetchData(
   if (loadingDispatch) {
     loadingDispatch();
   }
-  axios
-    .get(localRouteUrl)
-    .then((res) => {
-      axios
-        .get(proxyUrl(remoteRouteUrl), { headers: proxyHeaders(token) })
-        .then((rRes) => {
-          if (
-            res.status === 200 && res.headers['content-type'] === 'application/json' &&
-            rRes.status === 200 && res.headers['content-type'] === 'application/json'
-          ){
-            dataDispatch(res, rRes)
-          } else {
-            errorDispatch('Invalid response');
-          }
-        }) // , dispatch))
-        .catch((err) => errorDispatch(err)); // , dispatch));
-    })
-    .catch((err) => errorDispatch(err)); // , dispatch));
+
+  try {
+    const [localRes, remoteRes] = await Promise.all([
+      axios.get(localRouteUrl),
+      axios.get(proxyUrl(remoteRouteUrl), { headers: proxyHeaders(token) }),
+    ]);
+
+    if (
+      localRes.status === 200
+      && localRes.headers['content-type'] === 'application/json'
+      && remoteRes.status === 200
+      && remoteRes.headers['content-type'] === 'application/json'
+    ) {
+      dataDispatch(localRes, remoteRes);
+    } else {
+      errorDispatch(new Error('Invalid response: expected JSON content-type'));
+    }
+  } catch (err) {
+    errorDispatch(err);
+  }
 }
 
 export function objectWithoutKey(object, key) {
@@ -140,4 +228,22 @@ export function getAstroEnvVarRoute(organizationId, deploymentId) {
  */
 export function getHoustonRoute(basedomain) {
   return `https://houston.${basedomain}/v1/`;
+}
+
+/**
+ * Returns the DAG view URL based on Airflow version
+ * Airflow 2.x: /dags/{dag_id}/grid
+ * Airflow 3.x: /dags/{dag_id}
+ *
+ * @param {string} dagId - The DAG ID
+ * @param {string} airflowVersion - The Airflow version string (e.g., "2.8.1", "3.0.0")
+ * @returns {string} - The path to the DAG view
+ */
+export function getDagViewPath(dagId, airflowVersion) {
+  const majorVersion = parseInt(airflowVersion?.split('.')[0] || '2', 10);
+  if (majorVersion >= 3) {
+    return `/dags/${dagId}`;
+  }
+  // Airflow 2.x uses grid view
+  return `/dags/${dagId}/grid`;
 }

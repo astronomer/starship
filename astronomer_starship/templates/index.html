@@ -6,11 +6,17 @@
 {#  const airflow_version = "{{ airflow_version }}"#}
 {#  const airflow_base_url = "{{ airflow_base_url }}"#}
 {#</script>#}
+{# Preload critical chunks for faster initial load #}
+<link rel="modulepreload" href="static/assets/react-core.js">
+<link rel="modulepreload" href="static/assets/chakra.js">
+<link rel="modulepreload" href="static/assets/router.js">
 <script type="module" crossorigin src="static/assets/index.js"></script>
 {% endblock %}
 
 {% block head_css %}
 {{ super() }}
+{# Preload CSS for faster rendering #}
+<link rel="preload" href="static/assets/index.css" as="style">
 <link rel="stylesheet" crossorigin href="static/assets/index.css">
 {% endblock %}
 

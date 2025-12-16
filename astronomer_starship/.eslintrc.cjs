@@ -22,5 +22,9 @@ module.exports = {
     sourceType: 'module',
   },
   rules: {
+    // Use JavaScript default parameters instead of defaultProps (modern React pattern)
+    'react/require-default-props': ['error', {
+      functions: 'defaultArguments',
+    }],
   },
 };

@@ -26,7 +26,10 @@ async def serve_index():
 async def serve_assets(filename: str):
     file_path = ASSETS_DIR / filename
     if not file_path.exists() or not file_path.is_file():
-        return Response(content="Not Found", status_code=404)
+        return Response(
+            content=f"Static asset not found: {filename}. The requested file does not exist in the Starship assets directory.",
+            status_code=404,
+        )
 
     if filename.endswith(".js"):
         media_type = "application/javascript"

@@ -1,67 +1,112 @@
-/* eslint-disable no-nested-ternary */
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import axios from 'axios';
 import { Button, useToast } from '@chakra-ui/react';
 import { MdErrorOutline, MdDeleteForever } from 'react-icons/md';
 import { GoUpload } from 'react-icons/go';
 import PropTypes from 'prop-types';
 
-function checkStatus(status, exists) {
-  if (status === 204)
-    return false;
-  return status === 200 || exists;
-}
-
+/**
+ * Button for migrating or deleting items between Airflow instances
+ *
+ * @param {string} route - API endpoint for the migration
+ * @param {Object} headers - HTTP headers for the request
+ * @param {boolean} existsInRemote - Whether item already exists in remote
+ * @param {Object} sendData - Data to send with the request
+ * @param {boolean} isDisabled - Whether button is disabled
+ * @param {Function} onStatusChange - Callback when status changes
+ * @param {string} itemName - Display name for toast messages (e.g., "Variable 'my_var'")
+ */
 export default function MigrateButton({
-  route, headers, existsInRemote, sendData, isDisabled,
+  route,
+  headers = {},
+  existsInRemote = false,
+  sendData,
+  isDisabled = false,
+  onStatusChange = null,
+  itemName = 'item',
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const toast = useToast();
   const [exists, setExists] = useState(existsInRemote);
-  function handleClick() {
+  const toast = useToast();
+
+  const handleClick = useCallback(async () => {
     setLoading(true);
-    axios({
-      method: exists ? 'delete' : 'post',
-      url: route,
-      headers,
-      data: sendData,
-    })
-      .then((res) => {
-        setLoading(false);
-        setExists(checkStatus(res.status, exists));
-        toast({
-          title: 'Success',
-          status: 'success',
-          isClosable: true,
-        })
-      })
-      .catch((err) => {
-        setExists(exists);
-        setLoading(false);
-        toast({
-          title: err.response?.data?.error || err.response?.data || err.message,
-          status: 'error',
-          isClosable: true,
-        });
-        setError(err);
+    setError(null);
+
+    try {
+      const response = await axios({
+        method: exists ? 'delete' : 'post',
+        url: route,
+        headers,
+        data: sendData,
       });
-  }
+
+      // Determine new status based on response
+      const isSuccess = [200, 201, 204].includes(response.status);
+      const newStatus = isSuccess ? !exists : exists;
+
+      setExists(newStatus);
+      onStatusChange?.(newStatus);
+
+      toast({
+        title: exists
+          ? `Deleted ${itemName} from remote`
+          : `Migrated ${itemName} to remote`,
+        description: exists
+          ? 'Successfully removed from target Airflow instance'
+          : 'Successfully copied to target Airflow instance',
+        status: 'success',
+        duration: 4000,
+        isClosable: true,
+        variant: 'outline',
+      });
+    } catch (err) {
+      setError(err);
+      const action = exists ? 'delete' : 'migrate';
+      toast({
+        title: `Failed to ${action} ${itemName}`,
+        description: err.response?.data?.error || err.message,
+        status: 'error',
+        duration: 6000,
+        isClosable: true,
+        variant: 'outline',
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [exists, route, headers, sendData, onStatusChange, toast, itemName]);
+
+  // Determine button appearance based on state
+  const getButtonContent = () => {
+    if (error) return 'Error!';
+    if (exists) return 'Delete';
+    return 'Migrate';
+  };
+
+  const getButtonIcon = () => {
+    if (error) return <MdErrorOutline />;
+    if (exists) return <MdDeleteForever />;
+    return <GoUpload />;
+  };
+
+  const getColorScheme = () => {
+    if (error || exists) return 'red';
+    return 'green';
+  };
+
   return (
     <Button
-      isDisabled={loading || isDisabled}
+      size="sm"
+      variant="outline"
+      isDisabled={isDisabled}
       isLoading={loading}
-      loadingText="Loading"
-      variant="solid"
-      leftIcon={(
-        error ? <MdErrorOutline /> : exists ? <MdDeleteForever /> : !loading ? <GoUpload /> : <span />
-        )}
-      colorScheme={
-        exists ? 'red' : loading ? 'teal' : error ? 'red' : 'teal'
-        }
-      onClick={() => handleClick()}
+      loadingText={exists ? 'Deleting...' : 'Migrating...'}
+      onClick={handleClick}
+      colorScheme={getColorScheme()}
+      leftIcon={getButtonIcon()}
     >
-      {exists ? 'Delete' : loading ? '' : error ? 'Error!' : 'Migrate'}
+      {getButtonContent()}
     </Button>
   );
 }
@@ -73,9 +118,6 @@ MigrateButton.propTypes = {
   // eslint-disable-next-line react/forbid-prop-types
   sendData: PropTypes.object.isRequired,
   isDisabled: PropTypes.bool,
-};
-MigrateButton.defaultProps = {
-  headers: {},
-  existsInRemote: false,
-  isDisabled: false,
+  onStatusChange: PropTypes.func,
+  itemName: PropTypes.string,
 };
