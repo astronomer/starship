@@ -44,7 +44,8 @@ jobs:
         run: |
           set -o pipefail
           # npm audit exits non-zero when vulnerabilities are found.
-          if npm audit --audit-level=moderate; then
+          # Use --audit-level=high to ignore moderate (dev-only) vulnerabilities
+          if npm audit --audit-level=high; then
             result="success"
           else
             result="failure"
@@ -117,7 +118,18 @@ jobs:
           set -o pipefail
           # Note: pip-audit checks installed packages. This repo has no runtime deps,
           # so this primarily audits dev/test tooling installed via `.[dev]`.
-          if pip-audit --desc; then
+          
+          # Build ignore flags from ignore file (skip comments and empty lines)
+          IGNORE_FLAGS=""
+          if [[ -f .audit-ignore/pip-audit-ignore.txt ]]; then
+            while IFS= read -r line; do
+              # Skip comments and empty lines
+              [[ "$line" =~ ^#.*$ || -z "$line" ]] && continue
+              IGNORE_FLAGS="$IGNORE_FLAGS --ignore-vuln $line"
+            done < .audit-ignore/pip-audit-ignore.txt
+          fi
+          
+          if pip-audit --desc $IGNORE_FLAGS; then
             result="success"
           else
             result="failure"

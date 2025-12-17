@@ -1,0 +1,9 @@
+# pip-audit ignore file
+# Format: one CVE/PYSEC ID per line
+# Lines starting with # are comments
+
+# Starlette DoS vulnerability - transitive dep from apache-airflow
+# Will be fixed when Airflow updates their dependencies
+# Expires: 2025-06-01
+CVE-2025-62727
+

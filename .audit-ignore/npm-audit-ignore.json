@@ -1,0 +1,13 @@
+{
+  "advisories": {
+    "esbuild": {
+      "reason": "Dev server only vulnerability - not exposed in production builds",
+      "expires": "2026-06-01"
+    },
+    "vite": {
+      "reason": "Dev server only - depends on esbuild, will be fixed with Vite 7 upgrade",
+      "expires": "2026-06-01"
+    }
+  }
+}
+

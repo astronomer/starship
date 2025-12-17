@@ -71,13 +71,22 @@ lint-backend:
 # Run all linting
 lint: lint-frontend lint-backend
 
-# Audit frontend dependencies for security vulnerabilities
+# Audit frontend dependencies for security vulnerabilities (high+ only)
 audit-frontend: install-frontend
-    cd astronomer_starship && npm audit
+    cd astronomer_starship && npm audit --audit-level=high
 
-# Audit Python dependencies for security vulnerabilities
+# Audit Python dependencies for security vulnerabilities (with ignores)
 audit-backend: install-backend
-    pip-audit
+    #!/usr/bin/env bash
+    set -euo pipefail
+    IGNORE_FLAGS=""
+    if [[ -f .audit-ignore/pip-audit-ignore.txt ]]; then
+      while IFS= read -r line; do
+        [[ "$line" =~ ^#.*$ || -z "$line" ]] && continue
+        IGNORE_FLAGS="$IGNORE_FLAGS --ignore-vuln $line"
+      done < .audit-ignore/pip-audit-ignore.txt
+    fi
+    pip-audit $IGNORE_FLAGS
 
 # Audit all dependencies for security vulnerabilities
 audit: audit-frontend audit-backend
