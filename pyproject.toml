@@ -77,6 +77,9 @@ dev = [
     "pytest-sugar>=0.9",
     "docker>=6",
 
+    # security
+    "pip-audit",
+
     # docs
     "mkdocs",
     "mkdocs-material",

@@ -71,6 +71,17 @@ lint-backend:
 # Run all linting
 lint: lint-frontend lint-backend
 
+# Audit frontend dependencies for security vulnerabilities
+audit-frontend: install-frontend
+    cd astronomer_starship && npm audit
+
+# Audit Python dependencies for security vulnerabilities
+audit-backend: install-backend
+    pip-audit
+
+# Audit all dependencies for security vulnerabilities
+audit: audit-frontend audit-backend
+
 # Build Starship Webapp Frontend
 build-frontend: clean-frontend-build
     cd astronomer_starship && npx vite build
