@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Box,
   HStack,
@@ -54,7 +54,19 @@ export default function DataTable({
   showSearch = true,
   rightElement = null,
 }) {
-  const [sorting, setSorting] = useState([]);
+  // Default sort by first sortable column (ascending/alphabetical)
+  const initialSorting = useMemo(() => {
+    const firstSortableColumn = columns.find(
+      (col) => col.enableSorting !== false && (col.accessorKey || col.accessorFn || col.id),
+    );
+    if (firstSortableColumn) {
+      const columnId = firstSortableColumn.accessorKey || firstSortableColumn.id;
+      return [{ id: columnId, desc: false }];
+    }
+    return [];
+  }, [columns]);
+
+  const [sorting, setSorting] = useState(initialSorting);
   const [globalFilter, setGlobalFilter] = useState('');
 
   const table = useReactTable({
