@@ -6,4 +6,3 @@
 # Will be fixed when Airflow updates their dependencies
 # Expires: 2025-06-01
 CVE-2025-62727
-

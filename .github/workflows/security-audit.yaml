@@ -63,14 +63,14 @@ jobs:
           script: |
             const title = `[Security] Frontend vulnerabilities detected - ${new Date().toISOString().split('T')[0]}`;
             const body = `Automated security audit detected vulnerabilities in frontend dependencies.
-            
+
             **Action Required:**
             1. Review vulnerabilities: \`cd astronomer_starship && npm audit\`
             2. Fix automatically: \`npm audit fix\`
             3. Or update manually and test
-            
+
             **Workflow Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`;
-            
+
             // Check if issue already exists
             const issues = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
@@ -78,9 +78,9 @@ jobs:
               state: 'open',
               labels: 'security,dependencies,frontend'
             });
-            
+
             const existingIssue = issues.data.find(issue => issue.title.includes('[Security] Frontend vulnerabilities'));
-            
+
             if (!existingIssue) {
               await github.rest.issues.create({
                 owner: context.repo.owner,
@@ -118,7 +118,7 @@ jobs:
           set -o pipefail
           # Note: pip-audit checks installed packages. This repo has no runtime deps,
           # so this primarily audits dev/test tooling installed via `.[dev]`.
-          
+
           # Build ignore flags from ignore file (skip comments and empty lines)
           IGNORE_FLAGS=""
           if [[ -f .audit-ignore/pip-audit-ignore.txt ]]; then
@@ -128,7 +128,7 @@ jobs:
               IGNORE_FLAGS="$IGNORE_FLAGS --ignore-vuln $line"
             done < .audit-ignore/pip-audit-ignore.txt
           fi
-          
+
           if pip-audit --desc $IGNORE_FLAGS; then
             result="success"
           else
@@ -147,16 +147,16 @@ jobs:
           script: |
             const title = `[Security] Backend vulnerabilities detected - ${new Date().toISOString().split('T')[0]}`;
             const body = `Automated security audit detected vulnerabilities in Python dependencies.
-            
+
             **Action Required:**
             1. Review vulnerabilities: \`pip-audit\`
             2. Update vulnerable packages in \`pyproject.toml\`
             3. Test and verify fixes
-            
+
             **Note:** This project has no runtime Python dependencies, so vulnerabilities are likely in dev dependencies.
-            
+
             **Workflow Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`;
-            
+
             // Check if issue already exists
             const issues = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
@@ -164,9 +164,9 @@ jobs:
               state: 'open',
               labels: 'security,dependencies,backend'
             });
-            
+
             const existingIssue = issues.data.find(issue => issue.title.includes('[Security] Backend vulnerabilities'));
-            
+
             if (!existingIssue) {
               await github.rest.issues.create({
                 owner: context.repo.owner,
@@ -189,4 +189,3 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "- Frontend audit: ${{ needs.audit-frontend.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- Backend audit: ${{ needs.audit-backend.result }}" >> $GITHUB_STEP_SUMMARY
-
