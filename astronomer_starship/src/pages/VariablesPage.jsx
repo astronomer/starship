@@ -27,6 +27,7 @@ function createColumns(targetUrl, token, handleItemStatusChange) {
       id: 'migrate',
       header: 'Migrate',
       meta: { align: 'right' },
+      enableSorting: false,
       cell: (info) => {
         const { original } = info.row;
         return (
@@ -109,7 +110,7 @@ export default function VariablesPage() {
           {loading || error ? (
             <PageLoading loading={loading} error={error} />
           ) : (
-            <DataTable data={data} columns={columns} searchPlaceholder="Search variables..." />
+            <DataTable data={data} columns={columns} searchPlaceholder="Search by key, value..." />
           )}
         </Box>
       </VStack>

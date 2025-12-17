@@ -53,11 +53,13 @@ function createColumns(config) {
     columnHelper.accessor('value', {
       header: 'Value',
       cell: renderHiddenValue,
+      enableSorting: false,
     }),
     columnHelper.display({
       id: 'migrate',
       header: 'Migrate',
       meta: { align: 'right' },
+      enableSorting: false,
       cell: (info) => {
         const { original } = info.row;
         let route;
@@ -216,7 +218,7 @@ export default function EnvVarsPage() {
             <DataTable
               data={data}
               columns={columns}
-              searchPlaceholder="Search environment variables..."
+              searchPlaceholder="Search by key..."
             />
           )}
         </Box>

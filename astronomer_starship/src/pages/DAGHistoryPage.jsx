@@ -109,6 +109,7 @@ function createColumns(config) {
     }),
     columnHelper.display({
       id: 'local_is_paused',
+      enableSorting: false,
       header: () => (
         <>
           Local
@@ -145,6 +146,7 @@ function createColumns(config) {
     columnHelper.display({
       id: 'local_url',
       header: 'Local URL',
+      enableSorting: false,
       cell: (info) => {
         const { original } = info.row;
         return (
@@ -162,6 +164,7 @@ function createColumns(config) {
     }),
     columnHelper.display({
       id: 'remote_is_paused',
+      enableSorting: false,
       header: () => (
         <>
           Remote
@@ -199,6 +202,7 @@ function createColumns(config) {
     columnHelper.display({
       id: 'remote_url',
       header: 'Remote URL',
+      enableSorting: false,
       cell: (info) => {
         const { original } = info.row;
         if (!original.remote) return null;
@@ -219,6 +223,7 @@ function createColumns(config) {
       id: 'migrate',
       header: 'Migrate',
       meta: { align: 'right' },
+      enableSorting: false,
       cell: (info) => {
         const { original } = info.row;
 
