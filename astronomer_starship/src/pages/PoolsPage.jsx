@@ -28,6 +28,7 @@ function createColumns(targetUrl, token, handleItemStatusChange) {
       id: 'migrate',
       header: 'Migrate',
       meta: { align: 'right' },
+      enableSorting: false,
       cell: (info) => {
         const { original } = info.row;
         return (
@@ -110,7 +111,7 @@ export default function PoolsPage() {
           {loading || error ? (
             <PageLoading loading={loading} error={error} />
           ) : (
-            <DataTable data={data} columns={columns} searchPlaceholder="Search pools..." />
+            <DataTable data={data} columns={columns} searchPlaceholder="Search by name, slots, description..." />
           )}
         </Box>
       </VStack>

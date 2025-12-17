@@ -38,15 +38,18 @@ function createColumns(targetUrl, token, handleItemStatusChange) {
     columnHelper.accessor('password', {
       header: 'Password',
       cell: renderHiddenValue,
+      enableSorting: false,
     }),
     columnHelper.accessor('extra', {
       header: 'Extra',
       cell: renderHiddenValue,
+      enableSorting: false,
     }),
     columnHelper.display({
       id: 'migrate',
       header: 'Migrate',
       meta: { align: 'right' },
+      enableSorting: false,
       cell: (info) => {
         const { original } = info.row;
         return (
@@ -129,7 +132,7 @@ export default function ConnectionsPage() {
           {loading || error ? (
             <PageLoading loading={loading} error={error} />
           ) : (
-            <DataTable data={data} columns={columns} searchPlaceholder="Search connections..." />
+            <DataTable data={data} columns={columns} searchPlaceholder="Search by ID, type, host..." />
           )}
         </Box>
       </VStack>

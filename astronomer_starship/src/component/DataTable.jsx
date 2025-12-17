@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Box,
   HStack,
@@ -54,7 +54,19 @@ export default function DataTable({
   showSearch = true,
   rightElement = null,
 }) {
-  const [sorting, setSorting] = useState([]);
+  // Default sort by first sortable column (ascending/alphabetical)
+  const initialSorting = useMemo(() => {
+    const firstSortableColumn = columns.find(
+      (col) => col.enableSorting !== false && (col.accessorKey || col.accessorFn || col.id),
+    );
+    if (firstSortableColumn) {
+      const columnId = firstSortableColumn.accessorKey || firstSortableColumn.id;
+      return [{ id: columnId, desc: false }];
+    }
+    return [];
+  }, [columns]);
+
+  const [sorting, setSorting] = useState(initialSorting);
   const [globalFilter, setGlobalFilter] = useState('');
 
   const table = useReactTable({
@@ -69,7 +81,7 @@ export default function DataTable({
     state: { sorting, globalFilter },
   });
 
-  const rowCount = table.getFilteredRowModel().rows.length;
+  const rowCount = table.getRowModel().rows.length;
   const totalCount = data.length;
 
   return (
@@ -110,14 +122,15 @@ export default function DataTable({
               <Tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => {
                   const { meta } = header.column.columnDef;
+                  const canSort = header.column.getCanSort();
                   return (
                     <Th
                       key={header.id}
-                      onClick={header.column.getToggleSortingHandler()}
+                      onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
                       isNumeric={meta?.isNumeric}
                       textAlign={meta?.align || (meta?.isNumeric ? 'right' : 'left')}
                       width={meta?.width || 'auto'}
-                      cursor="pointer"
+                      cursor={canSort ? 'pointer' : 'default'}
                     >
                       {header.isPlaceholder
                         ? null
@@ -137,14 +150,14 @@ export default function DataTable({
             ))}
           </Thead>
           <Tbody>
-            {table.getFilteredRowModel().rows.length === 0 ? (
+            {table.getRowModel().rows.length === 0 ? (
               <Tr>
                 <Td colSpan={columns.length} textAlign="center" py={8} color="gray.500">
                   {globalFilter ? 'No matching results' : 'No data available'}
                 </Td>
               </Tr>
             ) : (
-              table.getFilteredRowModel().rows.map((row) => (
+              table.getRowModel().rows.map((row) => (
                 <Tr key={row.id}>
                   {row.getVisibleCells().map((cell) => {
                     const { meta } = cell.column.columnDef;
