@@ -49,3 +49,18 @@ repos:
       - id: bandit
         args: ["-c", "pyproject.toml"]
         additional_dependencies: ["bandit[toml]"]
+
+  - repo: https://github.com/trailofbits/pip-audit
+    rev: v2.9.0
+    hooks:
+      - id: pip-audit
+        stages: [pre-push]
+
+  - repo: local
+    hooks:
+      - id: npm-audit
+        name: npm audit
+        entry: bash -c 'cd astronomer_starship && npm audit --audit-level=high'
+        language: system
+        stages: [pre-push]
+        pass_filenames: false
