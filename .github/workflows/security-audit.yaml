@@ -1,0 +1,45 @@
+name: Security Audit
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'  # Weekly on Mondays at 9:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -c constraints.txt '.[dev]'
+
+      - name: Run pip-audit
+        uses: pypa/gh-action-pip-audit@v1
+
+  audit-npm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: astronomer_starship/package-lock.json
+
+      - name: Install dependencies
+        working-directory: astronomer_starship
+        run: npm ci
+
+      - name: Run npm audit
+        working-directory: astronomer_starship
+        run: npm audit --audit-level=high
