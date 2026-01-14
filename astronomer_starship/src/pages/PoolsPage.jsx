@@ -21,13 +21,22 @@ const columnHelper = createColumnHelper();
  */
 function createColumns(targetUrl, token, handleItemStatusChange) {
   return [
-    columnHelper.accessor('name', { header: 'Name' }),
-    columnHelper.accessor('slots', { header: 'Slots' }),
-    columnHelper.accessor('description', { header: 'Description' }),
+    columnHelper.accessor('name', {
+      header: 'Name',
+      meta: { minWidth: '150px' },
+    }),
+    columnHelper.accessor('slots', {
+      header: 'Slots',
+      meta: { minWidth: '80px' },
+    }),
+    columnHelper.accessor('description', {
+      header: 'Description',
+      meta: { minWidth: '200px' },
+    }),
     columnHelper.display({
       id: 'migrate',
       header: 'Migrate',
-      meta: { align: 'right' },
+      meta: { align: 'right', width: '120px' },
       enableSorting: false,
       cell: (info) => {
         const { original } = info.row;

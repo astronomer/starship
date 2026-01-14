@@ -29,26 +29,46 @@ function renderHiddenValue(info) {
  */
 function createColumns(targetUrl, token, handleItemStatusChange) {
   return [
-    columnHelper.accessor('conn_id', { header: 'Connection ID' }),
-    columnHelper.accessor('conn_type', { header: 'Type' }),
-    columnHelper.accessor('host', { header: 'Host' }),
-    columnHelper.accessor('port', { header: 'Port' }),
-    columnHelper.accessor('schema', { header: 'Schema' }),
-    columnHelper.accessor('login', { header: 'Login' }),
+    columnHelper.accessor('conn_id', {
+      header: 'Connection ID',
+      meta: { minWidth: '150px' },
+    }),
+    columnHelper.accessor('conn_type', {
+      header: 'Type',
+      meta: { minWidth: '100px' },
+    }),
+    columnHelper.accessor('host', {
+      header: 'Host',
+      meta: { minWidth: '150px' },
+    }),
+    columnHelper.accessor('port', {
+      header: 'Port',
+      meta: { minWidth: '80px' },
+    }),
+    columnHelper.accessor('schema', {
+      header: 'Schema',
+      meta: { minWidth: '100px' },
+    }),
+    columnHelper.accessor('login', {
+      header: 'Login',
+      meta: { minWidth: '120px' },
+    }),
     columnHelper.accessor('password', {
       header: 'Password',
       cell: renderHiddenValue,
+      meta: { minWidth: '100px' },
       enableSorting: false,
     }),
     columnHelper.accessor('extra', {
       header: 'Extra',
       cell: renderHiddenValue,
+      meta: { minWidth: '100px' },
       enableSorting: false,
     }),
     columnHelper.display({
       id: 'migrate',
       header: 'Migrate',
-      meta: { align: 'right' },
+      meta: { align: 'right', width: '120px' },
       enableSorting: false,
       cell: (info) => {
         const { original } = info.row;

@@ -21,12 +21,18 @@ const columnHelper = createColumnHelper();
  */
 function createColumns(targetUrl, token, handleItemStatusChange) {
   return [
-    columnHelper.accessor('key', { header: 'Key' }),
-    columnHelper.accessor('val', { header: 'Value' }),
+    columnHelper.accessor('key', {
+      header: 'Key',
+      meta: { minWidth: '150px' },
+    }),
+    columnHelper.accessor('val', {
+      header: 'Value',
+      meta: { minWidth: '200px' },
+    }),
     columnHelper.display({
       id: 'migrate',
       header: 'Migrate',
-      meta: { align: 'right' },
+      meta: { align: 'right', width: '120px' },
       enableSorting: false,
       cell: (info) => {
         const { original } = info.row;
