@@ -23,7 +23,6 @@ truncated with ellipsis, or if the layout breaks in any unexpected way.
 from airflow.decorators import dag, task
 from pendulum import datetime
 
-
 VERY_LONG_OWNER_NAME = (
     "John Jacob Jingleheimer Schmidt Senior Junior III Esquire PhD MBA "
     "Chief Executive Officer President Vice President Director Manager "
