@@ -12,6 +12,7 @@ import {
   Icon,
   Spacer,
 } from '@chakra-ui/react';
+import { CheckCircleIcon } from '@chakra-ui/icons';
 import { FiUpload } from 'react-icons/fi';
 
 function StatFeature({ label, value, color = 'gray.700' }) {
@@ -39,6 +40,7 @@ export default function ProgressSummary({
 }) {
   const remainingItems = totalItems - migratedItems;
   const progressPercentage = totalItems > 0 ? (migratedItems / totalItems) * 100 : 0;
+  const isComplete = migratedItems === totalItems && totalItems > 0;
 
   return (
     <Card mb={4} bg="brand.10" borderWidth={1} borderColor="brand.100">
@@ -70,14 +72,17 @@ export default function ProgressSummary({
                 <Text fontSize="xs" color="gray.600" textTransform="uppercase" letterSpacing="wide">
                   Migration Progress
                 </Text>
-                <Text fontSize="xs" color="gray.500">
-                  {`${progressPercentage.toFixed(0)}%`}
-                </Text>
+                <HStack spacing={1}>
+                  <Text fontSize="xs" color="gray.500">
+                    {`${progressPercentage.toFixed(0)}%`}
+                  </Text>
+                  <Text fontSize="xs" color="gray.600">{isComplete ? <Icon as={CheckCircleIcon} color="green.500" /> : null}</Text>
+                </HStack>
               </HStack>
               <Progress
                 value={progressPercentage}
                 size="md"
-                colorScheme="brand"
+                colorScheme={isComplete ? 'success' : 'brand'}
                 borderRadius="full"
                 bg="gray.100"
                 hasStripe={isMigratingAll}
