@@ -4,17 +4,18 @@ import PropTypes from 'prop-types';
 
 /**
  * Wrapper component that conditionally renders a tooltip around children.
- * If isDisabled is a truthy string, shows a tooltip with that string as label.
+ * If isDisabled is true and tooltipText is provided, shows a tooltip.
  * Otherwise, renders children directly without a tooltip.
  */
-function WithTooltip({ isDisabled = false, children }) {
-  return isDisabled ? (
-    <Tooltip hasArrow label={isDisabled}>{children}</Tooltip>
+function WithTooltip({ isDisabled = false, tooltipText = '', children }) {
+  return isDisabled && tooltipText ? (
+    <Tooltip hasArrow label={tooltipText}>{children}</Tooltip>
   ) : children;
 }
 
 WithTooltip.propTypes = {
-  isDisabled: PropTypes.oneOfType([PropTypes.bool, PropTypes.string]),
+  isDisabled: PropTypes.bool,
+  tooltipText: PropTypes.string,
   children: PropTypes.node.isRequired,
 };
 

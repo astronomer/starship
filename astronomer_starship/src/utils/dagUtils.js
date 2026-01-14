@@ -6,13 +6,18 @@
  */
 export default function mergeDagData(localData, remoteData) {
   const output = {};
+
+  // Add all local DAGs first (these are the DAGs we can migrate FROM)
   localData.forEach((item) => {
     output[item.dag_id] = { local: item, remote: null };
   });
+
+  // Then merge in remote DAG data where it exists
   remoteData.forEach((item) => {
     if (output[item.dag_id]) {
       output[item.dag_id].remote = item;
     }
   });
+
   return Object.values(output);
 }
