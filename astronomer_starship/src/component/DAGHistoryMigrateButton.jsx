@@ -24,7 +24,7 @@ export const DISABLED_REASONS = Object.freeze({
   NOT_IN_REMOTE: {
     key: 'NOT_IN_REMOTE',
     tooltip: 'DAG not found in remote.',
-    buttonText: 'Not Found',
+    buttonText: 'Not on Remote',
   },
   NO_DAG_RUNS: {
     key: 'NO_DAG_RUNS',
