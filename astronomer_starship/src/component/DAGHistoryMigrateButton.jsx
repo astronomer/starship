@@ -23,7 +23,7 @@ import constants from '../constants';
 export const DISABLED_REASONS = Object.freeze({
   NOT_IN_REMOTE: {
     key: 'NOT_IN_REMOTE',
-    tooltip: 'DAG not found in remote.',
+    tooltip: 'Deploy DAG to remote before migrating',
     buttonText: 'Not on Remote',
   },
   NO_DAG_RUNS: {
