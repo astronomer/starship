@@ -44,11 +44,12 @@ function DAGHistoryMigrateButton({
   limit = 1000,
   batchSize = 100,
   existsInRemote = false,
-  isDisabled = false,
   disabledReason = null,
   onMigrate = null,
   onDelete = null,
 }) {
+  // Derive isDisabled from disabledReason to avoid inconsistency
+  const isDisabled = Boolean(disabledReason);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState(null);
   const toast = useToast();
@@ -204,7 +205,7 @@ function DAGHistoryMigrateButton({
       );
     }
     if (exists) return 'Delete';
-    if (isDisabled && disabledReason) {
+    if (disabledReason) {
       return disabledReason.buttonText || 'Disabled';
     }
     if (error) return 'Error!';
@@ -264,12 +265,11 @@ DAGHistoryMigrateButton.propTypes = {
   limit: PropTypes.number,
   batchSize: PropTypes.number,
   existsInRemote: PropTypes.bool,
-  isDisabled: PropTypes.bool,
   disabledReason: PropTypes.shape({
     key: PropTypes.string,
     tooltip: PropTypes.string,
     buttonText: PropTypes.string,
-  }), // Object from DISABLED_REASONS enum
+  }),
   onMigrate: PropTypes.func,
   onDelete: PropTypes.func,
 };

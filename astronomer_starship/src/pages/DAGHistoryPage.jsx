@@ -236,15 +236,11 @@ function createColumns(config) {
       cell: (info) => {
         const { original } = info.row;
 
-        // Determine disabled state
-        let isDisabled = false;
         let disabledReason = null;
 
         if (!original.remote?.dag_id) {
-          isDisabled = true;
           disabledReason = DISABLED_REASONS.NOT_IN_REMOTE;
         } else if (!original.local.dag_run_count && !original.remote?.dag_run_count) {
-          isDisabled = true;
           disabledReason = DISABLED_REASONS.NO_DAG_RUNS;
         }
 
@@ -256,7 +252,6 @@ function createColumns(config) {
             limit={Number(limit)}
             batchSize={Number(batchSize)}
             existsInRemote={!!original.remote?.dag_run_count}
-            isDisabled={isDisabled}
             disabledReason={disabledReason}
             onMigrate={handleMigrate}
             onDelete={handleDelete}
