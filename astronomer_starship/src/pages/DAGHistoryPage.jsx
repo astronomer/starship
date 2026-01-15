@@ -31,7 +31,7 @@ import { useAppDispatch, useTargetConfig, useDagHistoryConfig } from '../AppCont
 import DataTable from '../component/DataTable';
 import PageLoading from '../component/PageLoading';
 import TooltipHeader from '../component/TooltipHeader';
-import DAGHistoryMigrateButton, { DISABLED_REASONS } from '../component/DAGHistoryMigrateButton';
+import DAGHistoryMigrateButton, { BUTTON_STATES } from '../component/DAGHistoryMigrateButton';
 import { localRoute, proxyHeaders, proxyUrl, getDagViewPath } from '../util';
 import mergeDagData from '../utils/dagUtils';
 import constants from '../constants';
@@ -214,9 +214,9 @@ function createColumns(config) {
         let disabledReason = null;
 
         if (!original.remote?.dag_id) {
-          disabledReason = DISABLED_REASONS.NOT_IN_REMOTE;
+          disabledReason = BUTTON_STATES.NOT_IN_REMOTE;
         } else if (!original.local.dag_run_count && !original.remote?.dag_run_count) {
-          disabledReason = DISABLED_REASONS.NO_DAG_RUNS;
+          disabledReason = BUTTON_STATES.NO_DAG_RUNS;
         }
 
         return (
