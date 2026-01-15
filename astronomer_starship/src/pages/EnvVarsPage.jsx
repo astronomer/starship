@@ -49,16 +49,20 @@ function createColumns(config) {
   } = config;
 
   return [
-    columnHelper.accessor('key', { header: 'Key' }),
+    columnHelper.accessor('key', {
+      header: 'Key',
+      meta: { minWidth: '150px' },
+    }),
     columnHelper.accessor('value', {
       header: 'Value',
       cell: renderHiddenValue,
+      meta: { minWidth: '200px' },
       enableSorting: false,
     }),
     columnHelper.display({
       id: 'migrate',
       header: 'Migrate',
-      meta: { align: 'right' },
+      meta: { align: 'right', width: '120px' },
       enableSorting: false,
       cell: (info) => {
         const { original } = info.row;

@@ -34,7 +34,7 @@ import { useAppDispatch, useTargetConfig, useDagHistoryConfig } from '../AppCont
 import DataTable from '../component/DataTable';
 import PageLoading from '../component/PageLoading';
 import TooltipHeader from '../component/TooltipHeader';
-import DAGHistoryMigrateButton from '../component/DAGHistoryMigrateButton';
+import DAGHistoryMigrateButton, { DISABLED_REASONS } from '../component/DAGHistoryMigrateButton';
 import {
   localRoute, proxyHeaders, proxyUrl, getDagViewPath,
 } from '../util';
@@ -88,24 +88,29 @@ function createColumns(config) {
       id: 'dagId',
       header: 'ID',
       cell: renderDagId,
+      meta: { minWidth: '150px' },
     }),
     columnHelper.accessor((row) => row.local.tags, {
       id: 'tags',
       header: 'Tags',
       cell: renderTags,
+      meta: { minWidth: '120px' },
     }),
     columnHelper.accessor((row) => row.local.schedule_interval, {
       id: 'schedule',
       header: 'Schedule',
       cell: renderSchedule,
+      meta: { minWidth: '100px' },
     }),
     columnHelper.accessor((row) => row.local.description, {
       id: 'description',
       header: 'Description',
+      meta: { minWidth: '200px' },
     }),
     columnHelper.accessor((row) => row.local.owners, {
       id: 'owners',
       header: 'Owners',
+      meta: { minWidth: '120px' },
     }),
     columnHelper.display({
       id: 'local_is_paused',
@@ -116,6 +121,7 @@ function createColumns(config) {
           <TooltipHeader tooltip="Toggle to pause/unpause DAG in local" />
         </>
       ),
+      meta: { width: '100px' },
       cell: (info) => {
         const { original } = info.row;
         return (
@@ -146,6 +152,7 @@ function createColumns(config) {
     columnHelper.display({
       id: 'local_url',
       header: 'Local URL',
+      meta: { width: '110px' },
       enableSorting: false,
       cell: (info) => {
         const { original } = info.row;
@@ -171,6 +178,7 @@ function createColumns(config) {
           <TooltipHeader tooltip="Toggle to pause/unpause DAG in remote" />
         </>
       ),
+      meta: { width: '100px' },
       cell: (info) => {
         const { original } = info.row;
         if (!original.remote) return null;
@@ -202,6 +210,7 @@ function createColumns(config) {
     columnHelper.display({
       id: 'remote_url',
       header: 'Remote URL',
+      meta: { width: '110px' },
       enableSorting: false,
       cell: (info) => {
         const { original } = info.row;
@@ -222,17 +231,17 @@ function createColumns(config) {
     columnHelper.display({
       id: 'migrate',
       header: 'Migrate',
-      meta: { align: 'right' },
+      meta: { align: 'right', width: '170px' },
       enableSorting: false,
       cell: (info) => {
         const { original } = info.row;
 
-        // Determine disabled state
-        let isDisabledReason = false;
+        let disabledReason = null;
+
         if (!original.remote?.dag_id) {
-          isDisabledReason = 'DAG not found in remote';
+          disabledReason = DISABLED_REASONS.NOT_IN_REMOTE;
         } else if (!original.local.dag_run_count && !original.remote?.dag_run_count) {
-          isDisabledReason = 'No DAG Runs to migrate';
+          disabledReason = DISABLED_REASONS.NO_DAG_RUNS;
         }
 
         return (
@@ -243,7 +252,7 @@ function createColumns(config) {
             limit={Number(limit)}
             batchSize={Number(batchSize)}
             existsInRemote={!!original.remote?.dag_run_count}
-            isDisabled={isDisabledReason}
+            disabledReason={disabledReason}
             onMigrate={handleMigrate}
             onDelete={handleDelete}
           />
@@ -330,6 +339,8 @@ export default function DAGHistoryPage() {
   const handleMigrate = useCallback((dagId, runCount) => {
     setData((prev) => prev.map((item) => {
       if (item.local.dag_id !== dagId) return item;
+      // Only update dag_run_count if remote exists, otherwise keep remote as null
+      if (!item.remote) return item;
       return { ...item, remote: { ...item.remote, dag_run_count: runCount } };
     }));
   }, []);
@@ -337,6 +348,8 @@ export default function DAGHistoryPage() {
   const handleDelete = useCallback((dagId) => {
     setData((prev) => prev.map((item) => {
       if (item.local.dag_id !== dagId) return item;
+      // Only update dag_run_count if remote exists, otherwise keep remote as null
+      if (!item.remote) return item;
       return { ...item, remote: { ...item.remote, dag_run_count: 0 } };
     }));
   }, []);

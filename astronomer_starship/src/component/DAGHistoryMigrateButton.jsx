@@ -17,6 +17,23 @@ import { localRoute, proxyHeaders, proxyUrl } from '../util';
 import constants from '../constants';
 
 /**
+ * Constants for DAG History migration button disabled states.
+ * Each reason includes the key, tooltip message, and button text.
+ */
+export const DISABLED_REASONS = Object.freeze({
+  NOT_IN_REMOTE: {
+    key: 'NOT_IN_REMOTE',
+    tooltip: 'Deploy DAG to remote before migrating',
+    buttonText: 'Not on Remote',
+  },
+  NO_DAG_RUNS: {
+    key: 'NO_DAG_RUNS',
+    tooltip: 'No DAG Runs to migrate',
+    buttonText: 'Nothing to Migrate',
+  },
+});
+
+/**
  * Migrate button specifically for DAG history migration.
  * Handles batch migration of DAG runs, task instances, and task instance history.
  */
@@ -27,10 +44,12 @@ function DAGHistoryMigrateButton({
   limit = 1000,
   batchSize = 100,
   existsInRemote = false,
-  isDisabled = false,
+  disabledReason = null,
   onMigrate = null,
   onDelete = null,
 }) {
+  // Derive isDisabled from disabledReason to avoid inconsistency
+  const isDisabled = Boolean(disabledReason);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState(null);
   const toast = useToast();
@@ -186,7 +205,9 @@ function DAGHistoryMigrateButton({
       );
     }
     if (exists) return 'Delete';
-    if (isDisabled) return 'Not Found';
+    if (disabledReason) {
+      return disabledReason.buttonText || 'Disabled';
+    }
     if (error) return 'Error!';
     return 'Migrate';
   };
@@ -197,8 +218,10 @@ function DAGHistoryMigrateButton({
   const activeBorderColor = isDeleteMode || error ? 'error.500' : 'success.500';
   const activeHoverBg = isDeleteMode || error ? 'error.50' : 'success.50';
 
+  const tooltipText = disabledReason?.tooltip || '';
+
   return (
-    <WithTooltip isDisabled={isDisabled}>
+    <WithTooltip isDisabled={isDisabled} tooltipText={tooltipText}>
       <Button
         size="sm"
         variant="outline"
@@ -227,7 +250,7 @@ function DAGHistoryMigrateButton({
           opacity: 1,
         }}
         onClick={handleClick}
-        minW={isLoading ? '130px' : undefined}
+        minW={isLoading ? '130px' : isDisabled ? '150px' : undefined}
       >
         {renderContent()}
       </Button>
@@ -242,7 +265,11 @@ DAGHistoryMigrateButton.propTypes = {
   limit: PropTypes.number,
   batchSize: PropTypes.number,
   existsInRemote: PropTypes.bool,
-  isDisabled: PropTypes.oneOfType([PropTypes.bool, PropTypes.string]),
+  disabledReason: PropTypes.shape({
+    key: PropTypes.string,
+    tooltip: PropTypes.string,
+    buttonText: PropTypes.string,
+  }),
   onMigrate: PropTypes.func,
   onDelete: PropTypes.func,
 };

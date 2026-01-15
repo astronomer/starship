@@ -115,7 +115,7 @@ export default function DataTable({
           {rightElement}
         </HStack>
       )}
-      <TableContainer className="data-table">
+      <TableContainer className="data-table" overflowX="auto" maxW="100%">
         <Table variant="striped" size="sm">
           <Thead>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -129,7 +129,8 @@ export default function DataTable({
                       onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
                       isNumeric={meta?.isNumeric}
                       textAlign={meta?.align || (meta?.isNumeric ? 'right' : 'left')}
-                      width={meta?.width || 'auto'}
+                      width={meta?.width}
+                      minW={meta?.minWidth}
                       cursor={canSort ? 'pointer' : 'default'}
                     >
                       {header.isPlaceholder
@@ -166,7 +167,10 @@ export default function DataTable({
                         key={cell.id}
                         isNumeric={meta?.isNumeric}
                         textAlign={meta?.align || (meta?.isNumeric ? 'right' : 'left')}
-                        width={meta?.width || 'auto'}
+                        width={meta?.width}
+                        minW={meta?.minWidth}
+                        whiteSpace="normal"
+                        wordBreak="break-word"
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </Td>
