@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Button, CircularProgress, HStack, Text, useToast } from '@chakra-ui/react';
+import { useState, useEffect } from 'react';
+import { Button, CircularProgress, Flex, Icon, Text, useToast } from '@chakra-ui/react';
 import PropTypes from 'prop-types';
 import axios from 'axios';
 import { MdErrorOutline, MdDeleteForever, MdWarning } from 'react-icons/md';
@@ -9,25 +9,77 @@ import constants from '../constants';
 import WithTooltip from './WithTooltip';
 
 /**
- * Constants for DAG History migration button disabled states.
- * Each reason includes the key, tooltip message, and button text.
+ * Centralized button state configuration.
  */
-export const DISABLED_REASONS = Object.freeze({
+export const BUTTON_STATES = Object.freeze({
+  MIGRATE: {
+    key: 'MIGRATE',
+    buttonText: 'Migrate',
+    icon: GoUpload,
+    color: 'success.600',
+    borderColor: 'success.500',
+    hoverBg: 'success.50',
+  },
+  DELETE: {
+    key: 'DELETE',
+    buttonText: 'Delete',
+    icon: MdDeleteForever,
+    color: 'error.600',
+    borderColor: 'error.500',
+    hoverBg: 'error.50',
+  },
+  ERROR: {
+    key: 'ERROR',
+    buttonText: 'Error!',
+    icon: MdErrorOutline,
+    color: 'error.600',
+    borderColor: 'error.500',
+    hoverBg: 'error.50',
+  },
+  MIGRATING: {
+    key: 'MIGRATING',
+    buttonText: 'Migrating',
+    icon: null,
+    color: 'success.600',
+    borderColor: 'success.500',
+    hoverBg: 'success.50',
+    progressColor: 'green.400',
+    minWidth: '140px',
+  },
+  DELETING: {
+    key: 'DELETING',
+    buttonText: 'Deleting',
+    icon: null,
+    color: 'error.600',
+    borderColor: 'error.500',
+    hoverBg: 'error.50',
+    progressColor: 'red.400',
+    minWidth: '140px',
+  },
   NOT_IN_REMOTE: {
     key: 'NOT_IN_REMOTE',
     tooltip: 'Deploy DAG to remote before migrating',
     buttonText: 'Not on Remote',
+    icon: MdWarning,
+    color: 'gray.600',
+    borderColor: 'gray.500',
+    hoverBg: 'gray.50',
+    minWidth: '150px',
   },
   NO_DAG_RUNS: {
     key: 'NO_DAG_RUNS',
     tooltip: 'No DAG Runs to migrate',
     buttonText: 'Nothing to Migrate',
+    icon: MdWarning,
+    color: 'gray.600',
+    borderColor: 'gray.500',
+    hoverBg: 'gray.50',
+    minWidth: '150px',
   },
 });
 
 /**
- * Migrate button specifically for DAG history migration.
- * Handles batch migration of DAG runs, task instances, and task instance history.
+ * Button for migrating DAG history (runs, task instances, task instance history).
  */
 function DAGHistoryMigrateButton({
   url,
@@ -40,20 +92,40 @@ function DAGHistoryMigrateButton({
   onMigrate = null,
   onDelete = null,
 }) {
-  // Derive isDisabled from disabledReason to avoid inconsistency
-  const isDisabled = Boolean(disabledReason);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState(null);
-  const toast = useToast();
   const [exists, setExists] = useState(existsInRemote);
   const [isDeleting, setIsDeleting] = useState(false);
+  const toast = useToast();
 
   const isLoading = progress > 0 && progress < 100;
+  const isDisabled = Boolean(disabledReason);
 
-  const handleError = (err, action = 'migrate') => {
-    setExists(false);
+  // Keep local "exists" state in sync with upstream data when we're not actively mutating it.
+  useEffect(() => {
+    if (!isLoading) {
+      setExists(existsInRemote);
+    }
+  }, [existsInRemote, isLoading]);
+
+  // Determine current state
+  const currentState = (() => {
+    if (isLoading) return isDeleting ? BUTTON_STATES.DELETING : BUTTON_STATES.MIGRATING;
+    if (disabledReason) return disabledReason;
+    if (error) return BUTTON_STATES.ERROR;
+    if (exists) return BUTTON_STATES.DELETE;
+    return BUTTON_STATES.MIGRATE;
+  })();
+
+  const resetState = () => {
     setProgress(0);
     setIsDeleting(false);
+  };
+
+  const showError = (err, action = 'migrate') => {
+    setExists(false);
+    resetState();
+    setError(err);
     toast({
       title: `Failed to ${action} DAG history for "${dagId}"`,
       description: err.response?.data?.error || err.response?.data || err.message,
@@ -62,188 +134,141 @@ function DAGHistoryMigrateButton({
       variant: 'outline',
       duration: 6000,
     });
-    setError(err);
   };
 
-  const handleClick = async () => {
-    if (exists) {
-      // Delete
-      setIsDeleting(true);
-      setProgress(50);
-      try {
-        await axios({
-          method: 'delete',
-          url: proxyUrl(url + constants.DAG_RUNS_ROUTE),
-          headers: proxyHeaders(token),
-          params: { dag_id: dagId },
-        });
-        // Delete succeeded - set exists to false regardless of status code
-        setExists(false);
-        onDelete?.(dagId);
-        setProgress(100);
-        setTimeout(() => {
-          setProgress(0);
-          setIsDeleting(false);
-        }, 500);
-      } catch (err) {
-        handleError(err, 'delete');
-        setIsDeleting(false);
-      }
-      return;
-    }
+  const completeAction = (newExists) => {
+    setProgress(100);
+    setExists(newExists);
+    setTimeout(resetState, 500);
+  };
 
-    // Migrate
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    setProgress(50);
+    try {
+      await axios.delete(proxyUrl(url + constants.DAG_RUNS_ROUTE), {
+        headers: proxyHeaders(token),
+        params: { dag_id: dagId },
+      });
+      completeAction(false);
+      onDelete?.(dagId);
+    } catch (err) {
+      showError(err, 'delete');
+    }
+  };
+
+  const handleMigrate = async () => {
     setProgress(1);
 
-    const migrateBatch = async (offset = 0, totalCount = null) => {
+    const migrateBatch = async (offset = 0, totalCount = null, latestRemoteCount = null) => {
       const appliedBatchSize = Math.min(limit - offset, batchSize);
+      const params = { dag_id: dagId, limit: appliedBatchSize, offset };
+
       try {
         const [dagRunsRes, taskInstanceRes, taskInstanceHistoryRes] = await Promise.all([
-          axios.get(localRoute(constants.DAG_RUNS_ROUTE), {
-            params: { dag_id: dagId, limit: appliedBatchSize, offset },
-          }),
-          axios.get(localRoute(constants.TASK_INSTANCE_ROUTE), {
-            params: { dag_id: dagId, limit: appliedBatchSize, offset },
-          }),
-          axios.get(localRoute(constants.TASK_INSTANCE_HISTORY_ROUTE), {
-            params: { dag_id: dagId, limit: appliedBatchSize, offset },
-          }),
+          axios.get(localRoute(constants.DAG_RUNS_ROUTE), { params }),
+          axios.get(localRoute(constants.TASK_INSTANCE_ROUTE), { params }),
+          axios.get(localRoute(constants.TASK_INSTANCE_HISTORY_ROUTE), { params }),
         ]);
 
         const dagRunsToMigrateCount = totalCount || Math.min(dagRunsRes.data.dag_run_count, limit);
 
         if (dagRunsRes.data.dag_runs.length === 0) {
-          setProgress(100);
-          setExists(offset > 0);
-          onMigrate?.(dagId, dagRunsToMigrateCount);
-          setTimeout(() => setProgress(0), 500);
+          const remoteCount = latestRemoteCount ?? 0;
+          completeAction(remoteCount > 0);
+          onMigrate?.(dagId, remoteCount);
           return;
         }
+
+        const remoteHeaders = { headers: proxyHeaders(token) };
+        const remoteParams = { params: { dag_id: dagId } };
 
         const dagRunCreateRes = await axios.post(
           proxyUrl(url + constants.DAG_RUNS_ROUTE),
           { dag_runs: dagRunsRes.data.dag_runs },
-          { params: { dag_id: dagId }, headers: proxyHeaders(token) },
+          { ...remoteParams, ...remoteHeaders },
         );
 
-        if (dagRunCreateRes.status !== 200) {
-          throw new Error('Failed to create DAG runs');
-        }
-
-        const taskInstanceCreateRes = await axios.post(
+        await axios.post(
           proxyUrl(url + constants.TASK_INSTANCE_ROUTE),
           { task_instances: taskInstanceRes.data.task_instances },
-          { params: { dag_id: dagId }, headers: proxyHeaders(token) },
+          { ...remoteParams, ...remoteHeaders },
         );
 
-        if (taskInstanceCreateRes.status !== 200) {
-          throw new Error('Failed to create task instances');
-        }
-
-        const taskInstanceHistoryCreateRes = await axios.post(
+        await axios.post(
           proxyUrl(url + constants.TASK_INSTANCE_HISTORY_ROUTE),
           { task_instances: taskInstanceHistoryRes.data.task_instances },
-          { params: { dag_id: dagId }, headers: proxyHeaders(token) },
+          { ...remoteParams, ...remoteHeaders },
         );
 
-        if (taskInstanceHistoryCreateRes.status !== 200) {
-          throw new Error('Failed to create task instance history');
-        }
-
-        const migratedCount = dagRunCreateRes.data.dag_run_count;
+        const migratedCount = offset + dagRunsRes.data.dag_runs.length;
+        const remoteCount = dagRunCreateRes?.data?.dag_run_count ?? latestRemoteCount;
 
         if (migratedCount < dagRunsToMigrateCount) {
           const newProgress = Math.min(99, Math.round((migratedCount / dagRunsToMigrateCount) * 100));
           setProgress(newProgress);
-          await migrateBatch(offset + batchSize, dagRunsToMigrateCount);
+          await migrateBatch(offset + appliedBatchSize, dagRunsToMigrateCount, remoteCount);
         } else {
-          setProgress(100);
-          setExists(true);
-          onMigrate?.(dagId, dagRunsToMigrateCount);
-          setTimeout(() => setProgress(0), 500);
+          completeAction(true);
+          onMigrate?.(dagId, remoteCount ?? dagRunsToMigrateCount);
         }
       } catch (err) {
-        handleError(err);
+        showError(err);
       }
     };
 
     await migrateBatch(0);
   };
 
-  // Render progress indicator or button content
+  const handleClick = () => (exists ? handleDelete() : handleMigrate());
+
+  // Render button content
   const renderContent = () => {
     if (isLoading) {
       return (
-        <HStack spacing={2}>
+        <Flex alignItems="center" gap={2}>
           <CircularProgress
             value={progress}
             size="20px"
             thickness="10px"
-            color={isDeleting ? 'red.400' : 'green.400'}
+            color={currentState.progressColor}
             trackColor="gray.200"
             isIndeterminate={progress < 2}
           />
-          <Text fontSize="xs">
-            {isDeleting ? 'Deleting' : 'Migrating'} {Math.round(progress)}%
+          <Text as="span" m={0} lineHeight="1">
+            {currentState.buttonText} {Math.round(progress)}%
           </Text>
-        </HStack>
+        </Flex>
       );
     }
-    if (exists) return 'Delete';
-    if (disabledReason) {
-      return disabledReason.buttonText || 'Disabled';
-    }
-    if (error) return 'Error!';
-    return 'Migrate';
+    return (
+      <Flex alignItems="center" gap={2}>
+        {currentState.icon && <Icon as={currentState.icon} boxSize={4} />}
+        <Text as="span" m={0} lineHeight="1">
+          {currentState.buttonText}
+        </Text>
+      </Flex>
+    );
   };
 
-  // Determine colors based on state
-  const isDeleteMode = exists || isDeleting;
-  const activeColor = isDeleteMode || error ? 'error.600' : 'success.600';
-  const activeBorderColor = isDeleteMode || error ? 'error.500' : 'success.500';
-  const activeHoverBg = isDeleteMode || error ? 'error.50' : 'success.50';
-
-  const tooltipText = disabledReason?.tooltip || '';
-
   return (
-    <WithTooltip isDisabled={isDisabled} tooltipText={tooltipText}>
+    <WithTooltip isDisabled={isDisabled} tooltipText={currentState.tooltip || ''}>
       <Button
         size="sm"
         variant="outline"
         isDisabled={isDisabled || isLoading}
-        leftIcon={
-          isLoading ? null : error ? (
-            <MdErrorOutline />
-          ) : exists ? (
-            <MdDeleteForever />
-          ) : isDisabled ? (
-            <MdWarning />
-          ) : (
-            <GoUpload />
-          )
-        }
         colorScheme={undefined}
-        color={activeColor}
-        borderColor={activeBorderColor}
-        _hover={{
-          bg: activeHoverBg,
-        }}
-        _disabled={
-          isLoading
-            ? {
-                color: activeColor,
-                borderColor: activeBorderColor,
-                opacity: 0.8,
-                cursor: 'progress',
-              }
-            : {
-                color: 'gray.600',
-                borderColor: 'gray.500',
-                opacity: 1,
-              }
-        }
         onClick={handleClick}
-        minW={isLoading ? '130px' : isDisabled ? '150px' : undefined}
+        minW={currentState.minWidth}
+        color={currentState.color}
+        borderColor={currentState.borderColor}
+        _hover={{ bg: currentState.hoverBg }}
+        _disabled={{
+          color: currentState.color,
+          borderColor: currentState.borderColor,
+          opacity: isLoading ? 0.8 : 1,
+          cursor: isLoading ? 'progress' : 'not-allowed',
+        }}
       >
         {renderContent()}
       </Button>
