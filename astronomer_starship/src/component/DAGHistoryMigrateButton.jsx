@@ -235,8 +235,8 @@ function DAGHistoryMigrateButton({
             trackColor="gray.200"
             isIndeterminate={progress < 2}
           />
-          <Text fontSize="xs">
-            {isDeleting ? 'Deleting' : 'Migrating'} {Math.round(progress)}%
+          <Text as="span" m={0} lineHeight="1">
+            {currentState.buttonText} {Math.round(progress)}%
           </Text>
         </Flex>
       );
