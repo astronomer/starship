@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Button, useToast } from '@chakra-ui/react';
 import PropTypes from 'prop-types';
 import axios from 'axios';
 import { MdErrorOutline } from 'react-icons/md';
 import { FaCheck } from 'react-icons/fa';
 import { GoUpload } from 'react-icons/go';
-
 import { getDeploymentsQuery, updateDeploymentVariablesMutation } from '../constants';
 
 /**
@@ -44,19 +43,27 @@ export default function EnvVarMigrateButton({
   const handleSoftwareClick = () => {
     setLoading(true);
     axios
-      .post(route, {
-        operationName: 'deploymentVariables',
-        query: getDeploymentsQuery,
-        variables: { deploymentUuid: deploymentId, releaseName },
-      }, { headers })
+      .post(
+        route,
+        {
+          operationName: 'deploymentVariables',
+          query: getDeploymentsQuery,
+          variables: { deploymentUuid: deploymentId, releaseName },
+        },
+        { headers },
+      )
       .then((fetchRes) => {
         const variables = fetchRes.data?.data?.deploymentVariables || [];
         variables.push(sendData);
-        return axios.post(route, {
-          operationName: 'UpdateDeploymentVariables',
-          query: updateDeploymentVariablesMutation,
-          variables: { deploymentUuid: deploymentId, releaseName, environmentVariables: variables },
-        }, { headers });
+        return axios.post(
+          route,
+          {
+            operationName: 'UpdateDeploymentVariables',
+            query: updateDeploymentVariablesMutation,
+            variables: { deploymentUuid: deploymentId, releaseName, environmentVariables: variables },
+          },
+          { headers },
+        );
       })
       .then((updateRes) => {
         setLoading(false);

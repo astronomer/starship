@@ -1,11 +1,8 @@
 import { useState, useCallback, useEffect } from 'react';
 import axios from 'axios';
 import { useToast } from '@chakra-ui/react';
-
 import { useAppDispatch, useTargetConfig } from '../AppContext';
-import {
-  localRoute, proxyUrl, proxyHeaders, objectWithoutKey,
-} from '../util';
+import { localRoute, proxyUrl, proxyHeaders, objectWithoutKey } from '../util';
 
 /**
  * Custom hook for managing migration data between local and remote Airflow instances.
@@ -30,10 +27,14 @@ export default function useMigrationData({ route, idField, itemName }) {
   /**
    * Merge local and remote data arrays, marking items that exist in remote.
    */
-  const mergeData = useCallback((localData, remoteData) => localData.map((item) => ({
-    ...item,
-    exists: remoteData.some((remote) => remote[idField] === item[idField]),
-  })), [idField]);
+  const mergeData = useCallback(
+    (localData, remoteData) =>
+      localData.map((item) => ({
+        ...item,
+        exists: remoteData.some((remote) => remote[idField] === item[idField]),
+      })),
+    [idField],
+  );
 
   /**
    * Fetch data from both local and remote instances.
@@ -73,11 +74,12 @@ export default function useMigrationData({ route, idField, itemName }) {
   /**
    * Handle individual item status change (after migrate/delete).
    */
-  const handleItemStatusChange = useCallback((id, newStatus) => {
-    setData((prev) => prev.map((item) => (
-      item[idField] === id ? { ...item, exists: newStatus } : item
-    )));
-  }, [idField]);
+  const handleItemStatusChange = useCallback(
+    (id, newStatus) => {
+      setData((prev) => prev.map((item) => (item[idField] === id ? { ...item, exists: newStatus } : item)));
+    },
+    [idField],
+  );
 
   /**
    * Migrate all unmigrated items to the remote instance.
@@ -93,11 +95,9 @@ export default function useMigrationData({ route, idField, itemName }) {
     // Use Promise.allSettled for parallel execution with error handling
     const results = await Promise.allSettled(
       unmigratedItems.map(async (item) => {
-        const response = await axios.post(
-          proxyUrl(targetUrl + route),
-          objectWithoutKey(item, 'exists'),
-          { headers: proxyHeaders(token) },
-        );
+        const response = await axios.post(proxyUrl(targetUrl + route), objectWithoutKey(item, 'exists'), {
+          headers: proxyHeaders(token),
+        });
         return { item, response };
       }),
     );
@@ -106,9 +106,7 @@ export default function useMigrationData({ route, idField, itemName }) {
       if (result.status === 'fulfilled') {
         successCount += 1;
         const { item } = result.value;
-        setData((prev) => prev.map((d) => (
-          d[idField] === item[idField] ? { ...d, exists: true } : d
-        )));
+        setData((prev) => prev.map((d) => (d[idField] === item[idField] ? { ...d, exists: true } : d)));
       } else {
         errorCount += 1;
       }
@@ -132,9 +130,7 @@ export default function useMigrationData({ route, idField, itemName }) {
     };
 
     toast({
-      title: successCount > 0
-        ? `Migrated ${successCount} ${pluralName} to remote`
-        : 'Migration failed',
+      title: successCount > 0 ? `Migrated ${successCount} ${pluralName} to remote` : 'Migration failed',
       description: getDescription(),
       status,
       duration: 5000,

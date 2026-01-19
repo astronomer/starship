@@ -1,4 +1,3 @@
-import React from 'react';
 import PropTypes from 'prop-types';
 import {
   Box,
@@ -18,7 +17,6 @@ import {
   VStack,
 } from '@chakra-ui/react';
 import { CheckIcon, ExternalLinkIcon, InfoIcon } from '@chakra-ui/icons';
-
 import { parseAirflowUrl, tokenUrlFromAirflowUrl } from '../util';
 
 /**
@@ -51,18 +49,10 @@ export default function UrlTokenForm({
 
   return (
     <>
-      <FormControl
-        className="setup-form-field"
-        isInvalid={isTouched && !isValidUrl}
-        isRequired
-      >
+      <FormControl className="setup-form-field" isInvalid={isTouched && !isValidUrl} isRequired>
         <HStack mb={1}>
           <FormLabel mb={0}>Airflow URL</FormLabel>
-          <Tooltip
-            label="Copy the webserver URL from your Astronomer deployment"
-            placement="top"
-            hasArrow
-          >
+          <Tooltip label="Copy the webserver URL from your Astronomer deployment" placement="top" hasArrow>
             <InfoIcon color="gray.400" boxSize={3} cursor="help" />
           </Tooltip>
         </HStack>
@@ -73,21 +63,12 @@ export default function UrlTokenForm({
           isInvalid={isTouched && !isValidUrl}
           onChange={handleUrlChange}
         />
-        <FormHelperText fontSize="xs">
-          Paste the full webserver URL of your target Airflow deployment
-        </FormHelperText>
+        <FormHelperText fontSize="xs">Paste the full webserver URL of your target Airflow deployment</FormHelperText>
         <FormErrorMessage>Please enter a valid Airflow URL</FormErrorMessage>
       </FormControl>
 
       {/* URL Format Guidance */}
-      <Box
-        mt={3}
-        p={3}
-        bg="gray.50"
-        borderRadius="md"
-        borderWidth="1px"
-        borderColor="gray.200"
-      >
+      <Box mt={3} p={3} bg="gray.50" borderRadius="md" borderWidth="1px" borderColor="gray.200">
         <Text fontSize="xs" fontWeight="semibold" color="gray.600" mb={2}>
           Supported URL Formats
         </Text>
@@ -113,10 +94,7 @@ export default function UrlTokenForm({
 
       <Divider my={3} />
 
-      <FormControl
-        isInvalid={isTokenTouched && !token}
-        className="setup-form-field"
-      >
+      <FormControl isInvalid={isTokenTouched && !token} className="setup-form-field">
         <HStack mb={1}>
           <FormLabel mb={0}>Authentication Token</FormLabel>
           <Tooltip
@@ -148,36 +126,21 @@ export default function UrlTokenForm({
         </InputGroup>
         {isAstro ? (
           <FormHelperText>
-            Provide a token:
-            {' '}
-            <Tooltip
-              label="Organization tokens have access to all workspaces and deployments"
-              hasArrow
-            >
-              <Link
-                isExternal
-                href="https://docs.astronomer.io/astro/organization-api-tokens"
-              >
+            Provide a token:{' '}
+            <Tooltip label="Organization tokens have access to all workspaces and deployments" hasArrow>
+              <Link isExternal href="https://docs.astronomer.io/astro/organization-api-tokens">
                 Organization
                 <ExternalLinkIcon mx="2px" />
               </Link>
             </Tooltip>
-            ,
-            {' '}
-            <Tooltip
-              label="Workspace tokens have access to all deployments in a workspace"
-              hasArrow
-            >
-              <Link
-                isExternal
-                href="https://docs.astronomer.io/astro/workspace-api-tokens"
-              >
+            ,{' '}
+            <Tooltip label="Workspace tokens have access to all deployments in a workspace" hasArrow>
+              <Link isExternal href="https://docs.astronomer.io/astro/workspace-api-tokens">
                 Workspace
                 <ExternalLinkIcon mx="2px" />
               </Link>
             </Tooltip>
-            ,
-            {' '}
+            ,{' '}
             <Tooltip label="Personal tokens are user-specific access tokens" hasArrow>
               <Link isExternal href={tokenUrlFromAirflowUrl(targetUrl)}>
                 Personal
@@ -188,42 +151,24 @@ export default function UrlTokenForm({
           </FormHelperText>
         ) : (
           <FormHelperText>
-            Provide a token:
-            {' '}
-            <Tooltip
-              label="Workspace service accounts have access to all deployments"
-              hasArrow
-            >
-              <Link
-                isExternal
-                href="https://docs.astronomer.io/software/manage-workspaces#service-accounts"
-              >
+            Provide a token:{' '}
+            <Tooltip label="Workspace service accounts have access to all deployments" hasArrow>
+              <Link isExternal href="https://docs.astronomer.io/software/manage-workspaces#service-accounts">
                 Workspace
                 <ExternalLinkIcon mx="2px" />
               </Link>
             </Tooltip>
-            ,
-            {' '}
-            <Tooltip
-              label="Deployment service accounts are deployment-specific tokens"
-              hasArrow
-            >
-              <Link
-                isExternal
-                href="https://docs.astronomer.io/software/ci-cd#step-1-create-a-service-account"
-              >
+            ,{' '}
+            <Tooltip label="Deployment service accounts are deployment-specific tokens" hasArrow>
+              <Link isExternal href="https://docs.astronomer.io/software/ci-cd#step-1-create-a-service-account">
                 Deployment
                 <ExternalLinkIcon mx="2px" />
               </Link>
             </Tooltip>
             {targetUrl.startsWith('https://') && isValidUrl && (
               <>
-                ,
-                {' '}
-                <Tooltip
-                  label="Personal tokens are user-specific access tokens"
-                  hasArrow
-                >
+                ,{' '}
+                <Tooltip label="Personal tokens are user-specific access tokens" hasArrow>
                   <Link isExternal href={tokenUrlFromAirflowUrl(targetUrl)}>
                     Personal
                     <ExternalLinkIcon mx="2px" />
@@ -234,9 +179,7 @@ export default function UrlTokenForm({
             .
           </FormHelperText>
         )}
-        <FormErrorMessage>
-          Please input a valid authentication token
-        </FormErrorMessage>
+        <FormErrorMessage>Please input a valid authentication token</FormErrorMessage>
       </FormControl>
     </>
   );

@@ -29,8 +29,7 @@ class ErrorBoundaryClass extends React.Component {
   componentDidCatch(error, errorInfo) {
     this.setState({ errorInfo });
     // Log to console in development
-    if (process.env.NODE_ENV === 'development') {
-      // eslint-disable-next-line no-console
+    if (import.meta.env.DEV) {
       console.error('ErrorBoundary caught an error:', error, errorInfo);
     }
   }
@@ -74,40 +73,22 @@ function ErrorFallback({ error = null, errorInfo = null, onReset }) {
 
   return (
     <Box p={4} maxW="3xl" mx="auto" mt={8}>
-      <Alert
-        status="error"
-        variant="subtle"
-        flexDirection="column"
-        alignItems="flex-start"
-        borderRadius="md"
-        p={6}
-      >
+      <Alert status="error" variant="subtle" flexDirection="column" alignItems="flex-start" borderRadius="md" p={6}>
         <AlertIcon boxSize="40px" mr={0} mb={4} />
         <AlertTitle fontSize="lg" mb={2}>
           Something went wrong
         </AlertTitle>
-        <AlertDescription mb={4}>
-          An unexpected error occurred. Please try refreshing the page.
-        </AlertDescription>
+        <AlertDescription mb={4}>An unexpected error occurred. Please try refreshing the page.</AlertDescription>
 
         <VStack align="stretch" spacing={3} w="100%">
           <Button colorScheme="red" variant="outline" onClick={onReset}>
             Try Again
           </Button>
           <Button size="sm" variant="ghost" onClick={onToggle}>
-            {isOpen ? 'Hide' : 'Show'}
-            {' '}
-            Error Details
+            {isOpen ? 'Hide' : 'Show'} Error Details
           </Button>
           <Collapse in={isOpen}>
-            <Box
-              bg="gray.50"
-              p={3}
-              borderRadius="md"
-              fontSize="sm"
-              overflow="auto"
-              maxH="xs"
-            >
+            <Box bg="gray.50" p={3} borderRadius="md" fontSize="sm" overflow="auto" maxH="xs">
               <Code display="block" whiteSpace="pre-wrap" bg="transparent">
                 {error?.toString()}
                 {errorInfo?.componentStack}

@@ -1,15 +1,5 @@
-import React from 'react';
 import PropTypes from 'prop-types';
-import {
-  Box,
-  Card,
-  CardBody,
-  Collapse,
-  Heading,
-  HStack,
-  Tooltip,
-  VStack,
-} from '@chakra-ui/react';
+import { Box, Card, CardBody, Collapse, Heading, HStack, Tooltip, VStack } from '@chakra-ui/react';
 import { ChevronDownIcon, QuestionIcon } from '@chakra-ui/icons';
 
 /**
@@ -30,11 +20,7 @@ export default function SetupStep({
   const canToggle = isComplete && !isDisabled;
 
   return (
-    <Card
-      opacity={isDisabled ? 0.5 : 1}
-      pointerEvents={isDisabled ? 'none' : 'auto'}
-      transition="all 0.3s"
-    >
+    <Card opacity={isDisabled ? 0.5 : 1} pointerEvents={isDisabled ? 'none' : 'auto'} transition="all 0.3s">
       <CardBody py={3}>
         <VStack align="stretch" spacing={2}>
           <HStack

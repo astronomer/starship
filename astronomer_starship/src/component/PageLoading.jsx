@@ -1,14 +1,4 @@
-import React from 'react';
-import {
-  Alert,
-  AlertDescription,
-  AlertIcon,
-  AlertTitle,
-  Center,
-  Spinner,
-  VStack,
-  Text,
-} from '@chakra-ui/react';
+import { Alert, AlertDescription, AlertIcon, AlertTitle, Center, Spinner, VStack, Text } from '@chakra-ui/react';
 import PropTypes from 'prop-types';
 
 /**
@@ -19,14 +9,10 @@ export default function PageLoading({ loading = false, error = null }) {
     return (
       <Center py={12}>
         <VStack spacing={4}>
-          <Spinner
-            thickness="4px"
-            speed="0.65s"
-            emptyColor="gray.200"
-            color="brand.400"
-            size="xl"
-          />
-          <Text color="gray.500" fontSize="sm">Loading...</Text>
+          <Spinner thickness="4px" speed="0.65s" emptyColor="gray.200" color="brand.400" size="xl" />
+          <Text color="gray.500" fontSize="sm">
+            Loading...
+          </Text>
         </VStack>
       </Center>
     );
@@ -38,9 +24,7 @@ export default function PageLoading({ loading = false, error = null }) {
         <AlertIcon />
         <VStack align="start" spacing={0}>
           <AlertTitle>Error fetching data</AlertTitle>
-          <AlertDescription>
-            {error.message || 'An unexpected error occurred'}
-          </AlertDescription>
+          <AlertDescription>{error.message || 'An unexpected error occurred'}</AlertDescription>
         </VStack>
       </Alert>
     );

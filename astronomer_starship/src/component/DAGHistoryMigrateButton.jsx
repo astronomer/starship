@@ -1,20 +1,12 @@
-/* eslint-disable no-nested-ternary */
-import React, { useState } from 'react';
-import {
-  Button,
-  CircularProgress,
-  HStack,
-  Text,
-  useToast,
-} from '@chakra-ui/react';
+import { useState } from 'react';
+import { Button, CircularProgress, HStack, Text, useToast } from '@chakra-ui/react';
 import PropTypes from 'prop-types';
 import axios from 'axios';
 import { MdErrorOutline, MdDeleteForever, MdWarning } from 'react-icons/md';
 import { GoUpload } from 'react-icons/go';
-
-import WithTooltip from './WithTooltip';
 import { localRoute, proxyHeaders, proxyUrl } from '../util';
 import constants from '../constants';
+import WithTooltip from './WithTooltip';
 
 /**
  * Constants for DAG History migration button disabled states.
@@ -118,8 +110,7 @@ function DAGHistoryMigrateButton({
           }),
         ]);
 
-        const dagRunsToMigrateCount = totalCount
-          || Math.min(dagRunsRes.data.dag_run_count, limit);
+        const dagRunsToMigrateCount = totalCount || Math.min(dagRunsRes.data.dag_run_count, limit);
 
         if (dagRunsRes.data.dag_runs.length === 0) {
           setProgress(100);
@@ -162,10 +153,7 @@ function DAGHistoryMigrateButton({
         const migratedCount = dagRunCreateRes.data.dag_run_count;
 
         if (migratedCount < dagRunsToMigrateCount) {
-          const newProgress = Math.min(
-            99,
-            Math.round((migratedCount / dagRunsToMigrateCount) * 100),
-          );
+          const newProgress = Math.min(99, Math.round((migratedCount / dagRunsToMigrateCount) * 100));
           setProgress(newProgress);
           await migrateBatch(offset + batchSize, dagRunsToMigrateCount);
         } else {
@@ -196,10 +184,7 @@ function DAGHistoryMigrateButton({
             isIndeterminate={progress < 2}
           />
           <Text fontSize="xs">
-            {isDeleting ? 'Deleting' : 'Migrating'}
-            {' '}
-            {Math.round(progress)}
-            %
+            {isDeleting ? 'Deleting' : 'Migrating'} {Math.round(progress)}%
           </Text>
         </HStack>
       );
@@ -227,11 +212,15 @@ function DAGHistoryMigrateButton({
         variant="outline"
         isDisabled={isDisabled || isLoading}
         leftIcon={
-          isLoading ? null
-            : error ? <MdErrorOutline />
-              : exists ? <MdDeleteForever />
-                : isDisabled ? <MdWarning />
-                  : <GoUpload />
+          isLoading ? null : error ? (
+            <MdErrorOutline />
+          ) : exists ? (
+            <MdDeleteForever />
+          ) : isDisabled ? (
+            <MdWarning />
+          ) : (
+            <GoUpload />
+          )
         }
         colorScheme={undefined}
         color={activeColor}
@@ -239,16 +228,20 @@ function DAGHistoryMigrateButton({
         _hover={{
           bg: activeHoverBg,
         }}
-        _disabled={isLoading ? {
-          color: activeColor,
-          borderColor: activeBorderColor,
-          opacity: 0.8,
-          cursor: 'progress',
-        } : {
-          color: 'gray.600',
-          borderColor: 'gray.500',
-          opacity: 1,
-        }}
+        _disabled={
+          isLoading
+            ? {
+                color: activeColor,
+                borderColor: activeBorderColor,
+                opacity: 0.8,
+                cursor: 'progress',
+              }
+            : {
+                color: 'gray.600',
+                borderColor: 'gray.500',
+                opacity: 1,
+              }
+        }
         onClick={handleClick}
         minW={isLoading ? '130px' : isDisabled ? '150px' : undefined}
       >

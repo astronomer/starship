@@ -1,4 +1,3 @@
-/* eslint-disable import/no-extraneous-dependencies */
 import { describe, expect, test } from 'vitest';
 import {
   tokenUrlFromAirflowUrl,
@@ -15,30 +14,29 @@ import {
 
 describe('tokenUrlFromAirflowUrl', () => {
   test('returns Astro token URL for astronomer.run URLs', () => {
-    expect(tokenUrlFromAirflowUrl('https://abc123.astronomer.run/xyz789'))
-      .toBe('https://cloud.astronomer.io/token');
+    expect(tokenUrlFromAirflowUrl('https://abc123.astronomer.run/xyz789')).toBe('https://cloud.astronomer.io/token');
   });
 
   test('returns Software token URL for deployments URLs', () => {
-    expect(tokenUrlFromAirflowUrl('https://deployments.mycompany.com/release-name/airflow'))
-      .toBe('https://mycompany.com/token');
+    expect(tokenUrlFromAirflowUrl('https://deployments.mycompany.com/release-name/airflow')).toBe(
+      'https://mycompany.com/token',
+    );
   });
 
   test('handles URLs without deployments prefix', () => {
-    expect(tokenUrlFromAirflowUrl('https://airflow.mycompany.com/home'))
-      .toBe('https://airflow.mycompany.com/token');
+    expect(tokenUrlFromAirflowUrl('https://airflow.mycompany.com/home')).toBe('https://airflow.mycompany.com/token');
   });
 });
 
 describe('getTargetUrlFromParts', () => {
   test('constructs Astro URL correctly', () => {
-    expect(getTargetUrlFromParts('abc123', 'xyz789', true))
-      .toBe('https://abc123.astronomer.run/xyz789');
+    expect(getTargetUrlFromParts('abc123', 'xyz789', true)).toBe('https://abc123.astronomer.run/xyz789');
   });
 
   test('constructs Software URL correctly', () => {
-    expect(getTargetUrlFromParts('mycompany.com', 'release-name-1234', false))
-      .toBe('https://deployments.mycompany.com/release-name-1234/airflow');
+    expect(getTargetUrlFromParts('mycompany.com', 'release-name-1234', false)).toBe(
+      'https://deployments.mycompany.com/release-name-1234/airflow',
+    );
   });
 });
 
@@ -163,9 +161,7 @@ describe('objectWithoutKey', () => {
 describe('getAstroEnvVarRoute', () => {
   test('constructs Astro API route correctly', () => {
     const result = getAstroEnvVarRoute('org-123', 'deploy-456');
-    expect(result).toBe(
-      'https://api.astronomer.io/platform/v1beta1/organizations/org-123/deployments/deploy-456',
-    );
+    expect(result).toBe('https://api.astronomer.io/platform/v1beta1/organizations/org-123/deployments/deploy-456');
   });
 });
 

@@ -1,7 +1,5 @@
 import React from 'react';
-import {
-  Button, Input, InputGroup, InputRightElement,
-} from '@chakra-ui/react';
+import { Button, Input, InputGroup, InputRightElement } from '@chakra-ui/react';
 import PropTypes from 'prop-types';
 
 export default function HiddenValue({ value = '' }) {

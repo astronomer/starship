@@ -1,6 +1,5 @@
 import { IconButton, Tooltip } from '@chakra-ui/react';
 import { QuestionIcon } from '@chakra-ui/icons';
-import React from 'react';
 import PropTypes from 'prop-types';
 
 export default function TooltipHeader({ tooltip }) {

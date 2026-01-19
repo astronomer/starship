@@ -1,18 +1,9 @@
-import React, { memo, Suspense, lazy } from 'react';
-import {
-  createHashRouter,
-  RouterProvider,
-  Outlet,
-  NavLink,
-  Navigate,
-} from 'react-router-dom';
-import {
-  Box, Button, Divider, Flex, Heading, HStack, Icon, Image, Spinner, Text, Tooltip,
-} from '@chakra-ui/react';
+import { memo, Suspense, lazy } from 'react';
+import { createHashRouter, RouterProvider, Outlet, NavLink, Navigate } from 'react-router-dom';
+import { Box, Button, Divider, Flex, Heading, HStack, Icon, Image, Spinner, Text, Tooltip } from '@chakra-ui/react';
 import { GoRocket } from 'react-icons/go';
 import PropTypes from 'prop-types';
 import AstronomerLogo from './astronomer-logo.svg';
-
 import { AppProvider, useSetupComplete } from './AppContext';
 import { ROUTES } from './constants';
 import './index.css';
@@ -35,12 +26,7 @@ function PageLoader() {
   );
 }
 
-function NavButtonComponent({
-  to,
-  label,
-  isDisabled = false,
-  disabledMessage = '',
-}) {
+function NavButtonComponent({ to, label, isDisabled = false, disabledMessage = '' }) {
   const button = (
     <Button
       as={isDisabled ? 'button' : NavLink}
@@ -83,7 +69,8 @@ const NAV_ITEMS = [
   { to: `/${ROUTES.DAGS}`, label: 'DAG History', requiresSetup: true },
 ];
 
-const DISABLED_MESSAGE = 'Complete the Setup tab to configure your target Airflow instance before accessing migration features';
+const DISABLED_MESSAGE =
+  'Complete the Setup tab to configure your target Airflow instance before accessing migration features';
 
 function AppLayout() {
   const isSetupComplete = useSetupComplete();
@@ -130,14 +117,10 @@ function AppLayout() {
       >
         <Box as="header" display="inline-block">
           <Heading as="h1" size="xl">
-            Starship
-            {' '}
-            <Icon as={GoRocket} />
+            Starship <Icon as={GoRocket} />
           </Heading>
           <HStack align="baseline" justify="flex-end">
-            <Text color="gray.500">
-              by
-            </Text>
+            <Text color="gray.500">by</Text>
             <Image src={AstronomerLogo} alt="Astronomer" h="12px" />
           </HStack>
         </Box>

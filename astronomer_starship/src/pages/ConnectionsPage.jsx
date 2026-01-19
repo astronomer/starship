@@ -1,10 +1,7 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
-import {
-  Button, HStack, Text, Box, Heading, VStack, Stack,
-} from '@chakra-ui/react';
+import { Button, HStack, Text, Box, Heading, VStack, Stack } from '@chakra-ui/react';
 import { RepeatIcon } from '@chakra-ui/icons';
-
 import useMigrationData from '../hooks/useMigrationData';
 import MigrateButton from '../component/MigrateButton';
 import HiddenValue from '../component/HiddenValue';
@@ -120,19 +117,15 @@ export default function ConnectionsPage() {
         mb={3}
       >
         <Box>
-          <Heading size="md" mb={0.5}>Connections</Heading>
+          <Heading size="md" mb={0.5}>
+            Connections
+          </Heading>
           <Text fontSize="xs" color="gray.600">
             Airflow Connection objects store credentials for external services.
           </Text>
         </Box>
         <HStack>
-          <Button
-            size="sm"
-            leftIcon={<RepeatIcon />}
-            onClick={fetchData}
-            variant="outline"
-            isLoading={loading}
-          >
+          <Button size="sm" leftIcon={<RepeatIcon />} onClick={fetchData} variant="outline" isLoading={loading}>
             Refresh
           </Button>
         </HStack>

@@ -1,5 +1,4 @@
-/* eslint-disable import/no-extraneous-dependencies */
-import React from 'react';
+import PropTypes from 'prop-types';
 import { describe, expect, test } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { ChakraProvider } from '@chakra-ui/react';
@@ -9,6 +8,10 @@ import WithTooltip from '../../../src/component/WithTooltip';
 function ChakraWrapper({ children }) {
   return <ChakraProvider>{children}</ChakraProvider>;
 }
+
+ChakraWrapper.propTypes = {
+  children: PropTypes.node.isRequired,
+};
 
 describe('WithTooltip', () => {
   test('renders children directly when isDisabled is false', () => {
@@ -35,16 +38,16 @@ describe('WithTooltip', () => {
     expect(screen.getByText('Content')).toBeInTheDocument();
   });
 
-  test('wraps children in tooltip when isDisabled is a string', () => {
+  test('wraps children in tooltip when isDisabled is true and tooltipText is provided', () => {
     render(
       <ChakraWrapper>
-        <WithTooltip isDisabled="This is disabled">
+        <WithTooltip isDisabled tooltipText="This is disabled">
           <button type="button">Disabled button</button>
         </WithTooltip>
       </ChakraWrapper>,
     );
 
-    // Button should still be rendered
+    // Button should still be rendered (tooltip wraps it)
     expect(screen.getByRole('button', { name: 'Disabled button' })).toBeInTheDocument();
   });
 
