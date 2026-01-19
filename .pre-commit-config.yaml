@@ -50,8 +50,6 @@ repos:
         args: ["-c", "pyproject.toml"]
         additional_dependencies: ["bandit[toml]"]
 
-  # Local hook for Prettier (mirrors-prettier is deprecated since Apr 2024)
-  # See: https://prettier.io/docs/precommit
   - repo: local
     hooks:
       - id: prettier
@@ -59,9 +57,4 @@ repos:
         entry: npx prettier --write --ignore-unknown
         language: system
         types_or: [javascript, jsx, css, json]
-        exclude: |
-          (?x)^(
-            astronomer_starship/static/.*|
-            astronomer_starship/node_modules/.*|
-            astronomer_starship/package-lock\.json
-          )$
+        files: ^astronomer_starship/(src|tests)/
