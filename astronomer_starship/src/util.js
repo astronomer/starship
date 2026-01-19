@@ -171,14 +171,7 @@ export function proxyHeaders(token) {
  * @param dataDispatch - dispatch route to call to set the data variables
  * @param errorDispatch - dispatch route to call to set the error variable
  */
-export async function fetchData(
-  localRouteUrl,
-  remoteRouteUrl,
-  token,
-  loadingDispatch,
-  dataDispatch,
-  errorDispatch,
-) {
+export async function fetchData(localRouteUrl, remoteRouteUrl, token, loadingDispatch, dataDispatch, errorDispatch) {
   if (loadingDispatch) {
     loadingDispatch();
   }
@@ -190,10 +183,10 @@ export async function fetchData(
     ]);
 
     if (
-      localRes.status === 200
-      && localRes.headers['content-type'] === 'application/json'
-      && remoteRes.status === 200
-      && remoteRes.headers['content-type'] === 'application/json'
+      localRes.status === 200 &&
+      localRes.headers['content-type'] === 'application/json' &&
+      remoteRes.status === 200 &&
+      remoteRes.headers['content-type'] === 'application/json'
     ) {
       dataDispatch(localRes, remoteRes);
     } else {

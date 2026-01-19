@@ -20,7 +20,6 @@ import { RepeatIcon } from '@chakra-ui/icons';
 import { IoTelescopeOutline } from 'react-icons/io5';
 import { NavLink } from 'react-router-dom';
 import axios from 'axios';
-
 import { useAppState, useAppDispatch } from '../AppContext';
 import SetupStep from '../component/SetupStep';
 import UrlTokenForm from '../component/UrlTokenForm';
@@ -57,7 +56,7 @@ export default function SetupPage() {
     if (isStep1Complete && !isStep2Complete && !step2.isOpen) {
       step2.onOpen();
     }
-  }, [isStep1Complete, isStep2Complete, step2.isOpen]);
+  }, [isStep1Complete, isStep2Complete, step2]);
 
   // Trigger animations when steps complete
   useEffect(() => {
@@ -83,7 +82,8 @@ export default function SetupPage() {
       hasShownCompleteToast.current = true;
       toast({
         title: 'Setup Complete!',
-        description: 'Your Starship configuration is ready. Use the navigation links above to migrate your Airflow metadata.',
+        description:
+          'Your Starship configuration is ready. Use the navigation links above to migrate your Airflow metadata.',
         status: 'success',
         duration: 6000,
         isClosable: true,
@@ -94,9 +94,7 @@ export default function SetupPage() {
 
   // Fetch workspace/deployment info for Software
   useEffect(() => {
-    if (state.isSetupComplete
-      && !state.isAstro
-      && !(state.releaseName && state.workspaceId && state.deploymentId)) {
+    if (state.isSetupComplete && !state.isAstro && !(state.releaseName && state.workspaceId && state.deploymentId)) {
       axios
         .post(
           proxyUrl(getHoustonRoute(state.urlOrgPart)),
@@ -159,28 +157,18 @@ export default function SetupPage() {
         mb={3}
       >
         <Box>
-          <Heading size="md" mb={0.5}>Getting Started</Heading>
+          <Heading size="md" mb={0.5}>
+            Getting Started
+          </Heading>
           <Text fontSize="xs" color="gray.600">
             Configure Starship to migrate Airflow metadata between instances
           </Text>
         </Box>
         <HStack>
-          <Button
-            size="sm"
-            leftIcon={<IoTelescopeOutline />}
-            as={NavLink}
-            to="/telescope"
-            variant="outline"
-          >
+          <Button size="sm" leftIcon={<IoTelescopeOutline />} as={NavLink} to="/telescope" variant="outline">
             Telescope
           </Button>
-          <Button
-            size="sm"
-            leftIcon={<RepeatIcon />}
-            onClick={resetDialog.onOpen}
-            variant="outline"
-            colorScheme="red"
-          >
+          <Button size="sm" leftIcon={<RepeatIcon />} onClick={resetDialog.onOpen} variant="outline" colorScheme="red">
             Reset
           </Button>
         </HStack>
@@ -234,11 +222,7 @@ export default function SetupPage() {
       </VStack>
 
       {/* Reset Confirmation Dialog */}
-      <AlertDialog
-        isOpen={resetDialog.isOpen}
-        leastDestructiveRef={cancelRef}
-        onClose={resetDialog.onClose}
-      >
+      <AlertDialog isOpen={resetDialog.isOpen} leastDestructiveRef={cancelRef} onClose={resetDialog.onClose}>
         <AlertDialogOverlay>
           <AlertDialogContent>
             <AlertDialogHeader fontSize="lg" fontWeight="bold">
@@ -246,20 +230,15 @@ export default function SetupPage() {
             </AlertDialogHeader>
 
             <AlertDialogBody>
-              Are you sure you want to reset all configuration? This will clear your
-              deployment URL, authentication token, and connection status.
+              Are you sure you want to reset all configuration? This will clear your deployment URL, authentication
+              token, and connection status.
             </AlertDialogBody>
 
             <AlertDialogFooter>
               <Button ref={cancelRef} onClick={resetDialog.onClose} size="sm" variant="outline">
                 Cancel
               </Button>
-              <Button
-                colorScheme="red"
-                onClick={handleReset}
-                ml={3}
-                size="sm"
-              >
+              <Button colorScheme="red" onClick={handleReset} ml={3} size="sm">
                 Reset
               </Button>
             </AlertDialogFooter>

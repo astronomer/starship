@@ -1,10 +1,7 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
-import {
-  Button, HStack, Text, Box, Heading, VStack, Stack,
-} from '@chakra-ui/react';
+import { Button, HStack, Text, Box, Heading, VStack, Stack } from '@chakra-ui/react';
 import { RepeatIcon } from '@chakra-ui/icons';
-
 import useMigrationData from '../hooks/useMigrationData';
 import MigrateButton from '../component/MigrateButton';
 import ProgressSummary from '../component/ProgressSummary';
@@ -88,19 +85,15 @@ export default function PoolsPage() {
         mb={3}
       >
         <Box>
-          <Heading size="md" mb={0.5}>Pools</Heading>
+          <Heading size="md" mb={0.5}>
+            Pools
+          </Heading>
           <Text fontSize="xs" color="gray.600">
             Pools limit the number of concurrent tasks of a certain type.
           </Text>
         </Box>
         <HStack>
-          <Button
-            size="sm"
-            leftIcon={<RepeatIcon />}
-            onClick={fetchData}
-            variant="outline"
-            isLoading={loading}
-          >
+          <Button size="sm" leftIcon={<RepeatIcon />} onClick={fetchData} variant="outline" isLoading={loading}>
             Refresh
           </Button>
         </HStack>

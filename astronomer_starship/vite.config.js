@@ -16,18 +16,21 @@ export default defineConfig(({ mode }) => ({
       fastRefresh: true,
     }),
     // Bundle analyzer - run with ANALYZE=true npm run build
-    enableAnalyze && visualizer({
-      open: true,
-      gzipSize: true,
-      brotliSize: true,
-      filename: 'bundle-stats.html',
-    }),
+    enableAnalyze &&
+      visualizer({
+        open: true,
+        gzipSize: true,
+        brotliSize: true,
+        filename: 'bundle-stats.html',
+      }),
   ].filter(Boolean),
   base: './',
   // For React 18 profiling, we need development mode
-  define: enableProfiling ? {
-    'process.env.NODE_ENV': JSON.stringify('development'),
-  } : {},
+  define: enableProfiling
+    ? {
+        'process.env.NODE_ENV': JSON.stringify('development'),
+      }
+    : {},
   build: {
     outDir: 'static',
     emptyOutDir: true,
@@ -53,13 +56,7 @@ export default defineConfig(({ mode }) => ({
           // Router - separate chunk
           router: ['react-router-dom', 'react-router'],
           // Chakra UI and its dependencies - large, infrequently updated
-          chakra: [
-            '@chakra-ui/react',
-            '@chakra-ui/icons',
-            '@emotion/react',
-            '@emotion/styled',
-            'framer-motion',
-          ],
+          chakra: ['@chakra-ui/react', '@chakra-ui/icons', '@emotion/react', '@emotion/styled', 'framer-motion'],
           // Data table - only needed on data pages
           table: ['@tanstack/react-table'],
           // HTTP client
@@ -74,13 +71,7 @@ export default defineConfig(({ mode }) => ({
   },
   // Optimize dependencies for faster dev server startup
   optimizeDeps: {
-    include: [
-      'react',
-      'react-dom',
-      '@chakra-ui/react',
-      '@tanstack/react-table',
-      'axios',
-    ],
+    include: ['react', 'react-dom', '@chakra-ui/react', '@tanstack/react-table', 'axios'],
     // Exclude large dependencies from pre-bundling for faster startup
     exclude: ['react-icons'],
   },

@@ -1,13 +1,6 @@
-import React from 'react';
 import PropTypes from 'prop-types';
-import {
-  Box,
-  Link,
-  Text,
-  VStack,
-} from '@chakra-ui/react';
+import { Box, Link, Text, VStack } from '@chakra-ui/react';
 import { ExternalLinkIcon } from '@chakra-ui/icons';
-
 import ValidatedUrlCheckbox from './ValidatedUrlCheckbox';
 
 /**

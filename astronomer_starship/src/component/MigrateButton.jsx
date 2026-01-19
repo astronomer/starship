@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import axios from 'axios';
 import { Button, useToast } from '@chakra-ui/react';
 import { MdErrorOutline, MdDeleteForever } from 'react-icons/md';
@@ -50,9 +50,7 @@ export default function MigrateButton({
       onStatusChange?.(newStatus);
 
       toast({
-        title: exists
-          ? `Deleted ${itemName} from remote`
-          : `Migrated ${itemName} to remote`,
+        title: exists ? `Deleted ${itemName} from remote` : `Migrated ${itemName} to remote`,
         description: exists
           ? 'Successfully removed from target Airflow instance'
           : 'Successfully copied to target Airflow instance',
@@ -115,7 +113,7 @@ MigrateButton.propTypes = {
   route: PropTypes.string.isRequired,
   headers: PropTypes.objectOf(PropTypes.string),
   existsInRemote: PropTypes.bool,
-  // eslint-disable-next-line react/forbid-prop-types
+
   sendData: PropTypes.object.isRequired,
   isDisabled: PropTypes.bool,
   onStatusChange: PropTypes.func,

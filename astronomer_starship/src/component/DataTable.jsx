@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Box,
   HStack,
@@ -103,12 +103,8 @@ export default function DataTable({
             </InputGroup>
             {globalFilter && (
               <Text fontSize="sm" color="gray.500">
-                {rowCount}
-                {' '}
-                of
-                {totalCount}
-                {' '}
-                items
+                {rowCount} of
+                {totalCount} items
               </Text>
             )}
           </HStack>
@@ -133,16 +129,10 @@ export default function DataTable({
                       minW={meta?.minWidth}
                       cursor={canSort ? 'pointer' : 'default'}
                     >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(header.column.columnDef.header, header.getContext())}
+                      {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                       <chakra.span pl="4">
-                        {header.column.getIsSorted() === 'desc' && (
-                          <TriangleDownIcon aria-label="sorted descending" />
-                        )}
-                        {header.column.getIsSorted() === 'asc' && (
-                          <TriangleUpIcon aria-label="sorted ascending" />
-                        )}
+                        {header.column.getIsSorted() === 'desc' && <TriangleDownIcon aria-label="sorted descending" />}
+                        {header.column.getIsSorted() === 'asc' && <TriangleUpIcon aria-label="sorted ascending" />}
                       </chakra.span>
                     </Th>
                   );
@@ -187,9 +177,8 @@ export default function DataTable({
 }
 
 DataTable.propTypes = {
-  // eslint-disable-next-line react/forbid-prop-types
   data: PropTypes.arrayOf(PropTypes.object).isRequired,
-  // eslint-disable-next-line react/forbid-prop-types
+
   columns: PropTypes.arrayOf(PropTypes.object).isRequired,
   searchPlaceholder: PropTypes.string,
   showSearch: PropTypes.bool,

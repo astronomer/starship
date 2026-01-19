@@ -1,4 +1,3 @@
-import React from 'react';
 import { Tooltip } from '@chakra-ui/react';
 import PropTypes from 'prop-types';
 
@@ -9,8 +8,12 @@ import PropTypes from 'prop-types';
  */
 function WithTooltip({ isDisabled = false, tooltipText = '', children }) {
   return isDisabled && tooltipText ? (
-    <Tooltip hasArrow label={tooltipText}>{children}</Tooltip>
-  ) : children;
+    <Tooltip hasArrow label={tooltipText}>
+      {children}
+    </Tooltip>
+  ) : (
+    children
+  );
 }
 
 WithTooltip.propTypes = {

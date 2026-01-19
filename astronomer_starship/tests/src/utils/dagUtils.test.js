@@ -1,4 +1,3 @@
-/* eslint-disable import/no-extraneous-dependencies */
 import { describe, expect, test } from 'vitest';
 import mergeDagData from '../../../src/utils/dagUtils';
 
@@ -53,14 +52,16 @@ describe('mergeDagData', () => {
   });
 
   test('preserves all local DAG properties', () => {
-    const local = [{
-      dag_id: 'test_dag',
-      fileloc: '/dags/test.py',
-      owners: ['owner1'],
-      tags: ['tag1', 'tag2'],
-      schedule_interval: '@daily',
-      dag_run_count: 100,
-    }];
+    const local = [
+      {
+        dag_id: 'test_dag',
+        fileloc: '/dags/test.py',
+        owners: ['owner1'],
+        tags: ['tag1', 'tag2'],
+        schedule_interval: '@daily',
+        dag_run_count: 100,
+      },
+    ];
     const remote = [];
     const result = mergeDagData(local, remote);
 
@@ -69,13 +70,15 @@ describe('mergeDagData', () => {
 
   test('preserves all remote DAG properties', () => {
     const local = [{ dag_id: 'test_dag' }];
-    const remote = [{
-      dag_id: 'test_dag',
-      fileloc: '/dags/remote.py',
-      owners: ['remote_owner'],
-      is_paused: true,
-      dag_run_count: 50,
-    }];
+    const remote = [
+      {
+        dag_id: 'test_dag',
+        fileloc: '/dags/remote.py',
+        owners: ['remote_owner'],
+        is_paused: true,
+        dag_run_count: 50,
+      },
+    ];
     const result = mergeDagData(local, remote);
 
     expect(result[0].remote).toEqual(remote[0]);

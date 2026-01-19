@@ -1,17 +1,5 @@
-import React from 'react';
 import PropTypes from 'prop-types';
-import {
-  Box,
-  Card,
-  CardBody,
-  HStack,
-  VStack,
-  Text,
-  Button,
-  Progress,
-  Icon,
-  Spacer,
-} from '@chakra-ui/react';
+import { Box, Card, CardBody, HStack, VStack, Text, Button, Progress, Icon, Spacer } from '@chakra-ui/react';
 import { CheckCircleIcon } from '@chakra-ui/icons';
 import { FiUpload } from 'react-icons/fi';
 
@@ -35,9 +23,7 @@ StatFeature.propTypes = {
   color: PropTypes.string,
 };
 
-export default function ProgressSummary({
-  totalItems, migratedItems, onMigrateAll, isMigratingAll = false,
-}) {
+export default function ProgressSummary({ totalItems, migratedItems, onMigrateAll, isMigratingAll = false }) {
   const remainingItems = totalItems - migratedItems;
   const progressPercentage = totalItems > 0 ? (migratedItems / totalItems) * 100 : 0;
   const isComplete = migratedItems === totalItems && totalItems > 0;
@@ -76,7 +62,9 @@ export default function ProgressSummary({
                   <Text fontSize="xs" color="gray.500">
                     {`${progressPercentage.toFixed(0)}%`}
                   </Text>
-                  <Text fontSize="xs" color="gray.600">{isComplete ? <Icon as={CheckCircleIcon} color="green.500" /> : null}</Text>
+                  <Text fontSize="xs" color="gray.600">
+                    {isComplete ? <Icon as={CheckCircleIcon} color="green.500" /> : null}
+                  </Text>
                 </HStack>
               </HStack>
               <Progress

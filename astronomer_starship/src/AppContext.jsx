@@ -1,6 +1,4 @@
-import React, {
-  createContext, useContext, useReducer, useEffect, useMemo,
-} from 'react';
+import { createContext, useContext, useReducer, useEffect, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { getTargetUrlFromParts } from './util';
 
@@ -117,7 +115,10 @@ function reducer(state, action) {
       return initialState;
     case 'invalidate-token':
       return {
-        ...state, isSetupComplete: false, isTokenTouched: false, token: null,
+        ...state,
+        isSetupComplete: false,
+        isTokenTouched: false,
+        token: null,
       };
     default:
       return state;
@@ -179,9 +180,7 @@ export function AppProvider({ children }) {
   // dispatch is stable from useReducer, no need to memoize
   return (
     <AppStateContext.Provider value={state}>
-      <AppDispatchContext.Provider value={dispatch}>
-        {children}
-      </AppDispatchContext.Provider>
+      <AppDispatchContext.Provider value={dispatch}>{children}</AppDispatchContext.Provider>
     </AppStateContext.Provider>
   );
 }
@@ -200,39 +199,48 @@ export function useSetupComplete() {
 
 export function useTargetConfig() {
   const state = useAppState();
-  return useMemo(() => ({
-    targetUrl: state.targetUrl,
-    token: state.token,
-    isAstro: state.isAstro,
-    organizationId: state.organizationId,
-    deploymentId: state.deploymentId,
-    localAirflowVersion: state.localAirflowVersion,
-    releaseName: state.releaseName,
-    urlOrgPart: state.urlOrgPart,
-  }), [
-    state.targetUrl,
-    state.token,
-    state.isAstro,
-    state.organizationId,
-    state.deploymentId,
-    state.localAirflowVersion,
-    state.releaseName,
-    state.urlOrgPart,
-  ]);
+  return useMemo(
+    () => ({
+      targetUrl: state.targetUrl,
+      token: state.token,
+      isAstro: state.isAstro,
+      organizationId: state.organizationId,
+      deploymentId: state.deploymentId,
+      localAirflowVersion: state.localAirflowVersion,
+      releaseName: state.releaseName,
+      urlOrgPart: state.urlOrgPart,
+    }),
+    [
+      state.targetUrl,
+      state.token,
+      state.isAstro,
+      state.organizationId,
+      state.deploymentId,
+      state.localAirflowVersion,
+      state.releaseName,
+      state.urlOrgPart,
+    ],
+  );
 }
 
 export function useDagHistoryConfig() {
   const state = useAppState();
-  return useMemo(() => ({
-    limit: state.limit,
-    batchSize: state.batchSize,
-  }), [state.limit, state.batchSize]);
+  return useMemo(
+    () => ({
+      limit: state.limit,
+      batchSize: state.batchSize,
+    }),
+    [state.limit, state.batchSize],
+  );
 }
 
 export function useTelescopeConfig() {
   const state = useAppState();
-  return useMemo(() => ({
-    telescopeOrganizationId: state.telescopeOrganizationId,
-    telescopePresignedUrl: state.telescopePresignedUrl,
-  }), [state.telescopeOrganizationId, state.telescopePresignedUrl]);
+  return useMemo(
+    () => ({
+      telescopeOrganizationId: state.telescopeOrganizationId,
+      telescopePresignedUrl: state.telescopePresignedUrl,
+    }),
+    [state.telescopeOrganizationId, state.telescopePresignedUrl],
+  );
 }

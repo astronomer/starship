@@ -1,5 +1,4 @@
-/* eslint-disable import/no-extraneous-dependencies */
-import React from 'react';
+import PropTypes from 'prop-types';
 import { describe, expect, test } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { ChakraProvider } from '@chakra-ui/react';
@@ -9,6 +8,10 @@ import WithTooltip from '../../../src/component/WithTooltip';
 function ChakraWrapper({ children }) {
   return <ChakraProvider>{children}</ChakraProvider>;
 }
+
+ChakraWrapper.propTypes = {
+  children: PropTypes.node.isRequired,
+};
 
 describe('WithTooltip', () => {
   test('renders children directly when isDisabled is false', () => {

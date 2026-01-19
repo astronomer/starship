@@ -1,26 +1,15 @@
-import React, {
-  useEffect, useState, useCallback, useMemo,
-} from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
-import {
-  Button, HStack, Text, useToast, Box, Heading, VStack, Stack,
-} from '@chakra-ui/react';
+import { Button, HStack, Text, useToast, Box, Heading, VStack, Stack } from '@chakra-ui/react';
 import axios from 'axios';
 import { RepeatIcon } from '@chakra-ui/icons';
-
 import { useAppDispatch, useTargetConfig } from '../AppContext';
 import ProgressSummary from '../component/ProgressSummary';
 import DataTable from '../component/DataTable';
 import PageLoading from '../component/PageLoading';
 import HiddenValue from '../component/HiddenValue';
 import EnvVarMigrateButton from '../component/EnvVarMigrateButton';
-import {
-  getAstroEnvVarRoute,
-  getHoustonRoute,
-  localRoute,
-  proxyHeaders,
-  proxyUrl,
-} from '../util';
+import { getAstroEnvVarRoute, getHoustonRoute, localRoute, proxyHeaders, proxyUrl } from '../util';
 import constants from '../constants';
 
 const columnHelper = createColumnHelper();
@@ -43,10 +32,7 @@ function renderHiddenValue(info) {
  * Defined outside component to avoid unstable nested components.
  */
 function createColumns(config) {
-  const {
-    isAstro, organizationId, deploymentId, urlOrgPart,
-    token, releaseName, handleItemStatusChange,
-  } = config;
+  const { isAstro, organizationId, deploymentId, urlOrgPart, token, releaseName, handleItemStatusChange } = config;
 
   return [
     columnHelper.accessor('key', {
@@ -95,9 +81,7 @@ function createColumns(config) {
 }
 
 export default function EnvVarsPage() {
-  const {
-    targetUrl, token, isAstro, organizationId, deploymentId, releaseName, urlOrgPart,
-  } = useTargetConfig();
+  const { targetUrl, token, isAstro, organizationId, deploymentId, releaseName, urlOrgPart } = useTargetConfig();
   const dispatch = useAppDispatch();
   const toast = useToast();
 
@@ -146,9 +130,7 @@ export default function EnvVarsPage() {
   }, [fetchData]);
 
   const handleItemStatusChange = useCallback((key, newStatus) => {
-    setData((prev) => prev.map((item) => (
-      item.key === key ? { ...item, exists: newStatus } : item
-    )));
+    setData((prev) => prev.map((item) => (item.key === key ? { ...item, exists: newStatus } : item)));
   }, []);
 
   const handleMigrateAll = useCallback(() => {
@@ -164,15 +146,16 @@ export default function EnvVarsPage() {
   }, [toast]);
 
   const columns = useMemo(
-    () => createColumns({
-      isAstro,
-      organizationId,
-      deploymentId,
-      urlOrgPart,
-      token,
-      releaseName,
-      handleItemStatusChange,
-    }),
+    () =>
+      createColumns({
+        isAstro,
+        organizationId,
+        deploymentId,
+        urlOrgPart,
+        token,
+        releaseName,
+        handleItemStatusChange,
+      }),
     [isAstro, organizationId, deploymentId, urlOrgPart, token, releaseName, handleItemStatusChange],
   );
 
@@ -188,18 +171,15 @@ export default function EnvVarsPage() {
         mb={3}
       >
         <Box>
-          <Heading size="md" mb={0.5}>Environment Variables</Heading>
+          <Heading size="md" mb={0.5}>
+            Environment Variables
+          </Heading>
           <Text fontSize="xs" color="gray.600">
             Environment variables for Airflow configurations and DAG access.
           </Text>
         </Box>
         <HStack>
-          <Button
-            leftIcon={<RepeatIcon />}
-            onClick={fetchData}
-            variant="outline"
-            isLoading={loading}
-          >
+          <Button leftIcon={<RepeatIcon />} onClick={fetchData} variant="outline" isLoading={loading}>
             Refresh
           </Button>
         </HStack>
@@ -219,11 +199,7 @@ export default function EnvVarsPage() {
           {loading || error ? (
             <PageLoading loading={loading} error={error} />
           ) : (
-            <DataTable
-              data={data}
-              columns={columns}
-              searchPlaceholder="Search by key..."
-            />
+            <DataTable data={data} columns={columns} searchPlaceholder="Search by key..." />
           )}
         </Box>
       </VStack>
