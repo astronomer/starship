@@ -38,16 +38,16 @@ describe('WithTooltip', () => {
     expect(screen.getByText('Content')).toBeInTheDocument();
   });
 
-  test('wraps children in tooltip when isDisabled is a string', () => {
+  test('wraps children in tooltip when isDisabled is true and tooltipText is provided', () => {
     render(
       <ChakraWrapper>
-        <WithTooltip isDisabled="This is disabled">
+        <WithTooltip isDisabled tooltipText="This is disabled">
           <button type="button">Disabled button</button>
         </WithTooltip>
       </ChakraWrapper>,
     );
 
-    // Button should still be rendered
+    // Button should still be rendered (tooltip wraps it)
     expect(screen.getByRole('button', { name: 'Disabled button' })).toBeInTheDocument();
   });
 
