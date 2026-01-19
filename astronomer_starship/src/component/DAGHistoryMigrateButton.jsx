@@ -1,12 +1,5 @@
- import { useState, useEffect } from 'react';
-import {
-  Button,
-  CircularProgress,
-  Flex,
-  Icon,
-  Text,
-  useToast,
-} from '@chakra-ui/react';
+import { useState, useEffect } from 'react';
+import { Button, CircularProgress, Flex, Icon, Text, useToast } from '@chakra-ui/react';
 import PropTypes from 'prop-types';
 import axios from 'axios';
 import { MdErrorOutline, MdDeleteForever, MdWarning } from 'react-icons/md';
@@ -212,10 +205,7 @@ function DAGHistoryMigrateButton({
         const remoteCount = dagRunCreateRes?.data?.dag_run_count ?? latestRemoteCount;
 
         if (migratedCount < dagRunsToMigrateCount) {
-          const newProgress = Math.min(
-            99,
-            Math.round((migratedCount / dagRunsToMigrateCount) * 100),
-          );
+          const newProgress = Math.min(99, Math.round((migratedCount / dagRunsToMigrateCount) * 100));
           setProgress(newProgress);
           await migrateBatch(offset + appliedBatchSize, dagRunsToMigrateCount, remoteCount);
         } else {
@@ -246,10 +236,7 @@ function DAGHistoryMigrateButton({
             isIndeterminate={progress < 2}
           />
           <Text fontSize="xs">
-            {isDeleting ? 'Deleting' : 'Migrating'}
-            {' '}
-            {Math.round(progress)}
-            %
+            {isDeleting ? 'Deleting' : 'Migrating'} {Math.round(progress)}%
           </Text>
         </Flex>
       );
