@@ -23,6 +23,7 @@
     "@emotion/styled": "^11.11.0",
     "@tanstack/react-table": "^8.11.3",
     "axios": "^1.6.5",
+    "axios-retry": "^4.5.0",
     "framer-motion": "^10.17.9",
     "human-format": "^1.2.0",
     "prop-types": "^15.8.1",

@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import axios from 'axios';
 import { useToast } from '@chakra-ui/react';
 import { useAppDispatch, useTargetConfig } from '../AppContext';
-import { localRoute, proxyUrl, proxyHeaders, objectWithoutKey } from '../util';
+import { localRoute, proxyUrl, proxyHeaders, objectWithoutKey, axiosWithRetry } from '../util';
 
 /**
  * Custom hook for managing migration data between local and remote Airflow instances.
@@ -93,9 +93,10 @@ export default function useMigrationData({ route, idField, itemName }) {
     let errorCount = 0;
 
     // Use Promise.allSettled for parallel execution with error handling
+    // Each request uses exponential backoff on rate limits via axiosWithRetry
     const results = await Promise.allSettled(
       unmigratedItems.map(async (item) => {
-        const response = await axios.post(proxyUrl(targetUrl + route), objectWithoutKey(item, 'exists'), {
+        const response = await axiosWithRetry.post(proxyUrl(targetUrl + route), objectWithoutKey(item, 'exists'), {
           headers: proxyHeaders(token),
         });
         return { item, response };

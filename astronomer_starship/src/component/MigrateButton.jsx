@@ -1,9 +1,9 @@
 import { useState, useCallback } from 'react';
-import axios from 'axios';
 import { Button, useToast } from '@chakra-ui/react';
 import { MdErrorOutline, MdDeleteForever } from 'react-icons/md';
 import { GoUpload } from 'react-icons/go';
 import PropTypes from 'prop-types';
+import { axiosWithRetry } from '../util';
 
 /**
  * Button for migrating or deleting items between Airflow instances
@@ -35,7 +35,7 @@ export default function MigrateButton({
     setError(null);
 
     try {
-      const response = await axios({
+      const response = await axiosWithRetry({
         method: exists ? 'delete' : 'post',
         url: route,
         headers,

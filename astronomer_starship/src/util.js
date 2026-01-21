@@ -1,4 +1,37 @@
 import axios from 'axios';
+import axiosRetry from 'axios-retry';
+
+/**
+ * Axios instance configured with exponential backoff retry logic.
+ * Retries on transient errors: 429 (rate limit), 502 (bad gateway), 503 (service unavailable).
+ *
+ * Configuration:
+ * - 3 retries max
+ * - Exponential backoff delay with jitter
+ * - Respects Retry-After header when present
+ */
+export const axiosWithRetry = axios.create();
+
+axiosRetry(axiosWithRetry, {
+  retries: 3,
+  retryDelay: (retryCount, error) => {
+    // Check for Retry-After header first
+    const retryAfter = error.response?.headers?.['retry-after'];
+    if (retryAfter) {
+      const seconds = parseInt(retryAfter, 10);
+      if (!Number.isNaN(seconds)) {
+        return seconds * 1000;
+      }
+    }
+    // Exponential backoff with jitter
+    return axiosRetry.exponentialDelay(retryCount, error, 1000);
+  },
+  retryCondition: (error) => {
+    // Retry on transient errors only
+    const status = error.response?.status;
+    return status === 429 || status === 502 || status === 503;
+  },
+});
 
 /**
  * Returns the PAT URL for a given Airflow URL

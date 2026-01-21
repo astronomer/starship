@@ -183,9 +183,30 @@ const theme = extendTheme({
     Alert: {
       baseStyle: {
         container: {
-          opacity: '1 !important',
+          // Ensure alerts are never transparent when embedded in Airflow
           backdropFilter: 'none',
         },
+      },
+      variants: {
+        // Outline variant used by toasts - needs solid white background
+        outline: {
+          container: {
+            bg: 'white',
+            borderWidth: '1px',
+          },
+        },
+        // Subtle variant with light colored background
+        subtle: (props) => ({
+          container: {
+            bg: `${props.colorScheme}.50`,
+          },
+        }),
+        // Surface variant with slightly tinted background
+        surface: (props) => ({
+          container: {
+            bg: `${props.colorScheme}.50`,
+          },
+        }),
       },
     },
   },
@@ -211,11 +232,6 @@ const theme = extendTheme({
         minH: 0,
         maxH: '100vh',
         overflowY: 'auto',
-      },
-      // Ensure toasts are never transparent
-      '.chakra-toast, .chakra-toast__inner, .chakra-alert': {
-        opacity: '1 !important',
-        backdropFilter: 'none !important',
       },
     },
   },
