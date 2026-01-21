@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
   AlertDialog,
   AlertDialogBody,
@@ -148,6 +148,16 @@ export default function SetupPage() {
     step2.onOpen();
   };
 
+  // Memoize callbacks to prevent infinite re-renders in ValidatedUrlCheckbox
+  const handleAirflowChange = useCallback(
+    (value) => dispatch({ type: 'set-is-airflow', isAirflow: value }),
+    [dispatch],
+  );
+  const handleStarshipChange = useCallback(
+    (value) => dispatch({ type: 'set-is-starship', isStarship: value }),
+    [dispatch],
+  );
+
   return (
     <Box>
       <Stack
@@ -215,8 +225,8 @@ export default function SetupPage() {
             isValidUrl={state.isValidUrl}
             isAirflow={state.isAirflow}
             isStarship={state.isStarship}
-            onAirflowChange={(value) => dispatch({ type: 'set-is-airflow', isAirflow: value })}
-            onStarshipChange={(value) => dispatch({ type: 'set-is-starship', isStarship: value })}
+            onAirflowChange={handleAirflowChange}
+            onStarshipChange={handleStarshipChange}
           />
         </SetupStep>
       </VStack>
