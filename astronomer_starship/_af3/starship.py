@@ -124,6 +124,10 @@ async def proxy(request: Request):
             "Content-Type": response.headers.get("content-type", "application/json"),
         }
 
+        # Forward Retry-After header for rate limit handling
+        if "retry-after" in response.headers:
+            response_headers["Retry-After"] = response.headers.get("retry-after")
+
         # GZIP compress response if large (>1KB) and client accepts gzip
         accept_encoding = request.headers.get("Accept-Encoding", "")
         if len(response_content) > 1024 and "gzip" in accept_encoding.lower():

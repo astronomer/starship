@@ -4,7 +4,7 @@ import PropTypes from 'prop-types';
 import axios from 'axios';
 import { MdErrorOutline, MdDeleteForever, MdWarning } from 'react-icons/md';
 import { GoUpload } from 'react-icons/go';
-import { localRoute, proxyHeaders, proxyUrl } from '../util';
+import { localRoute, proxyHeaders, proxyUrl, axiosWithRetry } from '../util';
 import constants from '../constants';
 import WithTooltip from './WithTooltip';
 
@@ -146,7 +146,7 @@ function DAGHistoryMigrateButton({
     setIsDeleting(true);
     setProgress(50);
     try {
-      await axios.delete(proxyUrl(url + constants.DAG_RUNS_ROUTE), {
+      await axiosWithRetry.delete(proxyUrl(url + constants.DAG_RUNS_ROUTE), {
         headers: proxyHeaders(token),
         params: { dag_id: dagId },
       });
@@ -183,19 +183,20 @@ function DAGHistoryMigrateButton({
         const remoteHeaders = { headers: proxyHeaders(token) };
         const remoteParams = { params: { dag_id: dagId } };
 
-        const dagRunCreateRes = await axios.post(
+        // Use axiosWithRetry for remote calls to handle rate limits
+        const dagRunCreateRes = await axiosWithRetry.post(
           proxyUrl(url + constants.DAG_RUNS_ROUTE),
           { dag_runs: dagRunsRes.data.dag_runs },
           { ...remoteParams, ...remoteHeaders },
         );
 
-        await axios.post(
+        await axiosWithRetry.post(
           proxyUrl(url + constants.TASK_INSTANCE_ROUTE),
           { task_instances: taskInstanceRes.data.task_instances },
           { ...remoteParams, ...remoteHeaders },
         );
 
-        await axios.post(
+        await axiosWithRetry.post(
           proxyUrl(url + constants.TASK_INSTANCE_HISTORY_ROUTE),
           { task_instances: taskInstanceHistoryRes.data.task_instances },
           { ...remoteParams, ...remoteHeaders },
