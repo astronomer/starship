@@ -216,7 +216,7 @@ class StarshipApi(BaseView):
         return starship_route(
             get=starship_compat.get_task_instance_history,
             post=starship_compat.set_task_instance_history,
-            kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.task_instances_attrs()),
+            kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.task_instance_history_attrs()),
         )
 
     # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_TASK_INSTANCE)])

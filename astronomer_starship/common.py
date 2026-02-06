@@ -455,6 +455,10 @@ class BaseStarshipAirflow:
     def set_task_instances(self, **kwargs):
         raise NotImplementedError("Subclasses must implement set_task_instances method")
 
+    @classmethod
+    def task_instance_history_attrs(cls) -> "Dict[str, AttrDesc]":
+        raise NotImplementedError("Subclasses must implement task_instance_history_attrs method")
+
     def get_task_instance_history(self):
         raise NotImplementedError("Subclasses must implement get_task_instance_history method")
 

@@ -650,6 +650,10 @@ class StarshipAirflow(BaseStarshipAirflow):
         task_instances = self.insert_directly("task_instance", task_instances)
         return {"task_instances": task_instances}
 
+    @classmethod
+    def task_instance_history_attrs(cls) -> "Dict[str, AttrDesc]":
+        return cls.task_instances_attrs()
+
     def get_task_instance_history(self, dag_id: str, **kwargs):
         """Get task instance history records."""
         # Before Airflow 2.10, we just return an empty list
