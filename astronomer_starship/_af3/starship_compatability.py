@@ -794,8 +794,12 @@ class StarshipAirflow30(StarshipAirflow):
             # Define conflict targets based on table's natural key
             if table_name == "dag_run":
                 stmt = stmt.on_conflict_do_nothing(index_elements=["dag_id", "run_id"])
-            elif table_name in ["task_instance", "task_instance_history"]:
+            elif table_name == "task_instance":
                 stmt = stmt.on_conflict_do_nothing(index_elements=["dag_id", "task_id", "run_id", "map_index"])
+            elif table_name == "task_instance_history":
+                stmt = stmt.on_conflict_do_nothing(
+                    index_elements=["dag_id", "task_id", "run_id", "map_index", "try_number"]
+                )
             else:
                 stmt = stmt.on_conflict_do_nothing()
 
