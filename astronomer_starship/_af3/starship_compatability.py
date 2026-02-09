@@ -712,11 +712,236 @@ class StarshipAirflow30(StarshipAirflow):
 
         return {"task_instances": task_instances}
 
+    @classmethod
+    def task_instance_history_attrs(cls) -> "Dict[str, AttrDesc]":
+        epoch = datetime.datetime(1970, 1, 1, 0, 0)
+        epoch_tz = epoch.replace(tzinfo=pytz.utc)
+        return {
+            "dag_id": {
+                "attr": "dag_id",
+                "methods": [("GET", True), ("DELETE", True)],
+                "test_value": "dag_0",
+            },
+            "limit": {
+                "attr": None,
+                "methods": [("GET", False)],
+                "test_value": 10,
+            },
+            "offset": {
+                "attr": None,
+                "methods": [("GET", False)],
+                "test_value": 0,
+            },
+            "task_instances": {
+                "attr": None,
+                "methods": [("POST", True)],
+                "test_value": [
+                    {
+                        "task_instance_id": "00000000-0000-0000-0000-000000000000",
+                        "dag_id": "dag_0",
+                        "run_id": "manual__1970-01-01T00:00:00+00:00",
+                        "task_id": "task_id",
+                        "map_index": -1,
+                        "try_number": 0,
+                        "start_date": epoch_tz,
+                        "end_date": epoch_tz,
+                        "duration": 1.0,
+                        "state": "success",
+                        "max_tries": 2,
+                        "hostname": "hostname",
+                        "unixname": "unixname",
+                        # AF3: job_id removed
+                        "pool": "default_pool",
+                        "pool_slots": 4,
+                        "queue": "default",
+                        "priority_weight": 5,
+                        "operator": "BashOperator",
+                        "custom_operator_name": None,
+                        "queued_dttm": epoch_tz,
+                        "scheduled_dttm": epoch_tz,  # AF3: new field
+                        "queued_by_job_id": 6,
+                        "pid": 7,
+                        "executor": "LocalExecutor",  # AF3: executor field
+                        "external_executor_id": "external_executor_id",
+                        "trigger_id": None,
+                        "trigger_timeout": epoch_tz,
+                        "executor_config": "\x80\x04}\x94.",
+                        "rendered_map_index": "0",
+                        "task_display_name": "Task Display Name",
+                        "dag_version_id": None,  # AF3: new UUID field linking to dag_version table
+                    }
+                ],
+            },
+        }
+
+    @classmethod
+    def task_instance_history_item_attrs(cls) -> "Dict[str, AttrDesc]":
+        epoch = datetime.datetime(1970, 1, 1, 0, 0)
+        epoch_tz = epoch.replace(tzinfo=pytz.utc)
+        return {
+            "task_instance_id": {
+                "attr": "task_instance_id",
+                "methods": [("POST", True)],
+                "test_value": "00000000-0000-0000-0000-000000000000",
+            },
+            "dag_id": {
+                "attr": "dag_id",
+                "methods": [("POST", True)],
+                "test_value": "dag_0",
+            },
+            "run_id": {
+                "attr": "run_id",
+                "methods": [("POST", True)],
+                "test_value": "manual__1970-01-01T00:00:00+00:00",
+            },
+            "task_id": {
+                "attr": "task_id",
+                "methods": [("POST", True)],
+                "test_value": "task_id",
+            },
+            "map_index": {
+                "attr": "map_index",
+                "methods": [("POST", True)],
+                "test_value": -1,
+            },
+            "try_number": {
+                "attr": "try_number",
+                "methods": [("POST", True)],
+                "test_value": 0,
+            },
+            "start_date": {
+                "attr": "start_date",
+                "methods": [("POST", False)],
+                "test_value": epoch_tz,
+            },
+            "end_date": {
+                "attr": "end_date",
+                "methods": [("POST", False)],
+                "test_value": epoch_tz,
+            },
+            "duration": {
+                "attr": "duration",
+                "methods": [("POST", False)],
+                "test_value": 1.0,
+            },
+            "state": {
+                "attr": "state",
+                "methods": [("POST", False)],
+                "test_value": "success",
+            },
+            "max_tries": {
+                "attr": "max_tries",
+                "methods": [("POST", False)],
+                "test_value": 2,
+            },
+            "hostname": {
+                "attr": "hostname",
+                "methods": [("POST", False)],
+                "test_value": "hostname",
+            },
+            "unixname": {
+                "attr": "unixname",
+                "methods": [("POST", False)],
+                "test_value": "unixname",
+            },
+            "pool": {
+                "attr": "pool",
+                "methods": [("POST", True)],
+                "test_value": "default_pool",
+            },
+            "pool_slots": {
+                "attr": "pool_slots",
+                "methods": [("POST", True)],
+                "test_value": 4,
+            },
+            "queue": {
+                "attr": "queue",
+                "methods": [("POST", False)],
+                "test_value": "default",
+            },
+            "priority_weight": {
+                "attr": "priority_weight",
+                "methods": [("POST", False)],
+                "test_value": 5,
+            },
+            "operator": {
+                "attr": "operator",
+                "methods": [("POST", False)],
+                "test_value": "BashOperator",
+            },
+            "custom_operator_name": {
+                "attr": "custom_operator_name",
+                "methods": [("POST", True)],
+                "test_value": None,
+            },
+            "queued_dttm": {
+                "attr": "queued_dttm",
+                "methods": [("POST", False)],
+                "test_value": epoch_tz,
+            },
+            "scheduled_dttm": {
+                "attr": "scheduled_dttm",
+                "methods": [("POST", False)],
+                "test_value": epoch_tz,
+            },
+            "queued_by_job_id": {
+                "attr": "queued_by_job_id",
+                "methods": [("POST", False)],
+                "test_value": 6,
+            },
+            "pid": {
+                "attr": "pid",
+                "methods": [("POST", False)],
+                "test_value": 7,
+            },
+            "executor": {
+                "attr": "executor",
+                "methods": [("POST", True)],
+                "test_value": "LocalExecutor",
+            },
+            "external_executor_id": {
+                "attr": "external_executor_id",
+                "methods": [("POST", False)],
+                "test_value": "external_executor_id",
+            },
+            "trigger_id": {
+                "attr": "trigger_id",
+                "methods": [("POST", False)],
+                "test_value": None,
+            },
+            "trigger_timeout": {
+                "attr": "trigger_timeout",
+                "methods": [("POST", False)],
+                "test_value": epoch_tz,
+            },
+            "executor_config": {
+                "attr": None,  # Don't map directly - causes serialization issues
+                "methods": [("POST", False)],
+                "test_value": "\x80\x04}\x94.",
+            },
+            "rendered_map_index": {
+                "attr": "rendered_map_index",
+                "methods": [("POST", True)],
+                "test_value": "0",
+            },
+            "task_display_name": {
+                "attr": "task_display_name",
+                "methods": [("POST", True)],
+                "test_value": "Task Display Name",
+            },
+            "dag_version_id": {
+                "attr": "dag_version_id",
+                "methods": [("POST", False)],
+                "test_value": None,
+            },
+            # Note: serialization issues: next_method and next_kwargs intentionally omitted
+        }
+
     def get_task_instance_history(self, dag_id: str, offset: int = 0, limit: int = 10):
         from airflow.models import DagRun
         from airflow.models.taskinstancehistory import TaskInstanceHistory
         from sqlalchemy import desc
-        from sqlalchemy.orm import load_only
+        from sqlalchemy.orm import noload
 
         try:
             sub_query = (
@@ -733,20 +958,12 @@ class StarshipAirflow30(StarshipAirflow):
                 self.session.query(TaskInstanceHistory)
                 .filter(TaskInstanceHistory.dag_id == dag_id)
                 .filter(TaskInstanceHistory.run_id.in_(sub_query))
-                .options(
-                    load_only(
-                        *[
-                            attr_desc["attr"]
-                            for attr, attr_desc in self.task_instance_attrs().items()
-                            if attr_desc["attr"] is not None and attr != "id"  # Exclude 'id' property
-                        ]
-                    )
-                )
+                .options(noload("*"))
                 .order_by(desc(TaskInstanceHistory.start_date))
                 .all()
             )
             return {
-                "task_instances": results_to_list_via_attrs(results, self.task_instance_attrs()),
+                "task_instances": results_to_list_via_attrs(results, self.task_instance_history_item_attrs()),
                 "dag_run_count": self._get_dag_run_count(dag_id),
             }
         except Exception as e:
@@ -794,8 +1011,12 @@ class StarshipAirflow30(StarshipAirflow):
             # Define conflict targets based on table's natural key
             if table_name == "dag_run":
                 stmt = stmt.on_conflict_do_nothing(index_elements=["dag_id", "run_id"])
-            elif table_name in ["task_instance", "task_instance_history"]:
+            elif table_name == "task_instance":
                 stmt = stmt.on_conflict_do_nothing(index_elements=["dag_id", "task_id", "run_id", "map_index"])
+            elif table_name == "task_instance_history":
+                stmt = stmt.on_conflict_do_nothing(
+                    index_elements=["dag_id", "task_id", "run_id", "map_index", "try_number"]
+                )
             else:
                 stmt = stmt.on_conflict_do_nothing()
 

@@ -1,5 +1,5 @@
-ARG RUNTIME_VERSION=13.2.0
-FROM quay.io/astronomer/astro-runtime:${RUNTIME_VERSION}-base
+ARG RUNTIME_VERSION=13.4.0
+FROM astrocrpublic.azurecr.io/astronomer/astro-runtime:${RUNTIME_VERSION}-base
 
 WORKDIR /usr/local/airflow
 USER root
