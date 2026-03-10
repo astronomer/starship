@@ -645,7 +645,7 @@ class StarshipAirflow(BaseStarshipAirflow):
     def task_instance_history_attrs(cls) -> "Dict[str, AttrDesc]":
         return cls.task_instances_attrs()
 
-    def get_task_instance_history(self, dag_id: str, **kwargs):
+    def get_task_instance_history(self, dag_id: str, offset: int = 0, limit: int = 10):
         """Get task instance history records."""
         # Before Airflow 2.10, we just return an empty list
         return {
@@ -653,7 +653,7 @@ class StarshipAirflow(BaseStarshipAirflow):
             "dag_run_count": self._get_dag_run_count(dag_id),
         }
 
-    def set_task_instance_history(self, **kwargs):
+    def set_task_instance_history(self, task_instances: list):
         """Set task instance history records."""
         # Before Airflow 2.10, we do nothing
         return {"task_instances": []}

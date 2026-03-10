@@ -498,17 +498,17 @@ class BaseStarshipAirflow:
     def get_dags(self):
         raise NotImplementedError("Subclasses must implement get_dags method")
 
-    def set_dag_is_paused(self, **kwargs):
+    def set_dag_is_paused(self, dag_id: str, is_paused: bool):
         raise NotImplementedError("Subclasses must implement set_dag_is_paused method")
 
     @classmethod
     def dag_runs_attrs(cls) -> "Dict[str, AttrDesc]":
         raise NotImplementedError("Subclasses must implement dag_runs_attrs method")
 
-    def get_dag_runs(self):
+    def get_dag_runs(self, dag_id: str, offset: int = 0, limit: int = 10) -> dict:
         raise NotImplementedError("Subclasses must implement get_dag_runs method")
 
-    def set_dag_runs(self, **kwargs):
+    def set_dag_runs(self, dag_runs: list):
         raise NotImplementedError("Subclasses must implement set_dag_runs method")
 
     def delete_dag_runs(self, **kwargs):
@@ -518,20 +518,20 @@ class BaseStarshipAirflow:
     def task_instances_attrs(cls) -> "Dict[str, AttrDesc]":
         raise NotImplementedError("Subclasses must implement task_instances_attrs method")
 
-    def get_task_instances(self):
+    def get_task_instances(self, dag_id: str, offset: int = 0, limit: int = 10):
         raise NotImplementedError("Subclasses must implement get_task_instances method")
 
-    def set_task_instances(self, **kwargs):
+    def set_task_instances(self, task_instances: list):
         raise NotImplementedError("Subclasses must implement set_task_instances method")
 
     @classmethod
     def task_instance_history_attrs(cls) -> "Dict[str, AttrDesc]":
         raise NotImplementedError("Subclasses must implement task_instance_history_attrs method")
 
-    def get_task_instance_history(self):
+    def get_task_instance_history(self, dag_id: str, offset: int = 0, limit: int = 10):
         raise NotImplementedError("Subclasses must implement get_task_instance_history method")
 
-    def set_task_instance_history(self, **kwargs):
+    def set_task_instance_history(self, task_instances: list):
         raise NotImplementedError("Subclasses must implement set_task_instance_history method")
 
     @classmethod
