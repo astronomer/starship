@@ -172,7 +172,7 @@ def import_from_qualname(qualname: str) -> "Tuple[str, Any]":
     )
 
 
-def get_kwargs_fn(request_method: str, args: dict, json: dict, attrs: dict):
+def get_kwargs_fn(request_method: str, args: dict, json: dict, attrs: dict, body: Union[bytes, None] = None):
     """
     Walks the attrs dict
     - if the request method is in the "methods" list we call get_from_request
@@ -184,6 +184,7 @@ def get_kwargs_fn(request_method: str, args: dict, json: dict, attrs: dict):
     :param args: request.args
     :param json: request.json
     :param attrs: the attrs to get from the request - e.g. StarshipAirflow27.dag_attrs()
+    :param body: the request body to pass as a keyword argument if provided
 
     >>> get_kwargs_fn(
     ...     "POST",
@@ -210,6 +211,10 @@ def get_kwargs_fn(request_method: str, args: dict, json: dict, attrs: dict):
                 val = get_from_request(args, json, attr, required=is_required)
                 if val is not None:
                     kwargs[key] = val
+    # This is a work-around to make the request body accessible to the Starship compatibility
+    # layer in Airflow 3.
+    if body is not None:
+        kwargs["body"] = body
     return kwargs
 
 
@@ -343,21 +348,20 @@ def normalize_for_comparison(data: "Union[Dict, List]") -> "Union[Dict, List]":
     return data
 
 
-def task_log_path(
+def task_log_base_path(
     *,
-    dag_id,
-    run_id,
-    task_id,
-    map_index,
-    try_number,
+    dag_id: str,
+    run_id: str,
+    task_id: str,
+    map_index: "Union[str, int]",
     **_,
-) -> "Tuple[str, str | None]":
-    """Get the path to the task log file and the connection ID for remote storage."""
+) -> "Tuple[str, Union[str, None]]":
+    """Get the base path to the task log files for all attempts and the corresponding connection ID for remote storage."""
     astronomer_environment = os.getenv("ASTRONOMER_ENVIRONMENT")
 
     if astronomer_environment == "cloud":
         # Astro Hosted
-        base_folder = os.getenv("AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER")
+        base_folder = os.environ["AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER"]
         conn_id = None
         for key in [
             "AIRFLOW_CONN_ASTRO_GCS_LOGGING",
@@ -377,26 +381,22 @@ def task_log_path(
     else:
         raise ConflictError("Task logs are only supported on Astronomer environments.")
 
-    path_components = (
-        [
-            f"dag_id={dag_id}",
-            f"run_id={run_id}",
-            f"task_id={task_id}",
-            f"attempt={try_number}.log",
-        ]
-        if map_index == "-1"
-        else [
-            f"dag_id={dag_id}",
-            f"run_id={run_id}",
-            f"task_id={task_id}",
-            f"map_index={map_index}",
-            f"attempt={try_number}.log",
-        ]
-    )
+    path_components = [
+        base_folder,
+        f"dag_id={dag_id}",
+        f"run_id={run_id}",
+        f"task_id={task_id}",
+    ]
+
+    if map_index is not None and int(map_index) >= 0:
+        path_components += [f"map_index={map_index}"]
+
     # ObjectStoragePath could be used to build the full path, but there seems to be a problem
     # where the connection ID duplicates with each path segment.
     # We also want to have access to the path only for logging purposes.
-    path = os.path.join(base_folder, *path_components)
+    # Furthermore, the import path for ObjectStoragePath depends on the Airflow version.
+    # Keeping ObjectStoragePath out here keeps the function Airflow version agnostic.
+    path = os.path.join(*path_components)
     return path, conn_id
 
 
@@ -538,13 +538,13 @@ class BaseStarshipAirflow:
     def task_log_attrs(cls) -> "Dict[str, AttrDesc]":
         raise NotImplementedError("Subclasses must implement task_log_attrs method")
 
-    def get_task_log(self):
+    def get_task_log(self, filename: str, **kwargs):
         raise NotImplementedError("Subclasses must implement get_task_log method")
 
-    def set_task_log(self, **kwargs):
+    def set_task_log(self, filename: str, **kwargs):
         raise NotImplementedError("Subclasses must implement set_task_log method")
 
-    def delete_task_log(self, **kwargs):
+    def delete_task_log(self, filename: str, **kwargs):
         raise NotImplementedError("Subclasses must implement delete_task_log method")
 
     @classmethod

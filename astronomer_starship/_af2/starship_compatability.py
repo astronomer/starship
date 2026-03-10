@@ -1,6 +1,7 @@
 import datetime
 import json
 import logging
+import os
 from typing import TYPE_CHECKING
 
 import pytz
@@ -12,7 +13,7 @@ from astronomer_starship.common import (
     generic_delete,
     results_to_list_via_attrs,
     run_id_sub_query,
-    task_log_path,
+    task_log_base_path,
 )
 
 if TYPE_CHECKING:
@@ -662,15 +663,15 @@ class StarshipAirflow(BaseStarshipAirflow):
     def task_log_attrs(cls) -> "Dict[str, AttrDesc]":
         return {}
 
-    def get_task_log(self, **kwargs):
+    def get_task_log(self, filename: str, **kwargs):
         """Get the log for a task instance"""
         raise ConflictError("Task logs require Airflow 2.8 or later")
 
-    def set_task_log(self, **kwargs):
+    def set_task_log(self, filename: str, **kwargs):
         """Set the log for a task instance"""
         raise ConflictError("Task logs require Airflow 2.8 or later")
 
-    def delete_task_log(self, **kwargs):
+    def delete_task_log(self, filename: str, **kwargs):
         """Delete the log for a task instance"""
         raise ConflictError("Task logs require Airflow 2.8 or later")
 
@@ -952,14 +953,14 @@ class StarshipAirflow28(StarshipAirflow27):
                 ],
                 "test_value": -1,
             },
-            "try_number": {
-                "attr": "try_number",
+            "filename": {
+                "attr": "filename",
                 "methods": [
                     ("GET", True),
                     ("POST", True),
                     ("DELETE", True),
                 ],
-                "test_value": 0,
+                "test_value": "attempt=1.log",
             },
             "block_size": {
                 "attr": "block_size",
@@ -971,13 +972,14 @@ class StarshipAirflow28(StarshipAirflow27):
             },
         }
 
-    def get_task_log(self, **kwargs):
+    def get_task_log(self, filename: str, **kwargs):
         """Get the log for a task instance"""
         from airflow.io.path import ObjectStoragePath
         from flask import Response
 
         try:
-            path, conn_id = task_log_path(**kwargs)
+            base_path, conn_id = task_log_base_path(**kwargs)
+            path = os.path.join(base_path, filename)
             remote_path = ObjectStoragePath(path, conn_id=conn_id)
             size = remote_path.size()
             logger.debug("Task log at %s has %d bytes", path, size)
@@ -998,12 +1000,13 @@ class StarshipAirflow28(StarshipAirflow27):
         except FileNotFoundError as e:
             raise NotFoundError(f"Task log at {path} not found: {e}") from e
 
-    def set_task_log(self, **kwargs):
+    def set_task_log(self, filename: str, **kwargs):
         """Set the log for a task instance"""
         from airflow.io.path import ObjectStoragePath
         from flask import request
 
-        path, conn_id = task_log_path(**kwargs)
+        base_path, conn_id = task_log_base_path(**kwargs)
+        path = os.path.join(base_path, filename)
         remote_path = ObjectStoragePath(path, conn_id=conn_id)
         block_size = int(kwargs.get("block_size", 1024 * 1024))
 
@@ -1021,12 +1024,13 @@ class StarshipAirflow28(StarshipAirflow27):
                     break
                 f.write(data)
 
-    def delete_task_log(self, **kwargs):
+    def delete_task_log(self, filename: str, **kwargs):
         """Delete the log for a task instance"""
         from airflow.io.path import ObjectStoragePath
 
         try:
-            path, conn_id = task_log_path(**kwargs)
+            base_path, conn_id = task_log_base_path(**kwargs)
+            path = os.path.join(base_path, filename)
             remote_path = ObjectStoragePath(path, conn_id=conn_id)
 
             remote_path.unlink()

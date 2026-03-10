@@ -602,7 +602,7 @@ Get, set or delete task logs.
 | run_id*                  |         | str                | scheduled__2025-06-30T20:00:00+00:00 |
 | task_id*                 |         | str                | task_0                               |
 | map_index*               |         | int                | -1                                   |
-| try_number*              |         | int                | 1                                    |
+| filename*                |         | int                | attempt=1.log                        |
 | block_size               |         | int                | 1048576                              |
 
 **Response**:
@@ -623,7 +623,7 @@ Get, set or delete task logs.
 | run_id*                  |         | str                | scheduled__2025-06-30T20:00:00+00:00 |
 | task_id*                 |         | str                | task_0                               |
 | map_index*               |         | int                | -1                                   |
-| try_number*              |         | int                | 1                                    |
+| filename*                |         | int                | attempt=1.log                        |
 | block_size               |         | int                | 1048576                              |
 
 **Request**:
@@ -646,7 +646,7 @@ Get, set or delete task logs.
 | run_id*                  |         | str                | scheduled__2025-06-30T20:00:00+00:00 |
 | task_id*                 |         | str                | task_0                               |
 | map_index*               |         | int                | -1                                   |
-| try_number*              |         | int                | 1                                    |
+| filename*                |         | int                | attempt=1.log                        |
 
 **Response:** None
 
