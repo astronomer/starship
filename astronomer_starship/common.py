@@ -101,7 +101,7 @@ def telescope(
     *,
     organization: str,
     presigned_url: Union[str, None] = None,
-) -> Union[Dict, str, Tuple[Union[str, bytes], int]]:
+) -> "Union[Dict, str, Tuple[Union[str, bytes], int]]":
     import io
     import runpy
     from contextlib import redirect_stderr, redirect_stdout
