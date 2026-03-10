@@ -11,6 +11,7 @@ from astronomer_starship.common import (
     NotFoundError,
     generic_delete,
     results_to_list_via_attrs,
+    run_id_sub_query,
     task_log_path,
 )
 
@@ -602,22 +603,12 @@ class StarshipAirflow(BaseStarshipAirflow):
         }
 
     def get_task_instances(self, dag_id: str, offset: int = 0, limit: int = 10):
-        from airflow.models import DagRun, TaskInstance
+        from airflow.models import TaskInstance
         from sqlalchemy import desc
         from sqlalchemy.orm import load_only
 
         try:
-            # py36/sqlalchemy1.3 doesn't query(Table.column)
-            # noinspection PyTypeChecker
-            sub_query = (
-                self.session.query(DagRun.run_id)
-                .filter(DagRun.dag_id == dag_id)
-                .order_by(desc(DagRun.start_date))
-                .limit(limit)
-            )
-            if offset:
-                sub_query = sub_query.offset(offset)
-            sub_query = sub_query.subquery()
+            sub_query = run_id_sub_query(dag_id, limit, offset, self.session)
 
             # .in_ doesn't seem to get recognized by type checkers
             # noinspection PyUnresolvedReferences
@@ -1209,23 +1200,12 @@ class StarshipAirflow210(StarshipAirflow29):
 
     def get_task_instance_history(self, dag_id: str, offset: int = 0, limit: int = 10):
         """Get task instance history records."""
-        from airflow.models import DagRun
         from airflow.models.taskinstancehistory import TaskInstanceHistory
         from sqlalchemy import desc
         from sqlalchemy.orm import load_only
 
         try:
-            # py36/sqlalchemy1.3 doesn't query(Table.column)
-            # noinspection PyTypeChecker
-            sub_query = (
-                self.session.query(DagRun.run_id)
-                .filter(DagRun.dag_id == dag_id)
-                .order_by(desc(DagRun.start_date))
-                .limit(limit)
-            )
-            if offset:
-                sub_query = sub_query.offset(offset)
-            sub_query = sub_query.subquery()
+            sub_query = run_id_sub_query(dag_id, limit, offset, self.session)
 
             # .in_ doesn't seem to get recognized by type checkers
             # noinspection PyUnresolvedReferences

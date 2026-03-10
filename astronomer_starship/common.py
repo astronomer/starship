@@ -6,6 +6,7 @@ import os
 from typing import TYPE_CHECKING, Any, Dict, List, Union
 
 from sqlalchemy.orm import Session
+from sqlalchemy.sql.expression import Subquery
 
 if TYPE_CHECKING:
     from typing import Any, Dict, List, Tuple, TypedDict, Union
@@ -397,6 +398,17 @@ def task_log_path(
     # We also want to have access to the path only for logging purposes.
     path = os.path.join(base_folder, *path_components)
     return path, conn_id
+
+
+def run_id_sub_query(dag_id: str, limit: str, offset: str, session: Session) -> Subquery:
+    """Utility function to generate sub-queries for paging over run Ids."""
+    from airflow.models import DagRun
+    from sqlalchemy import desc
+
+    query = session.query(DagRun.run_id).filter(DagRun.dag_id == dag_id).order_by(desc(DagRun.start_date)).limit(limit)
+    if offset:
+        query = query.offset(offset)
+    return query.subquery()
 
 
 class BaseStarshipAirflow:

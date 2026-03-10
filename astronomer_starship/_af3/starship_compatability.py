@@ -9,6 +9,7 @@ from astronomer_starship.common import (
     BaseStarshipAirflow,
     generic_delete,
     results_to_list_via_attrs,
+    run_id_sub_query,
 )
 
 if TYPE_CHECKING:
@@ -651,35 +652,16 @@ class StarshipAirflow30(StarshipAirflow):
         import json
 
         from airflow.models import TaskInstance
-        from sqlalchemy import MetaData, String, desc, select
+        from sqlalchemy import desc
+        from sqlalchemy.orm import noload
 
         try:
-            engine = self.session.get_bind()
-            metadata = MetaData(bind=engine)
-
-            metadata.reflect(engine, only=["dag_run"])
-            dag_run_table = metadata.tables["dag_run"]
-            dag_run_table.c.triggered_by.type = String(50)
-
-            sub_stmt = (
-                select(dag_run_table.c.run_id)
-                .where(dag_run_table.c.dag_id == dag_id)
-                .order_by(desc(dag_run_table.c.start_date))
-                .limit(limit)
-            )
-            if offset:
-                sub_stmt = sub_stmt.offset(offset)
-
-            run_ids_result = self.session.execute(sub_stmt)
-            run_ids = [row[0] for row in run_ids_result]
-
-            # Use noload() to prevent eager loading
-            from sqlalchemy.orm import noload
+            sub_query = run_id_sub_query(dag_id, limit, offset, self.session)
 
             results = (
                 self.session.query(TaskInstance)
                 .filter(TaskInstance.dag_id == dag_id)
-                .filter(TaskInstance.run_id.in_(run_ids))
+                .filter(TaskInstance.run_id.in_(sub_query))
                 .options(noload("*"))
                 .order_by(desc(TaskInstance.start_date))
                 .all()
@@ -938,21 +920,12 @@ class StarshipAirflow30(StarshipAirflow):
         }
 
     def get_task_instance_history(self, dag_id: str, offset: int = 0, limit: int = 10):
-        from airflow.models import DagRun
         from airflow.models.taskinstancehistory import TaskInstanceHistory
         from sqlalchemy import desc
         from sqlalchemy.orm import noload
 
         try:
-            sub_query = (
-                self.session.query(DagRun.run_id)
-                .filter(DagRun.dag_id == dag_id)
-                .order_by(desc(DagRun.start_date))
-                .limit(limit)
-            )
-            if offset:
-                sub_query = sub_query.offset(offset)
-            sub_query = sub_query.subquery()
+            sub_query = run_id_sub_query(dag_id, limit, offset, self.session)
 
             results = (
                 self.session.query(TaskInstanceHistory)
