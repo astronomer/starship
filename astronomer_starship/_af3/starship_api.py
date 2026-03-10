@@ -114,6 +114,13 @@ class StarshipRoute:
             )
 
 
+async def request_body(request: Request) -> bytes | None:
+    """async 'dependable' to get request body"""
+    # TODO can we return a sync generator which internally uses async streaming?
+    body = await request.body()
+    return body if body else None
+
+
 async def starship_route(request: Request) -> StarshipRoute:
     """async 'dependable' to build StarshipRoute from Request"""
     content_type = request.headers.get("Content-Type")
@@ -268,6 +275,7 @@ class StarshipApi(FastAPI):
     @router.api_route("/task_log", methods=["GET", "POST", "DELETE"])
     @staticmethod
     def task_logs(
+        body: Annotated[bytes | None, Depends(request_body)],
         starship_route: Annotated[StarshipRoute, Depends(starship_route)],
         starship_compat: Annotated[StarshipAirflow, Depends(starship_compat)],
     ):
@@ -275,7 +283,7 @@ class StarshipApi(FastAPI):
             get=starship_compat.get_task_log,
             post=starship_compat.set_task_log,
             delete=starship_compat.delete_task_log,
-            kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.task_log_attrs()),
+            kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.task_log_attrs(), body=body),
         )
 
     @router.api_route("/xcom", methods=["GET", "POST", "DELETE"])
