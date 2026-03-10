@@ -535,6 +535,13 @@ class BaseStarshipAirflow:
         raise NotImplementedError("Subclasses must implement set_task_instance_history method")
 
     @classmethod
+    def task_log_files_attrs(cls) -> "Dict[str, AttrDesc]":
+        raise NotImplementedError("Subclasses must implement task_log_files_attrs method")
+
+    def get_task_log_files(self, dag_id: str, offset: int = 0, limit: int = 10):
+        raise NotImplementedError("Subclasses must implement get_task_log_files method")
+
+    @classmethod
     def task_log_attrs(cls) -> "Dict[str, AttrDesc]":
         raise NotImplementedError("Subclasses must implement task_log_attrs method")
 

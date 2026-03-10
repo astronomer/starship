@@ -272,6 +272,17 @@ class StarshipApi(FastAPI):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.task_instance_history_attrs()),
         )
 
+    @router.api_route("/task_log_files", methods=["GET"])
+    @staticmethod
+    def task_log_files(
+        starship_route: Annotated[StarshipRoute, Depends(starship_route)],
+        starship_compat: Annotated[StarshipAirflow, Depends(starship_compat)],
+    ):
+        return starship_route(
+            get=starship_compat.get_task_log_files,
+            kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.task_log_files_attrs()),
+        )
+
     @router.api_route("/task_log", methods=["GET", "POST", "DELETE"])
     @staticmethod
     def task_logs(

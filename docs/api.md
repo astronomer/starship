@@ -578,9 +578,59 @@ Get and set TaskInstanceHistory records.
 | trigger_timeout          | >2.1    | date | 1970-01-01T00:00:00+00:00         |
 | executor_config          |         | str  |                                   |
 
+## Task Log Files
+
+Get a list of task log files.
+
+This endpoint allows to page over all task log files and then use the task log API for each file individually.
+
+!!! danger "Experimental"
+    This feature is considered experimental and subject to change.
+
+**Requirements:**
+
+- Airflow 2.8+
+- Astro hosted deployments or local astro dev environment
+
+---
+
+### `GET /api/starship/task_log_files`
+
+**Parameters:** Args
+
+| Field (*=Required)       | Version | Type               | Example                              |
+|--------------------------|---------|--------------------|--------------------------------------|
+| dag_id*                  |         | str                | dag_0                                |
+| limit                    |         | int                | 10                                   |
+| offset                   |         | int                | 0                                    |
+
+**Response**:
+
+```json
+{
+  "task_log_files": [
+    {
+      "dag_id": "example_log",
+      "run_id": "scheduled__2026-03-10T00:00:00+00:00",
+      "task_id": "run",
+      "map_index": -1,
+      "filename": "attempt=1.log"
+    },
+    {
+      "dag_id": "example_log",
+      "run_id": "scheduled__2026-03-10T00:00:00+00:00",
+      "task_id": "run",
+      "map_index": -1,
+      "filename": "attempt=1.log.123"
+    }
+  ],
+  "dag_run_count": 1
+}
+```
+
 ## Task Log
 
-Get, set or delete task logs.
+Get, set or delete individual task log files.
 
 !!! danger "Experimental"
     This feature is considered experimental and subject to change.

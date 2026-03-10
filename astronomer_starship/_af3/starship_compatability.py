@@ -951,6 +951,71 @@ class StarshipAirflow30(StarshipAirflow):
         return {"task_instances": task_instances}
 
     @classmethod
+    def task_log_files_attrs(cls) -> "Dict[str, AttrDesc]":
+        epoch = datetime.datetime(1970, 1, 1, 0, 0)
+        epoch = epoch.replace(tzinfo=pytz.utc)
+        return {
+            "dag_id": {
+                "attr": "dag_id",
+                "methods": [("GET", True), ("DELETE", True)],
+                "test_value": "dag_0",
+            },
+            "limit": {
+                "attr": None,
+                "methods": [("GET", False)],
+                "test_value": 10,
+            },
+            "offset": {
+                "attr": None,
+                "methods": [("GET", False)],
+                "test_value": 0,
+            },
+        }
+
+    def get_task_log_files(self, dag_id: str, offset: int = 0, limit: int = 10):
+        from airflow.models import TaskInstance
+        from airflow.sdk import ObjectStoragePath
+        from sqlalchemy import desc
+        from sqlalchemy.orm import noload
+
+        sub_query = run_id_sub_query(dag_id, limit, offset, self.session)
+
+        task_instances = (
+            self.session.query(TaskInstance)
+            .filter(TaskInstance.dag_id == dag_id)
+            .filter(TaskInstance.run_id.in_(sub_query))
+            .options(noload("*"))
+            .order_by(desc(TaskInstance.start_date))
+            .all()
+        )
+
+        results = []
+
+        for ti in task_instances:
+            path, conn_id = task_log_base_path(
+                dag_id=ti.dag_id,
+                run_id=ti.run_id,
+                task_id=ti.task_id,
+                map_index=ti.map_index,
+            )
+
+            for p in ObjectStoragePath(path, conn_id=conn_id).iterdir():
+                results.append(
+                    {
+                        "dag_id": ti.dag_id,
+                        "run_id": ti.run_id,
+                        "task_id": ti.task_id,
+                        "map_index": ti.map_index,
+                        "filename": p.name,
+                    }
+                )
+
+        return {
+            "task_log_files": results,
+            "dag_run_count": self._get_dag_run_count(dag_id),
+        }
+
+    @classmethod
     def task_log_attrs(cls) -> "Dict[str, AttrDesc]":
         return {
             "dag_id": {
