@@ -116,11 +116,12 @@ class StarshipRoute:
 
 async def starship_route(request: Request) -> StarshipRoute:
     """async 'dependable' to build StarshipRoute from Request"""
-    body = await request.body()
+    content_type = request.headers.get("Content-Type")
+    is_json = content_type == "application/json"
     return StarshipRoute(
         method=request.method,
         args=(request.query_params if request.method in ["GET", "POST", "DELETE"] else {}),
-        json=await request.json() if body else {},
+        json=await request.json() if is_json else {},
     )
 
 
