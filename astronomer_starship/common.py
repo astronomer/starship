@@ -400,7 +400,7 @@ def task_log_path(
     return path, conn_id
 
 
-def run_id_sub_query(dag_id: str, limit: str, offset: str, session: Session) -> Subquery:
+def run_id_sub_query(dag_id: str, limit: int, offset: int, session: Session) -> Subquery:
     """Utility function to generate sub-queries for paging over run Ids."""
     from airflow.models import DagRun
     from sqlalchemy import desc
