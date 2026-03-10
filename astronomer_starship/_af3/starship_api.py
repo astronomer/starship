@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Annotated
 
 from airflow.api_fastapi.common.router import AirflowRouter
 from airflow.plugins_manager import AirflowPlugin
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 
 from astronomer_starship._af3.starship_compatability import StarshipAirflow, StarshipCompatabilityLayer
@@ -94,6 +94,8 @@ class StarshipRoute:
 
             if res is None:
                 return None
+            elif isinstance(res, Response):
+                return res
 
             return JSONResponse(res)
         except HttpError as e:
