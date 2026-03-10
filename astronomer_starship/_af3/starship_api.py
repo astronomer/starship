@@ -12,7 +12,7 @@ from astronomer_starship._af3.starship_compatability import StarshipAirflow, Sta
 from astronomer_starship.common import HttpError, get_kwargs_fn, telescope
 
 if TYPE_CHECKING:
-    from typing import Callable
+    from typing import Callable, Optional
 
 
 @dataclass
@@ -30,7 +30,7 @@ class StarshipRoute:
         put=None,
         delete=None,
         patch=None,
-        kwargs_fn: "Callable[[dict, dict], dict]" = None,
+        kwargs_fn: "Optional[Callable[[dict, dict], dict]]" = None,
     ):
         try:
             # noinspection PyArgumentList

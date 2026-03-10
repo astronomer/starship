@@ -3,7 +3,7 @@
 import json
 import logging
 import os
-from typing import TYPE_CHECKING, Any, Dict, List, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.expression import Subquery
@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from typing import Any, Dict, List, Tuple, TypedDict, Union
 
     class AttrDesc(TypedDict):
-        attr: str
+        attr: Optional[str]
         """the name in the ORM, likely the same as the key"""
 
         methods: List[Tuple[str, bool]]
@@ -67,7 +67,7 @@ def get_json_or_clean_str(o: str) -> Union[List[Any], Dict[Any, Any], Any]:
         return o.strip()
 
 
-def clean_airflow_report_output(log_string: str) -> Union[dict, str]:
+def clean_airflow_report_output(log_string: str) -> Union[List[Any], Dict[Any, Any], Any]:
     r"""For Aeroscope - Look for the magic string from the Airflow report and then decode the base64 and convert to json
     Or return output as a list, trimmed and split on newlines
     >>> clean_airflow_report_output("INFO 123 - xyz - abc\n\n\nERROR - 1234\n%%%%%%%\naGVsbG8gd29ybGQ=")
@@ -101,7 +101,7 @@ def telescope(
     *,
     organization: str,
     presigned_url: Union[str, None] = None,
-) -> Union[Dict, str]:
+) -> Union[Dict, str, Tuple[Union[str, bytes], int]]:
     import io
     import runpy
     from contextlib import redirect_stderr, redirect_stdout

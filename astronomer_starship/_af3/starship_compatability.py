@@ -1,7 +1,7 @@
 import datetime
 import json
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import pytz
 
@@ -1029,7 +1029,7 @@ class StarshipAirflow30(StarshipAirflow):
             self.session.rollback()
             raise e
 
-    def update_dag_version_id(self, dag_id: str, dag_version_id: str = None):
+    def update_dag_version_id(self, dag_id: str, dag_version_id: Optional[str] = None):
         """
         Update dag_version_id(FK) for task instances AND dag runs that have NULL values.
         Update created_dag_version_id on dag_run records so the UI can properly display them.
