@@ -6,10 +6,11 @@ import os
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from sqlalchemy.orm import Session
-from sqlalchemy.sql.expression import Subquery
 
 if TYPE_CHECKING:
     from typing import Any, Dict, List, Tuple, TypedDict, Union
+
+    from sqlalchemy.sql.expression import Subquery
 
     class AttrDesc(TypedDict):
         attr: Optional[str]
@@ -400,7 +401,7 @@ def task_log_base_path(
     return path, conn_id
 
 
-def run_id_sub_query(dag_id: str, limit: int, offset: int, session: Session) -> Subquery:
+def run_id_sub_query(dag_id: str, limit: int, offset: int, session: Session) -> "Subquery":
     """Utility function to generate sub-queries for paging over run Ids."""
     from airflow.models import DagRun
     from sqlalchemy import desc
