@@ -1,14 +1,18 @@
 import datetime
 import json
 import logging
-from typing import TYPE_CHECKING
+import os
+from typing import TYPE_CHECKING, Optional
 
 import pytz
 
 from astronomer_starship.common import (
     BaseStarshipAirflow,
+    NotFoundError,
     generic_delete,
     results_to_list_via_attrs,
+    run_id_sub_query,
+    task_log_base_path,
 )
 
 if TYPE_CHECKING:
@@ -651,35 +655,16 @@ class StarshipAirflow30(StarshipAirflow):
         import json
 
         from airflow.models import TaskInstance
-        from sqlalchemy import MetaData, String, desc, select
+        from sqlalchemy import desc
+        from sqlalchemy.orm import noload
 
         try:
-            engine = self.session.get_bind()
-            metadata = MetaData(bind=engine)
-
-            metadata.reflect(engine, only=["dag_run"])
-            dag_run_table = metadata.tables["dag_run"]
-            dag_run_table.c.triggered_by.type = String(50)
-
-            sub_stmt = (
-                select(dag_run_table.c.run_id)
-                .where(dag_run_table.c.dag_id == dag_id)
-                .order_by(desc(dag_run_table.c.start_date))
-                .limit(limit)
-            )
-            if offset:
-                sub_stmt = sub_stmt.offset(offset)
-
-            run_ids_result = self.session.execute(sub_stmt)
-            run_ids = [row[0] for row in run_ids_result]
-
-            # Use noload() to prevent eager loading
-            from sqlalchemy.orm import noload
+            sub_query = run_id_sub_query(dag_id, limit, offset, self.session)
 
             results = (
                 self.session.query(TaskInstance)
                 .filter(TaskInstance.dag_id == dag_id)
-                .filter(TaskInstance.run_id.in_(run_ids))
+                .filter(TaskInstance.run_id.in_(sub_query))
                 .options(noload("*"))
                 .order_by(desc(TaskInstance.start_date))
                 .all()
@@ -938,21 +923,12 @@ class StarshipAirflow30(StarshipAirflow):
         }
 
     def get_task_instance_history(self, dag_id: str, offset: int = 0, limit: int = 10):
-        from airflow.models import DagRun
         from airflow.models.taskinstancehistory import TaskInstanceHistory
         from sqlalchemy import desc
         from sqlalchemy.orm import noload
 
         try:
-            sub_query = (
-                self.session.query(DagRun.run_id)
-                .filter(DagRun.dag_id == dag_id)
-                .order_by(desc(DagRun.start_date))
-                .limit(limit)
-            )
-            if offset:
-                sub_query = sub_query.offset(offset)
-            sub_query = sub_query.subquery()
+            sub_query = run_id_sub_query(dag_id, limit, offset, self.session)
 
             results = (
                 self.session.query(TaskInstanceHistory)
@@ -973,6 +949,191 @@ class StarshipAirflow30(StarshipAirflow):
     def set_task_instance_history(self, task_instances: list):
         task_instances = self.insert_directly("task_instance_history", task_instances)
         return {"task_instances": task_instances}
+
+    @classmethod
+    def task_log_files_attrs(cls) -> "Dict[str, AttrDesc]":
+        epoch = datetime.datetime(1970, 1, 1, 0, 0)
+        epoch = epoch.replace(tzinfo=pytz.utc)
+        return {
+            "dag_id": {
+                "attr": "dag_id",
+                "methods": [("GET", True), ("DELETE", True)],
+                "test_value": "dag_0",
+            },
+            "limit": {
+                "attr": None,
+                "methods": [("GET", False)],
+                "test_value": 10,
+            },
+            "offset": {
+                "attr": None,
+                "methods": [("GET", False)],
+                "test_value": 0,
+            },
+        }
+
+    def get_task_log_files(self, dag_id: str, offset: int = 0, limit: int = 10):
+        from airflow.models import TaskInstance
+        from airflow.sdk import ObjectStoragePath
+        from sqlalchemy import desc
+        from sqlalchemy.orm import noload
+
+        sub_query = run_id_sub_query(dag_id, limit, offset, self.session)
+
+        task_instances = (
+            self.session.query(TaskInstance)
+            .filter(TaskInstance.dag_id == dag_id)
+            .filter(TaskInstance.run_id.in_(sub_query))
+            .options(noload("*"))
+            .order_by(desc(TaskInstance.start_date))
+            .all()
+        )
+
+        results = []
+
+        for ti in task_instances:
+            path, conn_id = task_log_base_path(
+                dag_id=ti.dag_id,
+                run_id=ti.run_id,
+                task_id=ti.task_id,
+                map_index=ti.map_index,
+            )
+
+            for p in ObjectStoragePath(path, conn_id=conn_id).iterdir():
+                results.append(
+                    {
+                        "dag_id": ti.dag_id,
+                        "run_id": ti.run_id,
+                        "task_id": ti.task_id,
+                        "map_index": ti.map_index,
+                        "filename": p.name,
+                    }
+                )
+
+        return {
+            "task_log_files": results,
+            "dag_run_count": self._get_dag_run_count(dag_id),
+        }
+
+    @classmethod
+    def task_log_attrs(cls) -> "Dict[str, AttrDesc]":
+        return {
+            "dag_id": {
+                "attr": "dag_id",
+                "methods": [
+                    ("GET", True),
+                    ("POST", True),
+                    ("DELETE", True),
+                ],
+                "test_value": "dag_0",
+            },
+            "run_id": {
+                "attr": "run_id",
+                "methods": [
+                    ("GET", True),
+                    ("POST", True),
+                    ("DELETE", True),
+                ],
+                "test_value": "manual__1970-01-01T00:00:00+00:00",
+            },
+            "task_id": {
+                "attr": "task_id",
+                "methods": [
+                    ("GET", True),
+                    ("POST", True),
+                    ("DELETE", True),
+                ],
+                "test_value": "task_id",
+            },
+            "map_index": {
+                "attr": "map_index",
+                "methods": [
+                    ("GET", True),
+                    ("POST", True),
+                    ("DELETE", True),
+                ],
+                "test_value": -1,
+            },
+            "filename": {
+                "attr": "filename",
+                "methods": [
+                    ("GET", True),
+                    ("POST", True),
+                    ("DELETE", True),
+                ],
+                "test_value": "attempt=1.log",
+            },
+            "block_size": {
+                "attr": "block_size",
+                "methods": [
+                    ("GET", False),
+                    ("POST", False),
+                ],
+                "test_value": 1024 * 1024,
+            },
+        }
+
+    def get_task_log(self, filename: str, **kwargs):
+        """Get the log for a task instance"""
+        from airflow.sdk import ObjectStoragePath
+        from fastapi.responses import StreamingResponse
+
+        try:
+            base_path, conn_id = task_log_base_path(**kwargs)
+            path = os.path.join(base_path, filename)
+            remote_path = ObjectStoragePath(path, conn_id=conn_id)
+            size = remote_path.size()
+            logger.debug("Task log at %s has %d bytes", path, size)
+            block_size = int(kwargs.get("block_size", 1024 * 1024))
+
+            def generator():
+                offset = 0
+
+                with remote_path.open("rb") as f:
+                    while offset < size:
+                        data = f.read(block_size)
+                        logger.info("Yielding %d bytes at offset %d", len(data), offset)
+                        yield data
+
+                        offset += block_size
+
+            return StreamingResponse(generator(), media_type="text/plain")
+        except FileNotFoundError as e:
+            raise NotFoundError(f"Task log at {path} not found: {e}") from e
+
+    def set_task_log(self, filename: str, **kwargs):
+        """Set the log for a task instance"""
+        from airflow.sdk import ObjectStoragePath
+
+        body: bytes = kwargs.pop("body")
+        base_path, conn_id = task_log_base_path(**kwargs)
+        path = os.path.join(base_path, filename)
+        remote_path = ObjectStoragePath(path, conn_id=conn_id)
+
+        # If local file system, ensure the parent directories exist.
+        # Causes problems with remote storage (where it is not needed),
+        # as it requires bucket level permissions.
+        if conn_id is None:
+            remote_path.parent.mkdir(exist_ok=True, parents=True)
+
+        # There is no point in streaming the body, because due to the
+        # way Starship is currently integrated with FastAPI, the body
+        # is already in memory.
+        with remote_path.open("wb") as f:
+            f.write(body)
+
+    def delete_task_log(self, filename: str, **kwargs):
+        """Delete the log for a task instance"""
+        from airflow.sdk import ObjectStoragePath
+
+        try:
+            base_path, conn_id = task_log_base_path(**kwargs)
+            path = os.path.join(base_path, filename)
+            remote_path = ObjectStoragePath(path, conn_id=conn_id)
+
+            remote_path.unlink()
+        except FileNotFoundError as e:
+            raise NotFoundError(f"Task log at {path} not found: {e}") from e
 
     def insert_directly(self, table_name, items):  # noqa: C901
         import pickle
@@ -1056,7 +1217,7 @@ class StarshipAirflow30(StarshipAirflow):
             self.session.rollback()
             raise e
 
-    def update_dag_version_id(self, dag_id: str, dag_version_id: str = None):
+    def update_dag_version_id(self, dag_id: str, dag_version_id: Optional[str] = None):
         """
         Update dag_version_id(FK) for task instances AND dag runs that have NULL values.
         Update created_dag_version_id on dag_run records so the UI can properly display them.

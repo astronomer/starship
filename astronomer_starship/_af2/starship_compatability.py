@@ -12,10 +12,12 @@ from astronomer_starship.common import (
     NotFoundError,
     generic_delete,
     results_to_list_via_attrs,
+    run_id_sub_query,
+    task_log_base_path,
 )
 
 if TYPE_CHECKING:
-    from typing import Dict, Tuple, Union
+    from typing import Dict, Union
 
     from astronomer_starship.common import AttrDesc
 
@@ -602,22 +604,12 @@ class StarshipAirflow(BaseStarshipAirflow):
         }
 
     def get_task_instances(self, dag_id: str, offset: int = 0, limit: int = 10):
-        from airflow.models import DagRun, TaskInstance
+        from airflow.models import TaskInstance
         from sqlalchemy import desc
         from sqlalchemy.orm import load_only
 
         try:
-            # py36/sqlalchemy1.3 doesn't query(Table.column)
-            # noinspection PyTypeChecker
-            sub_query = (
-                self.session.query(DagRun.run_id)
-                .filter(DagRun.dag_id == dag_id)
-                .order_by(desc(DagRun.start_date))
-                .limit(limit)
-            )
-            if offset:
-                sub_query = sub_query.offset(offset)
-            sub_query = sub_query.subquery()
+            sub_query = run_id_sub_query(dag_id, limit, offset, self.session)
 
             # .in_ doesn't seem to get recognized by type checkers
             # noinspection PyUnresolvedReferences
@@ -654,7 +646,7 @@ class StarshipAirflow(BaseStarshipAirflow):
     def task_instance_history_attrs(cls) -> "Dict[str, AttrDesc]":
         return cls.task_instances_attrs()
 
-    def get_task_instance_history(self, dag_id: str, **kwargs):
+    def get_task_instance_history(self, dag_id: str, offset: int = 0, limit: int = 10):
         """Get task instance history records."""
         # Before Airflow 2.10, we just return an empty list
         return {
@@ -662,7 +654,7 @@ class StarshipAirflow(BaseStarshipAirflow):
             "dag_run_count": self._get_dag_run_count(dag_id),
         }
 
-    def set_task_instance_history(self, **kwargs):
+    def set_task_instance_history(self, task_instances: list):
         """Set task instance history records."""
         # Before Airflow 2.10, we do nothing
         return {"task_instances": []}
@@ -671,15 +663,15 @@ class StarshipAirflow(BaseStarshipAirflow):
     def task_log_attrs(cls) -> "Dict[str, AttrDesc]":
         return {}
 
-    def get_task_log(self, **kwargs):
+    def get_task_log(self, filename: str, **kwargs):
         """Get the log for a task instance"""
         raise ConflictError("Task logs require Airflow 2.8 or later")
 
-    def set_task_log(self, **kwargs):
+    def set_task_log(self, filename: str, **kwargs):
         """Set the log for a task instance"""
         raise ConflictError("Task logs require Airflow 2.8 or later")
 
-    def delete_task_log(self, **kwargs):
+    def delete_task_log(self, filename: str, **kwargs):
         """Delete the log for a task instance"""
         raise ConflictError("Task logs require Airflow 2.8 or later")
 
@@ -923,6 +915,71 @@ class StarshipAirflow28(StarshipAirflow27):
         return attrs
 
     @classmethod
+    def task_log_files_attrs(cls) -> "Dict[str, AttrDesc]":
+        epoch = datetime.datetime(1970, 1, 1, 0, 0)
+        epoch = epoch.replace(tzinfo=pytz.utc)
+        return {
+            "dag_id": {
+                "attr": "dag_id",
+                "methods": [("GET", True), ("DELETE", True)],
+                "test_value": "dag_0",
+            },
+            "limit": {
+                "attr": None,
+                "methods": [("GET", False)],
+                "test_value": 10,
+            },
+            "offset": {
+                "attr": None,
+                "methods": [("GET", False)],
+                "test_value": 0,
+            },
+        }
+
+    def get_task_log_files(self, dag_id: str, offset: int = 0, limit: int = 10):
+        from airflow.io.path import ObjectStoragePath
+        from airflow.models import TaskInstance
+        from sqlalchemy import desc
+        from sqlalchemy.orm import noload
+
+        sub_query = run_id_sub_query(dag_id, limit, offset, self.session)
+
+        task_instances = (
+            self.session.query(TaskInstance)
+            .filter(TaskInstance.dag_id == dag_id)
+            .filter(TaskInstance.run_id.in_(sub_query))
+            .options(noload("*"))
+            .order_by(desc(TaskInstance.start_date))
+            .all()
+        )
+
+        results = []
+
+        for ti in task_instances:
+            path, conn_id = task_log_base_path(
+                dag_id=ti.dag_id,
+                run_id=ti.run_id,
+                task_id=ti.task_id,
+                map_index=ti.map_index,
+            )
+
+            for p in ObjectStoragePath(path, conn_id=conn_id).iterdir():
+                results.append(
+                    {
+                        "dag_id": ti.dag_id,
+                        "run_id": ti.run_id,
+                        "task_id": ti.task_id,
+                        "map_index": ti.map_index,
+                        "filename": p.name,
+                    }
+                )
+
+        return {
+            "task_log_files": results,
+            "dag_run_count": self._get_dag_run_count(dag_id),
+        }
+
+    @classmethod
     def task_log_attrs(cls) -> "Dict[str, AttrDesc]":
         return {
             "dag_id": {
@@ -961,14 +1018,14 @@ class StarshipAirflow28(StarshipAirflow27):
                 ],
                 "test_value": -1,
             },
-            "try_number": {
-                "attr": "try_number",
+            "filename": {
+                "attr": "filename",
                 "methods": [
                     ("GET", True),
                     ("POST", True),
                     ("DELETE", True),
                 ],
-                "test_value": 0,
+                "test_value": "attempt=1.log",
             },
             "block_size": {
                 "attr": "block_size",
@@ -980,71 +1037,14 @@ class StarshipAirflow28(StarshipAirflow27):
             },
         }
 
-    @classmethod
-    def _task_log_path(
-        cls,
-        *,
-        dag_id,
-        run_id,
-        task_id,
-        map_index,
-        try_number,
-        **_,
-    ) -> "Tuple[str, str | None]":
-        """Get the path to the task log file and the connection ID for remote storage."""
-        astronomer_environment = os.getenv("ASTRONOMER_ENVIRONMENT")
-
-        if astronomer_environment == "cloud":
-            # Astro Hosted
-            base_folder = os.getenv("AIRFLOW__LOGGING__REMOTE_BASE_LOG_FOLDER")
-            conn_id = None
-            for key in [
-                "AIRFLOW_CONN_ASTRO_GCS_LOGGING",
-                "AIRFLOW_CONN_ASTRO_AZURE_LOGS",
-                "AIRFLOW_CONN_ASTRO_S3_LOGGING",
-            ]:
-                conn_id = os.getenv(key)
-                if conn_id is not None:
-                    break
-
-            if conn_id is None:
-                raise ConflictError("No remote logging connection found.")
-        elif astronomer_environment == "local":
-            # Local astro dev environment
-            base_folder = "/usr/local/airflow/logs"
-            conn_id = None
-        else:
-            raise ConflictError("Task logs are only supported on Astronomer environments.")
-
-        path_components = (
-            [
-                f"dag_id={dag_id}",
-                f"run_id={run_id}",
-                f"task_id={task_id}",
-                f"attempt={try_number}.log",
-            ]
-            if map_index == "-1"
-            else [
-                f"dag_id={dag_id}",
-                f"run_id={run_id}",
-                f"task_id={task_id}",
-                f"map_index={map_index}",
-                f"attempt={try_number}.log",
-            ]
-        )
-        # ObjectStoragePath could be used to build the full path, but there seems to be a problem
-        # where the connection ID duplicates with each path segment.
-        # We also want to have access to the path only for logging purposes.
-        path = os.path.join(base_folder, *path_components)
-        return path, conn_id
-
-    def get_task_log(self, **kwargs):
+    def get_task_log(self, filename: str, **kwargs):
         """Get the log for a task instance"""
         from airflow.io.path import ObjectStoragePath
         from flask import Response
 
         try:
-            path, conn_id = self._task_log_path(**kwargs)
+            base_path, conn_id = task_log_base_path(**kwargs)
+            path = os.path.join(base_path, filename)
             remote_path = ObjectStoragePath(path, conn_id=conn_id)
             size = remote_path.size()
             logger.debug("Task log at %s has %d bytes", path, size)
@@ -1065,12 +1065,13 @@ class StarshipAirflow28(StarshipAirflow27):
         except FileNotFoundError as e:
             raise NotFoundError(f"Task log at {path} not found: {e}") from e
 
-    def set_task_log(self, **kwargs):
+    def set_task_log(self, filename: str, **kwargs):
         """Set the log for a task instance"""
         from airflow.io.path import ObjectStoragePath
         from flask import request
 
-        path, conn_id = self._task_log_path(**kwargs)
+        base_path, conn_id = task_log_base_path(**kwargs)
+        path = os.path.join(base_path, filename)
         remote_path = ObjectStoragePath(path, conn_id=conn_id)
         block_size = int(kwargs.get("block_size", 1024 * 1024))
 
@@ -1088,12 +1089,13 @@ class StarshipAirflow28(StarshipAirflow27):
                     break
                 f.write(data)
 
-    def delete_task_log(self, **kwargs):
+    def delete_task_log(self, filename: str, **kwargs):
         """Delete the log for a task instance"""
         from airflow.io.path import ObjectStoragePath
 
         try:
-            path, conn_id = self._task_log_path(**kwargs)
+            base_path, conn_id = task_log_base_path(**kwargs)
+            path = os.path.join(base_path, filename)
             remote_path = ObjectStoragePath(path, conn_id=conn_id)
 
             remote_path.unlink()
@@ -1267,23 +1269,12 @@ class StarshipAirflow210(StarshipAirflow29):
 
     def get_task_instance_history(self, dag_id: str, offset: int = 0, limit: int = 10):
         """Get task instance history records."""
-        from airflow.models import DagRun
         from airflow.models.taskinstancehistory import TaskInstanceHistory
         from sqlalchemy import desc
         from sqlalchemy.orm import load_only
 
         try:
-            # py36/sqlalchemy1.3 doesn't query(Table.column)
-            # noinspection PyTypeChecker
-            sub_query = (
-                self.session.query(DagRun.run_id)
-                .filter(DagRun.dag_id == dag_id)
-                .order_by(desc(DagRun.start_date))
-                .limit(limit)
-            )
-            if offset:
-                sub_query = sub_query.offset(offset)
-            sub_query = sub_query.subquery()
+            sub_query = run_id_sub_query(dag_id, limit, offset, self.session)
 
             # .in_ doesn't seem to get recognized by type checkers
             # noinspection PyUnresolvedReferences

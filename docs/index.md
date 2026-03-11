@@ -60,23 +60,23 @@ pip install astronomer-starship
 The following Airflow features are supported by the current version of Starship when running
 on the corresponding minimum Airflow version.
 
-| Feature | Minimum Airflow Version | Supported |
-| --- | --- | --- |
-| Connections | 2.0 | ✅ |
-| Dag runs | 2.0 | ✅ |
-| Environment variables | 2.0 | ✅ |
-| Pools | 2.0 | ✅ |
-| Task instances | 2.0 | ✅ |
-| Variables | 2.0 | ✅ |
-| Task Logs | 2.0 | ❌ |
-| XComs | 2.0 | ❌ |
-| Task instance history | 2.10 | ✅ |
-| Assets | 3.0 | ❌ |
-| Backfills | 3.0 | ❌ |
-| Dag versions | 3.0 | ❌ |
-| Task instance notes | 3.0 | ❌ |
-| HITL | 3.1 | ❌ |
-| Teams | 3.1 | ❌ |
+| Feature | Minimum Airflow Version | Supported | Notes |
+| --- | --- | --- | --- |
+| Connections | 2.0 | ✅ | |
+| Dag runs | 2.0 | ✅ | |
+| Environment variables | 2.0 | ✅ | |
+| Pools | 2.0 | ✅ | |
+| Task instances | 2.0 | ✅ | |
+| Variables | 2.0 | ✅ | |
+| Task Logs | 2.8 | ⚠️ (Experimental) | API & Astro only |
+| XComs | 2.0 | ❌ | |
+| Task instance history | 2.10 | ✅ | |
+| Assets | 3.0 | ❌ | |
+| Backfills | 3.0 | ❌ | |
+| Dag versions | 3.0 | ❌ | |
+| Task instance notes | 3.0 | ❌ | |
+| HITL | 3.1 | ❌ | |
+| Teams | 3.1 | ❌ | |
 
 ## Security Notice
 

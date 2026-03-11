@@ -5,14 +5,14 @@ from typing import TYPE_CHECKING, Annotated
 
 from airflow.api_fastapi.common.router import AirflowRouter
 from airflow.plugins_manager import AirflowPlugin
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 
 from astronomer_starship._af3.starship_compatability import StarshipAirflow, StarshipCompatabilityLayer
 from astronomer_starship.common import HttpError, get_kwargs_fn, telescope
 
 if TYPE_CHECKING:
-    from typing import Callable
+    from typing import Callable, Optional
 
 
 @dataclass
@@ -30,7 +30,7 @@ class StarshipRoute:
         put=None,
         delete=None,
         patch=None,
-        kwargs_fn: "Callable[[dict, dict], dict]" = None,
+        kwargs_fn: "Optional[Callable[[dict, dict], dict]]" = None,
     ):
         try:
             # noinspection PyArgumentList
@@ -94,6 +94,8 @@ class StarshipRoute:
 
             if res is None:
                 return None
+            elif isinstance(res, Response):
+                return res
 
             return JSONResponse(res)
         except HttpError as e:
@@ -112,13 +114,21 @@ class StarshipRoute:
             )
 
 
+async def request_body(request: Request) -> bytes | None:
+    """async 'dependable' to get request body"""
+    # TODO can we return a sync generator which internally uses async streaming?
+    body = await request.body()
+    return body if body else None
+
+
 async def starship_route(request: Request) -> StarshipRoute:
     """async 'dependable' to build StarshipRoute from Request"""
-    body = await request.body()
+    content_type = request.headers.get("Content-Type")
+    is_json = content_type == "application/json"
     return StarshipRoute(
         method=request.method,
         args=(request.query_params if request.method in ["GET", "POST", "DELETE"] else {}),
-        json=await request.json() if body else {},
+        json=await request.json() if is_json else {},
     )
 
 
@@ -262,9 +272,21 @@ class StarshipApi(FastAPI):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.task_instance_history_attrs()),
         )
 
+    @router.api_route("/task_log_files", methods=["GET"])
+    @staticmethod
+    def task_log_files(
+        starship_route: Annotated[StarshipRoute, Depends(starship_route)],
+        starship_compat: Annotated[StarshipAirflow, Depends(starship_compat)],
+    ):
+        return starship_route(
+            get=starship_compat.get_task_log_files,
+            kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.task_log_files_attrs()),
+        )
+
     @router.api_route("/task_log", methods=["GET", "POST", "DELETE"])
     @staticmethod
     def task_logs(
+        body: Annotated[bytes | None, Depends(request_body)],
         starship_route: Annotated[StarshipRoute, Depends(starship_route)],
         starship_compat: Annotated[StarshipAirflow, Depends(starship_compat)],
     ):
@@ -272,7 +294,7 @@ class StarshipApi(FastAPI):
             get=starship_compat.get_task_log,
             post=starship_compat.set_task_log,
             delete=starship_compat.delete_task_log,
-            kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.task_log_attrs()),
+            kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.task_log_attrs(), body=body),
         )
 
     @router.api_route("/xcom", methods=["GET", "POST", "DELETE"])
