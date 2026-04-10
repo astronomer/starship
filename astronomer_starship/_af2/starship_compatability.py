@@ -744,13 +744,15 @@ class StarshipAirflow(BaseStarshipAirflow):
 
 
 class StarshipAirflow22(StarshipAirflow):
-    def task_instance_attrs(self):
+    @classmethod
+    def task_instance_attrs(cls):
         attrs = super().task_instance_attrs()
         if "map_index" in attrs:
             del attrs["map_index"]
         return attrs
 
-    def task_instances_attrs(self):
+    @classmethod
+    def task_instances_attrs(cls):
         attrs = super().task_instances_attrs()
         if "map_index" in attrs["task_instances"]["test_value"][0]:
             del attrs["task_instances"]["test_value"][0]["map_index"]
@@ -758,7 +760,8 @@ class StarshipAirflow22(StarshipAirflow):
 
 
 class StarshipAirflow21(StarshipAirflow22):
-    def dag_runs_attrs(self):
+    @classmethod
+    def dag_runs_attrs(cls):
         attrs = super().dag_runs_attrs()
         # data_interval_end, data_interval_start
         if "data_interval_start" in attrs["dag_runs"]["test_value"][0]:
@@ -767,7 +770,8 @@ class StarshipAirflow21(StarshipAirflow22):
             del attrs["dag_runs"]["test_value"][0]["data_interval_end"]
         return attrs
 
-    def dag_run_attrs(self):
+    @classmethod
+    def dag_run_attrs(cls):
         attrs = super().dag_run_attrs()
         if "data_interval_start" in attrs:
             del attrs["data_interval_start"]
@@ -775,7 +779,8 @@ class StarshipAirflow21(StarshipAirflow22):
             del attrs["data_interval_end"]
         return attrs
 
-    def task_instances_attrs(self):
+    @classmethod
+    def task_instances_attrs(cls):
         epoch = datetime.datetime(1970, 1, 1, 0, 0)
         epoch_tz = epoch.replace(tzinfo=pytz.utc)
         attrs = super().task_instances_attrs()
@@ -788,7 +793,8 @@ class StarshipAirflow21(StarshipAirflow22):
         attrs["task_instances"]["test_value"][0]["execution_date"] = epoch_tz
         return attrs
 
-    def task_instance_attrs(self):
+    @classmethod
+    def task_instance_attrs(cls):
         epoch = datetime.datetime(1970, 1, 1, 0, 0)
         epoch_tz = epoch.replace(tzinfo=pytz.utc)
         attrs = super().task_instance_attrs()
@@ -856,18 +862,21 @@ class StarshipAirflow20(StarshipAirflow21):
     - queued_at not on dag_run
     """
 
-    def variable_attrs(self):
+    @classmethod
+    def variable_attrs(cls):
         attrs = super().variable_attrs()
         del attrs["description"]
         return attrs
 
-    def dag_runs_attrs(self):
+    @classmethod
+    def dag_runs_attrs(cls):
         attrs = super().dag_runs_attrs()
         if "queued_at" in attrs["dag_runs"]["test_value"][0]:
             del attrs["dag_runs"]["test_value"][0]["queued_at"]
         return attrs
 
-    def dag_run_attrs(self):
+    @classmethod
+    def dag_run_attrs(cls):
         attrs = super().dag_run_attrs()
         if "queued_at" in attrs:
             del attrs["queued_at"]
@@ -879,7 +888,8 @@ class StarshipAirflow27(StarshipAirflow):
     - include_deferred is required in pools
     """
 
-    def pool_attrs(self):
+    @classmethod
+    def pool_attrs(cls):
         attrs = super().pool_attrs()
         attrs["include_deferred"] = {
             "attr": "include_deferred",
@@ -888,7 +898,8 @@ class StarshipAirflow27(StarshipAirflow):
         }
         return attrs
 
-    def task_instance_attrs(self):
+    @classmethod
+    def task_instance_attrs(cls):
         attrs = super().task_instance_attrs()
         attrs["custom_operator_name"] = {
             "attr": "custom_operator_name",
@@ -897,7 +908,8 @@ class StarshipAirflow27(StarshipAirflow):
         }
         return attrs
 
-    def task_instances_attrs(self):
+    @classmethod
+    def task_instances_attrs(cls):
         attrs = super().task_instances_attrs()
         attrs["task_instances"]["test_value"][0]["custom_operator_name"] = None
         return attrs
@@ -908,12 +920,14 @@ class StarshipAirflow28(StarshipAirflow27):
     - clear_number is required in dag_run
     """
 
-    def dag_runs_attrs(self):
+    @classmethod
+    def dag_runs_attrs(cls):
         attrs = super().dag_runs_attrs()
         attrs["dag_runs"]["test_value"][0]["clear_number"] = 0
         return attrs
 
-    def dag_run_attrs(self):
+    @classmethod
+    def dag_run_attrs(cls):
         attrs = super().dag_run_attrs()
         attrs["clear_number"] = {
             "attr": "clear_number",
@@ -1221,7 +1235,8 @@ class StarshipAirflow29(StarshipAirflow28):
     - task_display_name in task_instance
     """
 
-    def task_instance_attrs(self):
+    @classmethod
+    def task_instance_attrs(cls):
         attrs = super().task_instance_attrs()
         attrs["rendered_map_index"] = {
             "attr": "rendered_map_index",
@@ -1235,7 +1250,8 @@ class StarshipAirflow29(StarshipAirflow28):
         }
         return attrs
 
-    def task_instances_attrs(self):
+    @classmethod
+    def task_instances_attrs(cls):
         attrs = super().task_instances_attrs()
         attrs["task_instances"]["test_value"][0]["rendered_map_index"] = "rendered_map_index"
         attrs["task_instances"]["test_value"][0]["task_display_name"] = "task_display_name"
@@ -1250,7 +1266,8 @@ class StarshipAirflow210(StarshipAirflow29):
 
     # TODO: Identify any other compat issues that exist between 2.9-2.10
 
-    def task_instance_attrs(self):
+    @classmethod
+    def task_instance_attrs(cls):
         attrs = super().task_instance_attrs()
         attrs["try_number"]["attr"] = "try_number"
         attrs["executor"] = {
@@ -1260,7 +1277,8 @@ class StarshipAirflow210(StarshipAirflow29):
         }
         return attrs
 
-    def task_instances_attrs(self):
+    @classmethod
+    def task_instances_attrs(cls):
         attrs = super().task_instances_attrs()
         attrs["task_instances"]["test_value"][0]["executor"] = "executor"
         return attrs
