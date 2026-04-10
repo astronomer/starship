@@ -2,9 +2,8 @@ import datetime
 import json
 import logging
 import os
+from datetime import timezone
 from typing import TYPE_CHECKING
-
-import pytz
 
 from astronomer_starship.common import (
     BaseStarshipAirflow,
@@ -237,7 +236,7 @@ class StarshipAirflow(BaseStarshipAirflow):
     @classmethod
     def dag_runs_attrs(cls) -> "Dict[str, AttrDesc]":
         epoch = datetime.datetime(1970, 1, 1, 0, 0)
-        epoch = epoch.replace(tzinfo=pytz.utc)
+        epoch = epoch.replace(tzinfo=timezone.utc)
         return {
             "dag_id": {
                 "attr": "dag_id",
@@ -284,7 +283,7 @@ class StarshipAirflow(BaseStarshipAirflow):
     @classmethod
     def dag_run_attrs(cls) -> "Dict[str, AttrDesc]":
         epoch = datetime.datetime(1970, 1, 1, 0, 0)
-        epoch = epoch.replace(tzinfo=pytz.utc)
+        epoch = epoch.replace(tzinfo=timezone.utc)
         # epoch = str(epoch).replace(' ', 'T')
         return {
             "dag_id": {
@@ -393,7 +392,7 @@ class StarshipAirflow(BaseStarshipAirflow):
     @classmethod
     def task_instances_attrs(cls) -> "Dict[str, AttrDesc]":
         epoch = datetime.datetime(1970, 1, 1, 0, 0)
-        epoch_tz = epoch.replace(tzinfo=pytz.utc)
+        epoch_tz = epoch.replace(tzinfo=timezone.utc)
         # epoch = str(epoch).replace(' ', 'T')
         # epoch_tz = str(epoch_tz).replace(' ', 'T')
         return {
@@ -454,7 +453,7 @@ class StarshipAirflow(BaseStarshipAirflow):
     @classmethod
     def task_instance_attrs(cls) -> "Dict[str, AttrDesc]":
         epoch = datetime.datetime(1970, 1, 1, 0, 0)
-        epoch_tz = epoch.replace(tzinfo=pytz.utc)
+        epoch_tz = epoch.replace(tzinfo=timezone.utc)
         # epoch = str(epoch).replace(' ', 'T')
         # epoch_tz = str(epoch_tz).replace(' ', 'T')
         return {
@@ -782,7 +781,7 @@ class StarshipAirflow21(StarshipAirflow22):
     @classmethod
     def task_instances_attrs(cls):
         epoch = datetime.datetime(1970, 1, 1, 0, 0)
-        epoch_tz = epoch.replace(tzinfo=pytz.utc)
+        epoch_tz = epoch.replace(tzinfo=timezone.utc)
         attrs = super().task_instances_attrs()
         if "trigger_id" in attrs["task_instances"]["test_value"][0]:
             del attrs["task_instances"]["test_value"][0]["trigger_id"]
@@ -796,7 +795,7 @@ class StarshipAirflow21(StarshipAirflow22):
     @classmethod
     def task_instance_attrs(cls):
         epoch = datetime.datetime(1970, 1, 1, 0, 0)
-        epoch_tz = epoch.replace(tzinfo=pytz.utc)
+        epoch_tz = epoch.replace(tzinfo=timezone.utc)
         attrs = super().task_instance_attrs()
         if "trigger_id" in attrs:
             del attrs["trigger_id"]
