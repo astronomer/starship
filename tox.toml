@@ -1,0 +1,108 @@
+env_list = [
+    "3.7-af20",
+    "3.8-af21",
+    "3.9-af22",
+    "3.9-af23",
+    "3.9-af24",
+    "3.9-af25",
+    "3.10-af26",
+    "3.11-af27",
+    "3.11-af28",
+    "3.11-af29",
+    "3.12-af210",
+    "3.12-af211",
+    "3.12-af30",
+    "3.12-af31",
+]
+
+[env_run_base]
+extras = ["testing"]
+deps = [
+    { replace = "if", condition = "factor.af20", then = [
+        "apache-airflow==2.0.2",
+    ], extend = true },
+    { replace = "if", condition = "factor.af21", then = [
+        "apache-airflow==2.1.4",
+    ], extend = true },
+    { replace = "if", condition = "factor.af22", then = [
+        "apache-airflow==2.2.5",
+    ], extend = true },
+    { replace = "if", condition = "factor.af23", then = [
+        "apache-airflow==2.3.4",
+    ], extend = true },
+    { replace = "if", condition = "factor.af24", then = [
+        "apache-airflow==2.4.3",
+    ], extend = true },
+    { replace = "if", condition = "factor.af25", then = [
+        "apache-airflow==2.5.3",
+    ], extend = true },
+    { replace = "if", condition = "factor.af26", then = [
+        "apache-airflow==2.6.3",
+    ], extend = true },
+    { replace = "if", condition = "factor.af27", then = [
+        "apache-airflow==2.7.3",
+    ], extend = true },
+    { replace = "if", condition = "factor.af28", then = [
+        "apache-airflow==2.8.4",
+    ], extend = true },
+    { replace = "if", condition = "factor.af29", then = [
+        "apache-airflow==2.9.3",
+    ], extend = true },
+    { replace = "if", condition = "factor.af210", then = [
+        "apache-airflow==2.10.5",
+    ], extend = true },
+    { replace = "if", condition = "factor.af211", then = [
+        "apache-airflow==2.11.2",
+    ], extend = true },
+    { replace = "if", condition = "factor.af30", then = [
+        "apache-airflow==3.0.6",
+    ], extend = true },
+    { replace = "if", condition = "factor.af31", then = [
+        "apache-airflow==3.1.8",
+    ], extend = true },
+]
+constraints = [
+    { replace = "if", condition = "factor.af20", then = [
+        "constraints/2.0.2-3.7.txt",
+    ], extend = true },
+    { replace = "if", condition = "factor.af21", then = [
+        "constraints/2.1.4-3.8.txt",
+    ], extend = true },
+    { replace = "if", condition = "factor.af22", then = [
+        "constraints/2.2.5-3.9.txt",
+    ], extend = true },
+    { replace = "if", condition = "factor.af23", then = [
+        "constraints/2.3.4-3.9.txt",
+    ], extend = true },
+    { replace = "if", condition = "factor.af24", then = [
+        "constraints/2.4.3-3.9.txt",
+    ], extend = true },
+    { replace = "if", condition = "factor.af25", then = [
+        "constraints/2.5.3-3.9.txt",
+    ], extend = true },
+    { replace = "if", condition = "factor.af26", then = [
+        "constraints/2.6.3-3.10.txt",
+    ], extend = true },
+    { replace = "if", condition = "factor.af27", then = [
+        "constraints/2.7.3-3.11.txt",
+    ], extend = true },
+    { replace = "if", condition = "factor.af28", then = [
+        "constraints/2.8.4-3.11.txt",
+    ], extend = true },
+    { replace = "if", condition = "factor.af29", then = [
+        "constraints/2.9.3-3.11.txt",
+    ], extend = true },
+    { replace = "if", condition = "factor.af210", then = [
+        "constraints/2.10.5-3.12.txt",
+    ], extend = true },
+    { replace = "if", condition = "factor.af211", then = [
+        "constraints/2.11.2-3.12.txt",
+    ], extend = true },
+    { replace = "if", condition = "factor.af30", then = [
+        "constraints/3.0.6-3.12.txt",
+    ], extend = true },
+    { replace = "if", condition = "factor.af31", then = [
+        "constraints/3.1.8-3.12.txt",
+    ], extend = true },
+]
+commands = [["pytest", "{posargs}"]]

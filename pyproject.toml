@@ -64,6 +64,12 @@ provider = [
     "apache-airflow-providers-http",
 ]
 
+testing = [
+    "pytest~=8.0",
+    "setuptools",
+    "requests",
+]
+
 dev = [
     # package
     "twine",
@@ -123,20 +129,33 @@ extend-select = [
     "W",   # pycodestyle warnings
 ]
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-norecursedirs = [
-    "tests/docker_test/",
-    "tests/resources/",
-    "__pycache__",
-]
-doctest_optionflags = ["NUMBER", "NORMALIZE_WHITESPACE", "IGNORE_EXCEPTION_DETAIL"]
+[tool.ty.src]
+include = ["astronomer_starship"]
 
-addopts = [
-    "--strict-markers",
-    "--tb=short",
-    "--disable-warnings",
-    "--no-header",
-    "--doctest-modules",
-    "--doctest-continue-on-failure",
+# [tool.pytest.ini_options]
+# testpaths = ["tests"]
+# norecursedirs = [
+#     "tests/docker_test/",
+#     "tests/resources/",
+#     "__pycache__",
+# ]
+# doctest_optionflags = ["NUMBER", "NORMALIZE_WHITESPACE", "IGNORE_EXCEPTION_DETAIL"]
+
+# addopts = [
+#     "--strict-markers",
+#     "--tb=short",
+#     "--disable-warnings",
+#     "--no-header",
+#     "--doctest-modules",
+#     "--doctest-continue-on-failure",
+# ]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = [
+    "tests",
+]
+norecursedirs = [
+    "tests/docker_test",
+    "tests/e2e",
 ]
