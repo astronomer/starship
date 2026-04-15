@@ -232,7 +232,9 @@ class CutoverView(AppBuilderBaseView):
             started = datetime.fromisoformat(migration["started_at"])
             elapsed = (datetime.now(timezone.utc) - started).total_seconds()
             running_dags = [d for d in migration["dags"].values() if d["status"] == "running"]
-            terminal_dags = [d for d in migration["dags"].values() if d["status"] in ("completed", "failed", "aborted", "skipped")]
+            terminal_dags = [
+                d for d in migration["dags"].values() if d["status"] in ("completed", "failed", "aborted", "skipped")
+            ]
             if elapsed > 900 and not running_dags and terminal_dags:
                 stale_warning = True
 

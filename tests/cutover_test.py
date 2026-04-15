@@ -439,8 +439,8 @@ def test_parse_common_config_defaults():
 def test_migrate_dag_aborts_before_source(mock_variable):
     """migrate_dag raises _AbortedError when abort is set before source calls."""
     from astronomer_starship.cutover.service import (
-        _AbortedError,
         _abort_events,
+        _AbortedError,
         create_migration,
         migrate_dag,
     )
