@@ -3,7 +3,7 @@ RUNTIME_VERSION := "3.1-12"
 default:
     @just --list
 
-# build the frontend assets for the webserver
+# build the frontend assets for the api-server
 _build-frontend:
     @just ../build-frontend
 
@@ -19,9 +19,9 @@ _build-image-remote: _build-wheel
 _build-wheel:
     @just ../build
 
-# run `astro dev bash [ARGS]` with the webserver pre-selected
+# run `astro dev bash [ARGS]` with the api-server pre-selected
 bash *ARGS:
-    @astro dev bash --webserver {{ ARGS }}
+    @astro dev bash --api-server {{ ARGS }}
 
 # run `astro dev deploy [ARGS]` with image suitable for deployments in astro
 deploy *ARGS: _build-image-remote
@@ -31,15 +31,15 @@ deploy *ARGS: _build-image-remote
 kill:
     @astro dev kill
 
-# run `astro dev logs [ARGS]` with the webserver pre-selected
+# run `astro dev logs [ARGS]` with the api-server pre-selected
 logs *ARGS:
-    @astro dev logs --webserver {{ ARGS }}
+    @astro dev logs --api-server {{ ARGS }}
 
 # run `astro dev ps`
 ps:
     @astro dev ps
 
-# restart local webserver with updated frontend assets and plugin code
+# restart local api-server with updated frontend assets and plugin code
 reload: _build-frontend
     @docker restart $(docker container ls --filter name=api-server --format="{{{{.ID}}")
 
