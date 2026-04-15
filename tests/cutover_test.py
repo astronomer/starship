@@ -552,3 +552,914 @@ def test_migrate_dag_dest_has_runs():
 
     with pytest.raises(RuntimeError, match="already has runs"):
         migrate_dag("dag_1", source_hook, dest_hook)
+
+
+# ---------------------------------------------------------------------------
+# Service: _dag_has_active_runs
+# ---------------------------------------------------------------------------
+
+
+def test_dag_has_active_runs_true():
+    from astronomer_starship.cutover.service import _dag_has_active_runs
+
+    source_hook = MagicMock()
+    source_hook.get_dag_runs.return_value = {
+        "dag_runs": [
+            {"state": "success"},
+            {"state": "running"},
+        ],
+    }
+    assert _dag_has_active_runs(source_hook, "dag_1") is True
+
+
+def test_dag_has_active_runs_false():
+    from astronomer_starship.cutover.service import _dag_has_active_runs
+
+    source_hook = MagicMock()
+    source_hook.get_dag_runs.return_value = {
+        "dag_runs": [
+            {"state": "success"},
+            {"state": "failed"},
+        ],
+    }
+    assert _dag_has_active_runs(source_hook, "dag_1") is False
+
+
+def test_dag_has_active_runs_empty():
+    from astronomer_starship.cutover.service import _dag_has_active_runs
+
+    source_hook = MagicMock()
+    source_hook.get_dag_runs.return_value = {"dag_runs": []}
+    assert _dag_has_active_runs(source_hook, "dag_1") is False
+
+
+def test_dag_has_active_runs_exception():
+    """On error, assume active (conservative)."""
+    from astronomer_starship.cutover.service import _dag_has_active_runs
+
+    source_hook = MagicMock()
+    source_hook.get_dag_runs.side_effect = Exception("connection error")
+    assert _dag_has_active_runs(source_hook, "dag_1") is True
+
+
+def test_dag_has_active_runs_queued():
+    from astronomer_starship.cutover.service import _dag_has_active_runs
+
+    source_hook = MagicMock()
+    source_hook.get_dag_runs.return_value = {
+        "dag_runs": [{"state": "queued"}],
+    }
+    assert _dag_has_active_runs(source_hook, "dag_1") is True
+
+
+# ---------------------------------------------------------------------------
+# Service: pause_unpause_dag
+# ---------------------------------------------------------------------------
+
+
+def test_pause_unpause_both():
+    from astronomer_starship.cutover.service import pause_unpause_dag
+
+    source_hook = MagicMock()
+    dest_hook = MagicMock()
+
+    result = pause_unpause_dag("dag_1", source_hook, dest_hook, pause_source=True, unpause_dest=True)
+    assert result["source_paused_by_us"] is True
+    assert result["dest_unpaused_by_us"] is True
+    source_hook.set_dag_is_paused.assert_called_once_with(dag_id="dag_1", is_paused=True)
+    dest_hook.set_dag_is_paused.assert_called_once_with(dag_id="dag_1", is_paused=False)
+
+
+def test_pause_unpause_neither():
+    from astronomer_starship.cutover.service import pause_unpause_dag
+
+    source_hook = MagicMock()
+    dest_hook = MagicMock()
+
+    result = pause_unpause_dag("dag_1", source_hook, dest_hook, pause_source=False, unpause_dest=False)
+    assert result["source_paused_by_us"] is False
+    assert result["dest_unpaused_by_us"] is False
+    source_hook.set_dag_is_paused.assert_not_called()
+    dest_hook.set_dag_is_paused.assert_not_called()
+
+
+def test_pause_only_source():
+    from astronomer_starship.cutover.service import pause_unpause_dag
+
+    source_hook = MagicMock()
+    dest_hook = MagicMock()
+
+    result = pause_unpause_dag("dag_1", source_hook, dest_hook, pause_source=True, unpause_dest=False)
+    assert result["source_paused_by_us"] is True
+    assert result["dest_unpaused_by_us"] is False
+
+
+# ---------------------------------------------------------------------------
+# Service: _get_dag_status_from_state
+# ---------------------------------------------------------------------------
+
+
+def test_get_dag_status_from_state(mock_variable):
+    from astronomer_starship.cutover.service import (
+        _get_dag_status_from_state,
+        create_migration,
+    )
+
+    mid = create_migration("bigbang", {"source_conn_id": "x"}, ["dag_1"])
+    assert _get_dag_status_from_state(mid, "dag_1") == "pending"
+    assert _get_dag_status_from_state(mid, "nonexistent") == "unknown"
+    assert _get_dag_status_from_state("bad_id", "dag_1") == "unknown"
+
+
+# ---------------------------------------------------------------------------
+# Service: migrate_single_dag
+# ---------------------------------------------------------------------------
+
+
+def test_migrate_single_dag_completed(mock_variable):
+    from astronomer_starship.cutover.service import (
+        create_migration,
+        get_migration,
+        migrate_single_dag,
+    )
+
+    mid = create_migration("bigbang", {
+        "source_conn_id": "x",
+        "dag_run_limit": 10,
+        "pause_in_source": False,
+        "unpause_in_destination": False,
+        "wait_for_scheduler": False,
+        "wait_for_running": False,
+    }, ["dag_1"])
+
+    with patch("astronomer_starship.cutover.service.get_source_hook") as mock_get_hook, \
+         patch("astronomer_starship.cutover.service.StarshipLocalHook") as mock_local:
+        source = MagicMock()
+        source.get_dag.return_value = {"dag_id": "dag_1", "is_paused": True}
+        source.get_dag_runs.return_value = {"dag_runs": []}
+        mock_get_hook.return_value = source
+
+        dest = MagicMock()
+        dest.get_dag.return_value = {"dag_id": "dag_1", "is_paused": True, "dag_run_count": 0}
+        mock_local.return_value = dest
+
+        status = migrate_single_dag(mid, "dag_1", {
+            "source_conn_id": "x",
+            "dag_run_limit": 10,
+            "pause_in_source": False,
+            "unpause_in_destination": False,
+            "wait_for_scheduler": False,
+            "wait_for_running": False,
+        })
+
+    assert status == "completed"
+    m = get_migration(mid)
+    assert m["dags"]["dag_1"]["status"] == "completed"
+
+
+def test_migrate_single_dag_aborted_before_start(mock_variable):
+    from astronomer_starship.cutover.service import (
+        _abort_events,
+        create_migration,
+        get_migration,
+        migrate_single_dag,
+    )
+
+    mid = create_migration("bigbang", {"source_conn_id": "x"}, ["dag_1"])
+    _abort_events[mid] = threading.Event()
+    _abort_events[mid].set()
+
+    status = migrate_single_dag(mid, "dag_1", {"source_conn_id": "x"})
+    assert status == "aborted"
+    m = get_migration(mid)
+    assert m["dags"]["dag_1"]["status"] == "aborted"
+
+
+def test_migrate_single_dag_deferred(mock_variable):
+    from astronomer_starship.cutover.service import (
+        create_migration,
+        get_migration,
+        migrate_single_dag,
+    )
+
+    mid = create_migration("bigbang", {
+        "source_conn_id": "x",
+        "wait_for_running": True,
+    }, ["dag_1"])
+
+    with patch("astronomer_starship.cutover.service.get_source_hook") as mock_get_hook, \
+         patch("astronomer_starship.cutover.service.StarshipLocalHook"), \
+         patch("astronomer_starship.cutover.service._dag_has_active_runs", return_value=True):
+        mock_get_hook.return_value = MagicMock()
+
+        status = migrate_single_dag(mid, "dag_1", {
+            "source_conn_id": "x",
+            "wait_for_running": True,
+        })
+
+    assert status == "deferred"
+    m = get_migration(mid)
+    assert m["dags"]["dag_1"]["status"] == "deferred"
+
+
+def test_migrate_single_dag_failed(mock_variable):
+    from astronomer_starship.cutover.service import (
+        create_migration,
+        get_migration,
+        migrate_single_dag,
+    )
+
+    mid = create_migration("bigbang", {"source_conn_id": "x"}, ["dag_1"])
+
+    with patch("astronomer_starship.cutover.service.get_source_hook") as mock_get_hook, \
+         patch("astronomer_starship.cutover.service.StarshipLocalHook") as mock_local:
+        source = MagicMock()
+        source.get_dag.side_effect = Exception("Source unreachable")
+        mock_get_hook.return_value = source
+        mock_local.return_value = MagicMock()
+
+        status = migrate_single_dag(mid, "dag_1", {"source_conn_id": "x"})
+
+    assert status == "failed"
+    m = get_migration(mid)
+    assert m["dags"]["dag_1"]["status"] == "failed"
+    assert "not found or inaccessible" in m["dags"]["dag_1"]["error"]
+
+
+# ---------------------------------------------------------------------------
+# Service: _run_dag_batch (sequential)
+# ---------------------------------------------------------------------------
+
+
+def test_run_dag_batch_sequential(mock_variable):
+    from astronomer_starship.cutover.service import (
+        _run_dag_batch,
+        create_migration,
+    )
+
+    mid = create_migration("bigbang", {"source_conn_id": "x"}, ["dag_1", "dag_2"])
+
+    with patch("astronomer_starship.cutover.service.migrate_single_dag") as mock_migrate:
+        mock_migrate.return_value = "completed"
+        _run_dag_batch(mid, ["dag_1", "dag_2"], {"parallel_workers": 1, "source_conn_id": "x"})
+
+    assert mock_migrate.call_count == 2
+
+
+def test_run_dag_batch_sequential_abort(mock_variable):
+    from astronomer_starship.cutover.service import (
+        _abort_events,
+        _run_dag_batch,
+        create_migration,
+        get_migration,
+    )
+
+    mid = create_migration("bigbang", {"source_conn_id": "x"}, ["dag_1", "dag_2", "dag_3"])
+    _abort_events[mid] = threading.Event()
+
+    def _side_effect(migration_id, dag_id, config):
+        # Abort after first DAG
+        _abort_events[mid].set()
+        return "completed"
+
+    with patch("astronomer_starship.cutover.service.migrate_single_dag", side_effect=_side_effect):
+        _run_dag_batch(mid, ["dag_1", "dag_2", "dag_3"], {"parallel_workers": 1, "source_conn_id": "x"})
+
+    # dag_2 and dag_3 should be aborted (never migrated)
+    m = get_migration(mid)
+    assert m["dags"]["dag_2"]["status"] == "aborted"
+    assert m["dags"]["dag_3"]["status"] == "aborted"
+
+
+def test_run_dag_batch_parallel(mock_variable):
+    from astronomer_starship.cutover.service import (
+        _run_dag_batch,
+        create_migration,
+    )
+
+    mid = create_migration("bigbang", {"source_conn_id": "x"}, ["dag_1", "dag_2"])
+
+    with patch("astronomer_starship.cutover.service.migrate_single_dag") as mock_migrate:
+        mock_migrate.return_value = "completed"
+        _run_dag_batch(mid, ["dag_1", "dag_2"], {"parallel_workers": 2, "source_conn_id": "x"})
+
+    assert mock_migrate.call_count == 2
+
+
+# ---------------------------------------------------------------------------
+# Service: run_migration
+# ---------------------------------------------------------------------------
+
+
+def test_run_migration_completed(mock_variable):
+    from astronomer_starship.cutover.service import (
+        _abort_events,
+        create_migration,
+        get_migration,
+        run_migration,
+    )
+
+    mid = create_migration("bigbang", {"source_conn_id": "x"}, ["dag_1"])
+    _abort_events[mid] = threading.Event()
+
+    with patch("astronomer_starship.cutover.service.migrate_single_dag") as mock_migrate:
+        mock_migrate.return_value = "completed"
+
+        # Simulate migrate_single_dag updating the state
+        def _side_effect(migration_id, dag_id, config):
+            from astronomer_starship.cutover.service import update_dag_status
+            update_dag_status(migration_id, dag_id, "completed", dag_runs_migrated=5)
+            return "completed"
+
+        mock_migrate.side_effect = _side_effect
+        run_migration(mid, ["dag_1"], {"source_conn_id": "x", "parallel_workers": 1})
+
+    m = get_migration(mid)
+    assert m["status"] == "completed"
+
+
+def test_run_migration_all_failed(mock_variable):
+    from astronomer_starship.cutover.service import (
+        _abort_events,
+        create_migration,
+        get_migration,
+        run_migration,
+    )
+
+    mid = create_migration("bigbang", {"source_conn_id": "x"}, ["dag_1"])
+    _abort_events[mid] = threading.Event()
+
+    def _side_effect(migration_id, dag_id, config):
+        from astronomer_starship.cutover.service import update_dag_status
+        update_dag_status(migration_id, dag_id, "failed", error="boom")
+        return "failed"
+
+    with patch("astronomer_starship.cutover.service.migrate_single_dag", side_effect=_side_effect):
+        run_migration(mid, ["dag_1"], {"source_conn_id": "x", "parallel_workers": 1})
+
+    m = get_migration(mid)
+    assert m["status"] == "failed"
+
+
+def test_run_migration_aborted(mock_variable):
+    from astronomer_starship.cutover.service import (
+        _abort_events,
+        create_migration,
+        get_migration,
+        run_migration,
+    )
+
+    mid = create_migration("bigbang", {"source_conn_id": "x"}, ["dag_1", "dag_2"])
+    _abort_events[mid] = threading.Event()
+
+    def _side_effect(migration_id, dag_id, config):
+        from astronomer_starship.cutover.service import update_dag_status
+        _abort_events[mid].set()
+        update_dag_status(migration_id, dag_id, "completed")
+        return "completed"
+
+    with patch("astronomer_starship.cutover.service.migrate_single_dag", side_effect=_side_effect):
+        run_migration(mid, ["dag_1", "dag_2"], {"source_conn_id": "x", "parallel_workers": 1})
+
+    m = get_migration(mid)
+    assert m["status"] == "aborted"
+
+
+def test_run_migration_with_retry_deferred(mock_variable):
+    """Deferred DAGs are retried and eventually skipped."""
+    from astronomer_starship.cutover.service import (
+        _abort_events,
+        create_migration,
+        get_migration,
+        run_migration,
+    )
+
+    mid = create_migration("bigbang", {
+        "source_conn_id": "x",
+        "wait_for_running": True,
+        "retry_interval": 0,  # no wait in tests
+        "max_retries": 1,
+    }, ["dag_1"])
+    _abort_events[mid] = threading.Event()
+
+    def _side_effect(migration_id, dag_id, config):
+        from astronomer_starship.cutover.service import update_dag_status
+        update_dag_status(migration_id, dag_id, "deferred", error="Active runs")
+        return "deferred"
+
+    with patch("astronomer_starship.cutover.service.migrate_single_dag", side_effect=_side_effect), \
+         patch("astronomer_starship.cutover.service.time.sleep"):
+        run_migration(mid, ["dag_1"], {
+            "source_conn_id": "x",
+            "parallel_workers": 1,
+            "wait_for_running": True,
+            "retry_interval": 0,
+            "max_retries": 1,
+        })
+
+    m = get_migration(mid)
+    assert m["dags"]["dag_1"]["status"] == "skipped"
+
+
+# ---------------------------------------------------------------------------
+# Service: start_migration_thread
+# ---------------------------------------------------------------------------
+
+
+def test_start_migration_thread(mock_variable):
+    from astronomer_starship.cutover.service import (
+        _abort_events,
+        create_migration,
+        start_migration_thread,
+    )
+
+    mid = create_migration("bigbang", {"source_conn_id": "x"}, ["dag_1"])
+
+    with patch("astronomer_starship.cutover.service.run_migration"):
+        t = start_migration_thread(mid, ["dag_1"], {"source_conn_id": "x"})
+
+    assert t.is_alive() or t.daemon
+    assert mid in _abort_events
+    t.join(timeout=2)
+
+
+# ---------------------------------------------------------------------------
+# Service: rollback_dag
+# ---------------------------------------------------------------------------
+
+
+def test_rollback_dag_basic(mock_variable):
+    from astronomer_starship.cutover.service import (
+        create_migration,
+        get_migration,
+        rollback_dag,
+        update_dag_status,
+    )
+
+    mid = create_migration("bigbang", {"source_conn_id": "x"}, ["dag_1"])
+    update_dag_status(mid, "dag_1", "completed", latest_data_interval_end="2024-01-01T00:00:00")
+
+    source_hook = MagicMock()
+    dest_hook = MagicMock()
+
+    with patch("astronomer_starship.cutover.service.delete_migrated_dag_data") as mock_delete:
+        rollback_dag(mid, "dag_1", source_hook=source_hook, dest_hook=dest_hook)
+
+    mock_delete.assert_called_once()
+    m = get_migration(mid)
+    assert m["dags"]["dag_1"]["status"] == "rolled_back"
+
+
+def test_rollback_dag_not_found(mock_variable):
+    from astronomer_starship.cutover.service import rollback_dag
+
+    with pytest.raises(ValueError, match="not found"):
+        rollback_dag("nonexistent", "dag_1")
+
+
+def test_rollback_dag_already_rolled_back(mock_variable):
+    from astronomer_starship.cutover.service import (
+        create_migration,
+        rollback_dag,
+        update_dag_status,
+    )
+
+    mid = create_migration("bigbang", {"source_conn_id": "x"}, ["dag_1"])
+    update_dag_status(mid, "dag_1", "rolled_back")
+
+    with pytest.raises(ValueError, match="already rolled back"):
+        rollback_dag(mid, "dag_1", source_hook=MagicMock(), dest_hook=MagicMock())
+
+
+def test_rollback_dag_reverses_pause(mock_variable):
+    from astronomer_starship.cutover.service import (
+        create_migration,
+        rollback_dag,
+        update_dag_status,
+    )
+
+    mid = create_migration("bigbang", {"source_conn_id": "x"}, ["dag_1"])
+    update_dag_status(mid, "dag_1", "completed",
+                      source_paused_by_us=True,
+                      dest_unpaused_by_us=True,
+                      latest_data_interval_end=None)
+
+    source_hook = MagicMock()
+    dest_hook = MagicMock()
+
+    rollback_dag(mid, "dag_1", source_hook=source_hook, dest_hook=dest_hook)
+
+    source_hook.set_dag_is_paused.assert_called_once_with(dag_id="dag_1", is_paused=False)
+    dest_hook.set_dag_is_paused.assert_called_once_with(dag_id="dag_1", is_paused=True)
+
+
+def test_rollback_dag_missing_dag_id(mock_variable):
+    from astronomer_starship.cutover.service import (
+        create_migration,
+        rollback_dag,
+    )
+
+    mid = create_migration("bigbang", {"source_conn_id": "x"}, ["dag_1"])
+
+    with pytest.raises(ValueError, match="not in migration"):
+        rollback_dag(mid, "dag_nonexistent", source_hook=MagicMock(), dest_hook=MagicMock())
+
+
+# ---------------------------------------------------------------------------
+# Service: rollback_migration
+# ---------------------------------------------------------------------------
+
+
+def test_rollback_migration_success(mock_variable):
+    from astronomer_starship.cutover.service import (
+        create_migration,
+        get_migration,
+        rollback_migration,
+        update_dag_status,
+    )
+
+    mid = create_migration("bigbang", {"source_conn_id": "x"}, ["dag_1", "dag_2"])
+    update_dag_status(mid, "dag_1", "completed", latest_data_interval_end=None)
+    update_dag_status(mid, "dag_2", "failed", latest_data_interval_end=None)
+
+    with patch("astronomer_starship.cutover.service.get_source_hook") as mock_get, \
+         patch("astronomer_starship.cutover.service.StarshipLocalHook"):
+        mock_get.return_value = MagicMock()
+        rollback_migration(mid)
+
+    m = get_migration(mid)
+    assert m["status"] == "rolled_back"
+
+
+def test_rollback_migration_not_found(mock_variable):
+    from astronomer_starship.cutover.service import rollback_migration
+
+    with pytest.raises(ValueError, match="not found"):
+        rollback_migration("nonexistent")
+
+
+def test_rollback_migration_partial_failure(mock_variable):
+    from astronomer_starship.cutover.service import (
+        create_migration,
+        get_migration,
+        rollback_migration,
+        update_dag_status,
+    )
+
+    mid = create_migration("bigbang", {"source_conn_id": "x"}, ["dag_1", "dag_2"])
+    update_dag_status(mid, "dag_1", "completed", latest_data_interval_end="2024-01-01")
+    update_dag_status(mid, "dag_2", "completed", latest_data_interval_end="2024-01-01")
+
+    call_count = 0
+
+    def _rollback_side_effect(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            raise Exception("DB error")
+        # Second call succeeds - simulate actual rollback behavior
+        from astronomer_starship.cutover.service import update_dag_status as _uds
+        _uds(mid, "dag_2", "rolled_back")
+
+    with patch("astronomer_starship.cutover.service.get_source_hook") as mock_get, \
+         patch("astronomer_starship.cutover.service.StarshipLocalHook"), \
+         patch("astronomer_starship.cutover.service.rollback_dag", side_effect=_rollback_side_effect):
+        mock_get.return_value = MagicMock()
+        rollback_migration(mid)
+
+    m = get_migration(mid)
+    assert m["status"] == "failed"
+
+
+# ---------------------------------------------------------------------------
+# Auth: AstroBearerAuth.__call__
+# ---------------------------------------------------------------------------
+
+
+def test_astro_bearer_auth_call():
+    from astronomer_starship.cutover.auth import AstroBearerAuth
+
+    auth = AstroBearerAuth(password="my-token")  # pragma: allowlist secret
+    req = MagicMock()
+    req.headers = {}
+
+    result = auth(req)
+    assert result.headers["Authorization"] == "Bearer my-token"
+
+
+# ---------------------------------------------------------------------------
+# Auth: ComposerV2BearerAuth, _get_default_credentials, impersonation
+# These tests require google-auth; skip if not installed.
+# ---------------------------------------------------------------------------
+
+try:
+    import google.auth  # noqa: F401
+
+    _has_google_auth = True
+except ImportError:
+    _has_google_auth = False
+
+gcp_only = pytest.mark.skipif(not _has_google_auth, reason="requires google-auth")
+
+
+@gcp_only
+def test_composer_v2_bearer_auth_call():
+    from astronomer_starship.cutover.auth import ComposerV2BearerAuth
+
+    mock_creds = MagicMock()
+    mock_creds.valid = True
+    mock_creds.token = b"gcp-token"
+
+    with patch("astronomer_starship.cutover.auth._get_default_credentials", return_value=mock_creds):
+        auth = ComposerV2BearerAuth()
+
+    req = MagicMock()
+    req.headers = {}
+
+    with patch("google.auth._helpers.from_bytes", return_value="gcp-token"):
+        result = auth(req)
+
+    assert result.headers["Authorization"] == "Bearer gcp-token"
+
+
+@gcp_only
+def test_composer_v2_bearer_auth_refreshes():
+    from astronomer_starship.cutover.auth import ComposerV2BearerAuth
+
+    mock_creds = MagicMock()
+    mock_creds.valid = False
+    mock_creds.token = b"refreshed-token"
+
+    with patch("astronomer_starship.cutover.auth._get_default_credentials", return_value=mock_creds):
+        auth = ComposerV2BearerAuth()
+
+    req = MagicMock()
+    req.headers = {}
+
+    with patch("google.auth._helpers.from_bytes", return_value="refreshed-token"), \
+         patch("google.auth.transport.requests.Request"):
+        result = auth(req)
+
+    mock_creds.refresh.assert_called_once()
+    assert result.headers["Authorization"] == "Bearer refreshed-token"
+
+
+@gcp_only
+def test_get_default_credentials_cached():
+    """Second call returns cached credentials."""
+    import astronomer_starship.cutover.auth as auth_module
+
+    original = auth_module._default_creds
+    try:
+        auth_module._default_creds = None
+
+        mock_creds = MagicMock()
+        with patch("google.auth.default", return_value=(mock_creds, "project")):
+            result1 = auth_module._get_default_credentials()
+            result2 = auth_module._get_default_credentials()
+
+        assert result1 is result2
+        assert result1 is mock_creds
+    finally:
+        auth_module._default_creds = original
+
+
+@gcp_only
+def test_impersonated_auth_call():
+    from astronomer_starship.cutover.auth import _make_impersonated_auth
+
+    AuthClass = _make_impersonated_auth(["target-sa@project.iam.gserviceaccount.com"])
+    assert AuthClass.__name__ == "ImpersonatedComposerAuth"
+
+    mock_creds = MagicMock()
+    mock_creds.valid = True
+    mock_creds.token = b"impersonated-token"
+
+    with patch("astronomer_starship.cutover.auth._get_default_credentials") as mock_default, \
+         patch("google.auth.impersonated_credentials.Credentials", return_value=mock_creds):
+        mock_default.return_value = MagicMock()
+        auth = AuthClass()
+
+    req = MagicMock()
+    req.headers = {}
+
+    with patch("google.auth._helpers.from_bytes", return_value="impersonated-token"):
+        result = auth(req)
+
+    assert result.headers["Authorization"] == "Bearer impersonated-token"
+
+
+@gcp_only
+def test_impersonated_auth_with_delegates():
+    from astronomer_starship.cutover.auth import _make_impersonated_auth
+
+    chain = ["delegate@project.iam.gserviceaccount.com", "target@project.iam.gserviceaccount.com"]
+    AuthClass = _make_impersonated_auth(chain)
+
+    with patch("astronomer_starship.cutover.auth._get_default_credentials") as mock_default, \
+         patch("google.auth.impersonated_credentials.Credentials") as mock_imp_creds:
+        mock_default.return_value = MagicMock()
+        mock_imp_creds.return_value = MagicMock(valid=True, token=b"t")
+        AuthClass()
+
+    mock_imp_creds.assert_called_once()
+    call_kwargs = mock_imp_creds.call_args
+    assert call_kwargs.kwargs["target_principal"] == "target@project.iam.gserviceaccount.com"
+    assert call_kwargs.kwargs["delegates"] == ["delegate@project.iam.gserviceaccount.com"]
+
+
+# ---------------------------------------------------------------------------
+# Hooks: StarshipHttpHook new methods
+# ---------------------------------------------------------------------------
+
+
+def test_http_hook_get_dag_caches():
+    """get_dag uses a cache populated from get_dags."""
+    from astronomer_starship.providers.starship.hooks.starship import StarshipHttpHook
+
+    hook = StarshipHttpHook.__new__(StarshipHttpHook)
+    hook.get_dags = MagicMock(return_value=[
+        {"dag_id": "dag_a", "is_paused": True},
+        {"dag_id": "dag_b", "is_paused": False},
+    ])
+
+    result = hook.get_dag("dag_a")
+    assert result["dag_id"] == "dag_a"
+
+    # Second call uses cache
+    result2 = hook.get_dag("dag_b")
+    assert result2["dag_id"] == "dag_b"
+    hook.get_dags.assert_called_once()
+
+
+def test_http_hook_get_dag_not_found():
+    from astronomer_starship.providers.starship.hooks.starship import StarshipHttpHook
+
+    hook = StarshipHttpHook.__new__(StarshipHttpHook)
+    hook.get_dags = MagicMock(return_value=[{"dag_id": "dag_a"}])
+
+    with pytest.raises(ValueError, match="not found"):
+        hook.get_dag("nonexistent")
+
+
+def test_http_hook_get_task_instance_history():
+    from astronomer_starship.providers.starship.hooks.starship import StarshipHttpHook
+
+    hook = StarshipHttpHook.__new__(StarshipHttpHook)
+    mock_session = MagicMock()
+    mock_response = MagicMock()
+    mock_response.json.return_value = {"task_instances": []}
+    mock_session.get.return_value = mock_response
+    hook.get_conn = MagicMock(return_value=mock_session)
+    hook.url_from_endpoint = MagicMock(return_value="http://test/api/starship/task_instance_history")
+
+    result = hook.get_task_instance_history("dag_1", limit=100)
+    assert result == {"task_instances": []}
+    mock_response.raise_for_status.assert_called_once()
+
+
+def test_http_hook_set_task_instance_history():
+    from astronomer_starship.providers.starship.hooks.starship import StarshipHttpHook
+
+    hook = StarshipHttpHook.__new__(StarshipHttpHook)
+    mock_session = MagicMock()
+    mock_response = MagicMock()
+    mock_response.json.return_value = {"status": "ok"}
+    mock_session.post.return_value = mock_response
+    hook.get_conn = MagicMock(return_value=mock_session)
+    hook.url_from_endpoint = MagicMock(return_value="http://test/api/starship/task_instance_history")
+
+    result = hook.set_task_instance_history([{"dag_id": "dag_1", "task_id": "t1"}])
+    assert result == {"status": "ok"}
+    mock_response.raise_for_status.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Service: migrate_dag with TI history
+# ---------------------------------------------------------------------------
+
+
+def test_migrate_dag_with_ti_history():
+    """TI history is migrated when available."""
+    from astronomer_starship.cutover.service import migrate_dag
+
+    source_hook = MagicMock()
+    source_hook.get_dag.return_value = {"dag_id": "dag_1", "is_paused": True}
+    source_hook.get_dag_runs.return_value = {
+        "dag_runs": [
+            {"dag_id": "dag_1", "run_id": "r1", "data_interval_end": "2024-01-01T00:00:00"},
+        ],
+    }
+    source_hook.get_task_instances.return_value = {
+        "task_instances": [{"dag_id": "dag_1", "task_id": "t1", "run_id": "r1"}],
+    }
+    source_hook.get_task_instance_history.return_value = {
+        "task_instances": [
+            {"dag_id": "dag_1", "task_id": "t1", "run_id": "r1", "try_number": 1},
+            {"dag_id": "dag_1", "task_id": "t1", "run_id": "r1", "try_number": 2},
+        ],
+    }
+
+    dest_hook = MagicMock()
+    dest_hook.get_dag.return_value = {"dag_id": "dag_1", "is_paused": True, "dag_run_count": 0}
+
+    result = migrate_dag("dag_1", source_hook, dest_hook)
+    assert result["dag_runs_migrated"] == 1
+    assert result["task_instance_history_migrated"] == 2
+    dest_hook.set_task_instance_history.assert_called_once()
+
+
+def test_migrate_dag_source_not_found():
+    """Migration fails if DAG not accessible in source."""
+    from astronomer_starship.cutover.service import migrate_dag
+
+    source_hook = MagicMock()
+    source_hook.get_dag.side_effect = Exception("404 Not Found")
+    dest_hook = MagicMock()
+
+    with pytest.raises(RuntimeError, match="not found or inaccessible"):
+        migrate_dag("missing_dag", source_hook, dest_hook)
+
+
+def test_migrate_dag_dest_not_found():
+    """Migration fails if DAG not deployed in destination."""
+    from astronomer_starship.cutover.service import migrate_dag
+
+    source_hook = MagicMock()
+    source_hook.get_dag.return_value = {"dag_id": "dag_1", "is_paused": True}
+    dest_hook = MagicMock()
+
+    # Import NoResultFound from sqlalchemy and use it
+    from sqlalchemy.exc import NoResultFound
+    dest_hook.get_dag.side_effect = NoResultFound("No row found")
+
+    with pytest.raises(RuntimeError, match="not found in destination"):
+        migrate_dag("dag_1", source_hook, dest_hook)
+
+
+# ---------------------------------------------------------------------------
+# _af2 cutover: _start_retry and _retry_batch_worker
+# ---------------------------------------------------------------------------
+
+
+@af2_only
+def test_start_retry(mock_variable):
+    from astronomer_starship._af2.cutover import _start_retry
+    from astronomer_starship.cutover.service import (
+        create_migration,
+        get_migration,
+        update_dag_status,
+    )
+
+    mid = create_migration("bigbang", {"source_conn_id": "x"}, ["dag_1"])
+    update_dag_status(mid, "dag_1", "failed", error="boom")
+
+    with patch("astronomer_starship._af2.cutover._retry_batch_worker"):
+        _start_retry(mid, ["dag_1"], {"source_conn_id": "x"})
+
+    m = get_migration(mid)
+    assert m["dags"]["dag_1"]["status"] == "pending"
+    assert m["status"] == "running"
+
+
+@af2_only
+def test_retry_batch_worker_completed(mock_variable):
+    from astronomer_starship._af2.cutover import _retry_batch_worker
+    from astronomer_starship.cutover.service import (
+        _abort_events,
+        create_migration,
+        get_migration,
+        update_dag_status,
+    )
+
+    mid = create_migration("bigbang", {"source_conn_id": "x"}, ["dag_1"])
+    _abort_events[mid] = threading.Event()
+
+    def _batch_side_effect(migration_id, dag_ids, config):
+        update_dag_status(migration_id, "dag_1", "completed", dag_runs_migrated=10)
+
+    with patch("astronomer_starship._af2.cutover._run_dag_batch", side_effect=_batch_side_effect):
+        _retry_batch_worker(mid, ["dag_1"], {"source_conn_id": "x"})
+
+    m = get_migration(mid)
+    assert m["status"] == "completed"
+
+
+@af2_only
+def test_retry_batch_worker_aborted(mock_variable):
+    from astronomer_starship._af2.cutover import _retry_batch_worker
+    from astronomer_starship.cutover.service import (
+        _abort_events,
+        create_migration,
+        get_migration,
+    )
+
+    mid = create_migration("bigbang", {"source_conn_id": "x"}, ["dag_1"])
+    _abort_events[mid] = threading.Event()
+    _abort_events[mid].set()
+
+    with patch("astronomer_starship._af2.cutover._run_dag_batch"):
+        _retry_batch_worker(mid, ["dag_1"], {"source_conn_id": "x"})
+
+    m = get_migration(mid)
+    assert m["status"] == "aborted"
