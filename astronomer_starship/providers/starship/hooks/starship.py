@@ -2,6 +2,8 @@
 Hooks for interacting with Starship migrations
 """
 
+import json
+import logging
 from abc import ABC, abstractmethod
 from typing import List
 
@@ -23,6 +25,7 @@ VARIABLES_ROUTE = "/api/starship/variables"
 DAGS_ROUTE = "/api/starship/dags"
 DAG_RUNS_ROUTE = "/api/starship/dag_runs"
 TASK_INSTANCES_ROUTE = "/api/starship/task_instances"
+TASK_INSTANCE_HISTORY_ROUTE = "/api/starship/task_instance_history"
 
 
 class StarshipHook(ABC):
@@ -55,6 +58,10 @@ class StarshipHook(ABC):
         pass
 
     @abstractmethod
+    def get_dag(self, dag_id: str) -> dict:
+        pass
+
+    @abstractmethod
     def set_dag_is_paused(self, dag_id: str, is_paused: bool):
         pass
 
@@ -72,6 +79,14 @@ class StarshipHook(ABC):
 
     @abstractmethod
     def set_task_instances(self, task_instances: list):
+        pass
+
+    @abstractmethod
+    def get_task_instance_history(self, dag_id: str, offset: int = 0, limit: int = 10) -> dict:
+        pass
+
+    @abstractmethod
+    def set_task_instance_history(self, task_instances: list):
         pass
 
 
@@ -125,7 +140,8 @@ class StarshipLocalHook(BaseHook, StarshipHook):
         return StarshipCompatabilityLayer().get_dag_runs(dag_id, offset=offset, limit=limit)
 
     def set_dag_runs(self, dag_runs: list):
-        raise RuntimeError("Setting local data is not supported")
+        """Write DAG runs to the local Airflow database."""
+        return StarshipCompatabilityLayer().set_dag_runs(dag_runs)
 
     def get_task_instances(self, dag_id: str, offset: int = 0, limit: int = 10):
         """
@@ -134,7 +150,45 @@ class StarshipLocalHook(BaseHook, StarshipHook):
         return StarshipCompatabilityLayer().get_task_instances(dag_id, offset=offset, limit=limit)
 
     def set_task_instances(self, task_instances: list):
-        raise RuntimeError("Setting local data is not supported")
+        """Write task instances to the local Airflow database."""
+        return StarshipCompatabilityLayer().set_task_instances(task_instances)
+
+    def get_dag(self, dag_id: str) -> dict:
+        """Get a single DAG's metadata from the local Airflow instance."""
+        from airflow.models import DagModel
+
+        compat = StarshipCompatabilityLayer()
+        try:
+            fields = [
+                getattr(DagModel, attr_desc["attr"])
+                for attr_desc in compat.dag_attrs().values()
+                if attr_desc["attr"] is not None
+            ]
+            dag_result = compat.session.query(*fields).filter(DagModel.dag_id == dag_id).one()
+            record = {
+                attr: (
+                    compat._get_tags(dag_result.dag_id)
+                    if attr == "tags"
+                    else (
+                        compat._get_dag_run_count(dag_result.dag_id)
+                        if attr == "dag_run_count"
+                        else getattr(dag_result, attr_desc["attr"], None)
+                    )
+                )
+                for attr, attr_desc in compat.dag_attrs().items()
+            }
+            return json.loads(json.dumps(record, default=str))
+        except Exception:
+            logging.exception("get_dag() failed for DAG %s", dag_id)
+            raise
+
+    def get_task_instance_history(self, dag_id: str, offset: int = 0, limit: int = 10) -> dict:
+        """Get task instance history from the local Airflow instance."""
+        return StarshipCompatabilityLayer().get_task_instance_history(dag_id, offset=offset, limit=limit)
+
+    def set_task_instance_history(self, task_instances: list):
+        """Write task instance history to the local Airflow database."""
+        return StarshipCompatabilityLayer().set_task_instance_history(task_instances=task_instances)
 
 
 class StarshipHttpHook(HttpHook, StarshipHook):
@@ -255,6 +309,30 @@ class StarshipHttpHook(HttpHook, StarshipHook):
         """
         conn = self.get_conn()
         url = self.url_from_endpoint(TASK_INSTANCES_ROUTE)
+        res = conn.post(url, json={"task_instances": task_instances})
+        res.raise_for_status()
+        return res.json()
+
+    def get_dag(self, dag_id: str) -> dict:
+        """Get a single DAG by ID from the Target Starship instance."""
+        if not hasattr(self, "_dag_cache"):
+            self._dag_cache = {d["dag_id"]: d for d in self.get_dags()}
+        if dag_id not in self._dag_cache:
+            raise ValueError(f"DAG '{dag_id}' not found in remote.")
+        return self._dag_cache[dag_id]
+
+    def get_task_instance_history(self, dag_id: str, offset: int = 0, limit: int = 10) -> dict:
+        """Get task instance history from the Target Starship instance."""
+        conn = self.get_conn()
+        url = self.url_from_endpoint(TASK_INSTANCE_HISTORY_ROUTE)
+        res = conn.get(url, params={"dag_id": dag_id, "limit": limit})
+        res.raise_for_status()
+        return res.json()
+
+    def set_task_instance_history(self, task_instances: List[dict]) -> dict:
+        """Set task instance history in the Target Starship instance."""
+        conn = self.get_conn()
+        url = self.url_from_endpoint(TASK_INSTANCE_HISTORY_ROUTE)
         res = conn.post(url, json={"task_instances": task_instances})
         res.raise_for_status()
         return res.json()
