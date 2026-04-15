@@ -16,7 +16,7 @@
 
   <hr>
 
-  <form method="POST" action="{{ url_for('CutoverView.bigbang_start') }}" class="mc-preparing-form">
+  <form method="POST" action="{{ url_for('CutoverView.bigbang_start') }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
     <div class="form-group">
@@ -123,9 +123,15 @@
       </div>
     </div>
 
+    <div class="alert alert-warning" style="margin-top: 20px;">
+      After pressing <strong>Start Big-Bang Cutover</strong>, it may take a while to resolve
+      DAGs from the source and prepare the migration. The page will remain on this view
+      until the process is ready &mdash; please do not refresh or navigate away.
+    </div>
+
     <div class="mc-actions" style="margin-top: 20px;">
       <button type="submit" class="btn btn-primary btn-lg">
-        Start Big-Bang Migration
+        Start Big-Bang Cutover
       </button>
       <a href="{{ url_for('CutoverView.index') }}" class="btn btn-default btn-lg">Cancel</a>
     </div>
