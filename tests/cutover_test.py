@@ -280,6 +280,24 @@ def test_resolve_dag_patterns_cross_ref():
 # ---------------------------------------------------------------------------
 
 
+def _patch_base_hook():
+    """Patch BaseHook.get_connection in a way that works on both AF2 and AF3.
+
+    AF2 has ``airflow.hooks.base.BaseHook``, AF3 moved it to
+    ``airflow.hooks.base_hook.BaseHook``.  The auth module does
+    ``from airflow.hooks.base import BaseHook`` at call time, so we
+    need the mock to be importable from that path.
+    """
+    import sys
+    import types
+
+    mock_base_hook = MagicMock()
+    # Ensure the module path exists for ``from airflow.hooks.base import BaseHook``
+    mod = types.ModuleType("airflow.hooks.base")
+    mod.BaseHook = mock_base_hook  # type: ignore[attr-defined]
+    return patch.dict(sys.modules, {"airflow.hooks.base": mod}), mock_base_hook
+
+
 def test_get_source_hook_astro_bearer():
     """Connection with password -> AstroBearerAuth."""
     from astronomer_starship.cutover.auth import AstroBearerAuth, get_source_hook
@@ -288,8 +306,9 @@ def test_get_source_hook_astro_bearer():
     mock_conn.password = "test-token-value"  # pragma: allowlist secret
     mock_conn.extra_dejson = {}
 
-    with patch("airflow.hooks.base.BaseHook") as mock_base:
-        mock_base.get_connection.return_value = mock_conn
+    ctx, mock_base_hook = _patch_base_hook()
+    mock_base_hook.get_connection.return_value = mock_conn
+    with ctx:
         hook = get_source_hook("test_conn")
 
     assert hook.auth_type is AstroBearerAuth
@@ -303,8 +322,9 @@ def test_get_source_hook_gcp_adc():
     mock_conn.password = None
     mock_conn.extra_dejson = {}
 
-    with patch("airflow.hooks.base.BaseHook") as mock_base:
-        mock_base.get_connection.return_value = mock_conn
+    ctx, mock_base_hook = _patch_base_hook()
+    mock_base_hook.get_connection.return_value = mock_conn
+    with ctx:
         hook = get_source_hook("test_conn")
 
     assert hook.auth_type is ComposerV2BearerAuth
@@ -320,8 +340,9 @@ def test_get_source_hook_impersonation():
         "impersonation_chain": ["target-sa@project.iam.gserviceaccount.com"],
     }
 
-    with patch("airflow.hooks.base.BaseHook") as mock_base:
-        mock_base.get_connection.return_value = mock_conn
+    ctx, mock_base_hook = _patch_base_hook()
+    mock_base_hook.get_connection.return_value = mock_conn
+    with ctx:
         hook = get_source_hook("test_conn")
 
     # Should not be the base classes — should be the dynamically created one
