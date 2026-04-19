@@ -27,6 +27,27 @@ DAG_RUNS_ROUTE = "/api/starship/dag_runs"
 TASK_INSTANCES_ROUTE = "/api/starship/task_instances"
 TASK_INSTANCE_HISTORY_ROUTE = "/api/starship/task_instance_history"
 
+# Headers that Airflow's HttpHook legitimately forwards from connection extras.
+# Anything else in `extra` (e.g. auth-factory hints like `impersonation_chain`
+# or `starship_platform`) must not leak onto the HTTP session as a header.
+_STANDARD_HTTP_HEADERS = frozenset(
+    [
+        "accept",
+        "accept-encoding",
+        "accept-language",
+        "authorization",
+        "cache-control",
+        "connection",
+        "content-type",
+        "cookie",
+        "host",
+        "origin",
+        "pragma",
+        "referer",
+        "user-agent",
+    ]
+)
+
 
 class StarshipHook(ABC):
     @abstractmethod
@@ -192,6 +213,20 @@ class StarshipLocalHook(BaseHook, StarshipHook):
 
 
 class StarshipHttpHook(HttpHook, StarshipHook):
+    def get_conn(self, headers=None):
+        """Drop non-HTTP-header keys from connection ``extra`` before use.
+
+        Airflow's ``HttpHook`` copies the entire ``extra`` JSON onto the
+        session as headers. Starship uses ``extra`` to stash auth-factory
+        hints (e.g. ``impersonation_chain``, ``starship_platform``,
+        ``region_name``), and those must not be sent as HTTP headers.
+        """
+        session = super().get_conn(headers=headers)
+        extra_keys = [k for k in session.headers if k.lower() not in _STANDARD_HTTP_HEADERS]
+        for key in extra_keys:
+            session.headers.pop(key, None)
+        return session
+
     def get_variables(self):
         """
         Get all variables from the Target Starship instance.

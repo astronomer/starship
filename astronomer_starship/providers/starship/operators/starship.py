@@ -2,7 +2,7 @@
 
 import logging
 from datetime import datetime
-from typing import Any, List, Union
+from typing import Any, Callable, List, Optional, Union
 
 import airflow
 from airflow.exceptions import AirflowSkipException
@@ -10,6 +10,7 @@ from packaging.version import Version
 
 from astronomer_starship.compat import AIRFLOW_V_2, AIRFLOW_V_3
 from astronomer_starship.providers.starship.hooks.starship import (
+    StarshipHook,
     StarshipHttpHook,
     StarshipLocalHook,
 )
@@ -184,45 +185,174 @@ def starship_connections_migration(connections: List[str] = None, **kwargs):
         return tg
 
 
+class AbortedError(Exception):
+    """Raised by ``migrate_dag_history`` when the caller signals an abort."""
+
+
+def pause_unpause_dag(
+    dag_id: str,
+    source_hook: StarshipHook,
+    target_hook: StarshipHook,
+    *,
+    pause_in_source: bool,
+    unpause_in_target: bool,
+) -> dict:
+    """Pause in source and/or unpause in target. Returns what was actually done."""
+    result = {"source_paused_by_us": False, "target_unpaused_by_us": False}
+    if pause_in_source:
+        source_hook.set_dag_is_paused(dag_id=dag_id, is_paused=True)
+        result["source_paused_by_us"] = True
+        logging.info("Paused DAG %s in source.", dag_id)
+    if unpause_in_target:
+        target_hook.set_dag_is_paused(dag_id=dag_id, is_paused=False)
+        result["target_unpaused_by_us"] = True
+        logging.info("Unpaused DAG %s in target.", dag_id)
+    return result
+
+
+def migrate_dag_history(  # noqa: C901
+    *,
+    source_hook: StarshipHook,
+    target_hook: StarshipHook,
+    target_dag_id: str,
+    dag_run_limit: int = 10,
+    pause_dag_in_source: bool = True,
+    unpause_dag_in_target: bool = False,
+    pre_checks: bool = False,
+    migrate_ti_history: bool = False,
+    on_step: Optional[Callable[[str], None]] = None,
+    check_abort: Optional[Callable[[], None]] = None,
+) -> dict:
+    """Migrate one DAG's runs + task instances (+ optional TI history) between Airflow instances.
+
+    The caller owns ``source_hook`` / ``target_hook`` direction. For the
+    classic push flow, source is local and target is remote. For the cutover
+    wave flow, source is remote and target is local.
+
+    Optional cutover-style features are opt-in:
+    - ``pre_checks``: verify the target DAG is paused and has no existing runs.
+    - ``migrate_ti_history``: also copy ``TaskInstanceHistory`` (AF 2.10+).
+    - ``on_step(label)``: progress callback for UI-driven consumers.
+    - ``check_abort()``: raise :class:`AbortedError` to stop before a write.
+
+    Returns a dict with counts and ``latest_data_interval_end``.
+    """
+
+    def _step(label: str) -> None:
+        if on_step:
+            on_step(label)
+
+    def _abort_guard() -> None:
+        if check_abort:
+            check_abort()
+
+    if pause_dag_in_source:
+        _abort_guard()
+        _step("Pausing source")
+        source_hook.set_dag_is_paused(dag_id=target_dag_id, is_paused=True)
+        logging.info("[%s] Paused in source.", target_dag_id)
+
+    if pre_checks:
+        _abort_guard()
+        _step("Pre-checks")
+        target_dag = target_hook.get_dag(dag_id=target_dag_id)
+        if not target_dag.get("is_paused"):
+            raise RuntimeError(f"DAG '{target_dag_id}' is active in target. Pause it before migrating.")
+        if target_dag.get("dag_run_count"):
+            raise RuntimeError(f"DAG '{target_dag_id}' already has runs in target. Clear them first.")
+        logging.info("[%s] Pre-checks passed.", target_dag_id)
+
+    _abort_guard()
+    _step("Fetching DAG runs")
+    dag_runs_resp = source_hook.get_dag_runs(dag_id=target_dag_id, limit=dag_run_limit)
+    dag_runs = dag_runs_resp.get("dag_runs", []) if isinstance(dag_runs_resp, dict) else []
+    if not dag_runs:
+        raise AirflowSkipException(f"No DAG Runs found for {target_dag_id}")
+    logging.info("[%s] Fetched %d DAG runs.", target_dag_id, len(dag_runs))
+
+    # Each DAG run has many task instances -- fetch with a higher cap.
+    ti_limit = dag_run_limit * 200
+    _abort_guard()
+    _step("Fetching task instances")
+    ti_resp = source_hook.get_task_instances(dag_id=target_dag_id, limit=ti_limit)
+    task_instances = ti_resp.get("task_instances", []) if isinstance(ti_resp, dict) else []
+    if not task_instances:
+        raise AirflowSkipException(f"No Task Instances found for {target_dag_id}")
+    logging.info("[%s] Fetched %d task instances.", target_dag_id, len(task_instances))
+
+    _step("Writing DAG runs")
+    target_hook.set_dag_runs(dag_runs=dag_runs)
+
+    intervals = [dr["data_interval_end"] for dr in dag_runs if dr.get("data_interval_end")]
+    latest_data_interval_end = max(intervals) if intervals else None
+
+    _step("Writing task instances")
+    target_hook.set_task_instances(task_instances=task_instances)
+
+    ti_history_count = 0
+    if migrate_ti_history:
+        # Writes already happened; don't honour abort here — we'd leave partial state.
+        _step("Fetching TI history")
+        try:
+            history = source_hook.get_task_instance_history(dag_id=target_dag_id, limit=ti_limit)
+            history_records = history.get("task_instances", []) if isinstance(history, dict) else []
+            if history_records:
+                _step("Writing TI history")
+                target_hook.set_task_instance_history(task_instances=history_records)
+                ti_history_count = len(history_records)
+        except Exception:
+            logging.info("[%s] TI history not available (pre-AF 2.10). Skipping.", target_dag_id)
+
+    if unpause_dag_in_target:
+        _step("Unpausing target")
+        target_hook.set_dag_is_paused(dag_id=target_dag_id, is_paused=False)
+        logging.info("[%s] Unpaused in target.", target_dag_id)
+
+    return {
+        "dag_runs_migrated": len(dag_runs),
+        "task_instances_migrated": len(task_instances),
+        "task_instance_history_migrated": ti_history_count,
+        "latest_data_interval_end": latest_data_interval_end,
+    }
+
+
 class StarshipDagHistoryMigrationOperator(StarshipMigrationOperator):
-    """Operator to migrate a single DAG from one Airflow instance to another, with it's history."""
+    """Operator to migrate a single DAG from one Airflow instance to another, with its history.
+
+    Default behaviour preserves the classic push flow: pause locally, fetch
+    dag_runs + task_instances, push to target, optionally unpause target.
+
+    Cutover-style options (``pre_checks``, ``migrate_ti_history``) are
+    off by default to keep existing DAGs unchanged.
+    """
 
     def __init__(
         self,
         target_dag_id: str,
         unpause_dag_in_target: bool = False,
         dag_run_limit: int = 10,
+        pre_checks: bool = False,
+        migrate_ti_history: bool = False,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.target_dag_id = target_dag_id
         self.unpause_dag_in_target = unpause_dag_in_target
         self.dag_run_limit = dag_run_limit
+        self.pre_checks = pre_checks
+        self.migrate_ti_history = migrate_ti_history
 
     def execute(self, context):
-        logging.info("Pausing local DAG for %s", self.target_dag_id)
-        self.source_hook.set_dag_is_paused(dag_id=self.target_dag_id, is_paused=True)
-        # TODO - Poll until all tasks are done
-
-        logging.info("Getting local DAG Runs for %s", self.target_dag_id)
-        dag_runs = self.source_hook.get_dag_runs(dag_id=self.target_dag_id, limit=self.dag_run_limit)
-        if len(dag_runs["dag_runs"]) == 0:
-            raise AirflowSkipException("No DAG Runs found for " + self.target_dag_id)
-
-        logging.info("Getting local Task Instances for %s", self.target_dag_id)
-        task_instances = self.source_hook.get_task_instances(dag_id=self.target_dag_id, limit=self.dag_run_limit)
-        if len(task_instances["task_instances"]) == 0:
-            raise AirflowSkipException("No Task Instances found for " + self.target_dag_id)
-
-        logging.info("Setting target DAG Runs for %s", self.target_dag_id)
-        self.target_hook.set_dag_runs(dag_runs=dag_runs["dag_runs"])
-
-        logging.info("Setting target Task Instances for %s", self.target_dag_id)
-        self.target_hook.set_task_instances(task_instances=task_instances["task_instances"])
-
-        if self.unpause_dag_in_target:
-            logging.info("Unpausing target DAG for %s", self.target_dag_id)
-            self.target_hook.set_dag_is_paused(dag_id=self.target_dag_id, is_paused=False)
+        return migrate_dag_history(
+            source_hook=self.source_hook,
+            target_hook=self.target_hook,
+            target_dag_id=self.target_dag_id,
+            dag_run_limit=self.dag_run_limit,
+            pause_dag_in_source=True,
+            unpause_dag_in_target=self.unpause_dag_in_target,
+            pre_checks=self.pre_checks,
+            migrate_ti_history=self.migrate_ti_history,
+        )
 
 
 def starship_dag_history_migration(dag_ids: List[str] = None, **kwargs):
