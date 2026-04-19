@@ -9,7 +9,14 @@ from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from astronomer_starship._af3.starship_compatability import StarshipAirflow, StarshipCompatabilityLayer
-from astronomer_starship.common import HttpError, get_kwargs_fn, telescope
+from astronomer_starship.common import (
+    STARSHIP_SOURCE_CONN_ID,
+    HttpError,
+    build_source_connection_kwargs,
+    get_kwargs_fn,
+    read_source_connection,
+    telescope,
+)
 
 if TYPE_CHECKING:
     from typing import Callable
@@ -274,6 +281,30 @@ class StarshipApi(FastAPI):
             delete=starship_compat.delete_task_log,
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.task_log_attrs()),
         )
+
+    @router.api_route("/source_connection", methods=["GET", "POST", "DELETE"])
+    @staticmethod
+    def source_connection(
+        starship_route: Annotated[StarshipRoute, Depends(starship_route)],
+        starship_compat: Annotated[StarshipAirflow, Depends(starship_compat)],
+    ):
+        """Manage the ``starship_source`` Airflow Connection used by the Cutover Tool."""
+
+        def _get():
+            return read_source_connection(starship_compat.session)
+
+        def _post():
+            kwargs = build_source_connection_kwargs(starship_route.json or {})
+            try:
+                starship_compat.delete_connection(conn_id=STARSHIP_SOURCE_CONN_ID)
+            except Exception:
+                pass
+            return starship_compat.set_connection(**kwargs)
+
+        def _delete():
+            return starship_compat.delete_connection(conn_id=STARSHIP_SOURCE_CONN_ID)
+
+        return starship_route(get=_get, post=_post, delete=_delete)
 
     @router.api_route("/xcom", methods=["GET", "POST", "DELETE"])
     @staticmethod

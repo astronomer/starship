@@ -8,6 +8,7 @@ const constants = Object.freeze({
   DAG_RUNS_ROUTE: '/api/starship/dag_runs',
   TASK_INSTANCE_ROUTE: '/api/starship/task_instances',
   TASK_INSTANCE_HISTORY_ROUTE: '/api/starship/task_instance_history',
+  SOURCE_CONNECTION_ROUTE: '/api/starship/source_connection',
 });
 export default constants;
 
@@ -22,7 +23,36 @@ export const ROUTES = Object.freeze({
   ENV_VARS: 'env',
   DAGS: 'dags',
   TELESCOPE: 'telescope',
+  CUTOVER: 'cutover',
+  CUTOVER_STATUS: 'cutover/status',
 });
+
+/**
+ * Source platforms supported by the Cutover Tool.
+ * Must stay in sync with SUPPORTED_SOURCE_PLATFORMS in astronomer_starship/common.py.
+ */
+export const SOURCE_PLATFORMS = Object.freeze([
+  {
+    id: 'astro',
+    label: 'Astro',
+    description: 'Astronomer Cloud or Software deployment. Uses a Deployment API token.',
+  },
+  {
+    id: 'gcc',
+    label: 'Google Cloud Composer',
+    description: 'Composer 2/3. Uses Application Default Credentials (ADC), with optional service-account impersonation.',
+  },
+  {
+    id: 'mwaa',
+    label: 'Amazon MWAA',
+    description: 'Managed Workflows for Apache Airflow. Uses an IAM role via boto3.',
+  },
+  {
+    id: 'oss',
+    label: 'OSS Airflow',
+    description: 'Self-hosted Airflow. Uses a bearer token or HTTP Basic auth.',
+  },
+]);
 
 export const updateDeploymentVariablesMutation = `
 mutation UpdateDeploymentVariables(

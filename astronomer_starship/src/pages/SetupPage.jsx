@@ -24,6 +24,9 @@ import { useAppState, useAppDispatch } from '../AppContext';
 import SetupStep from '../component/SetupStep';
 import UrlTokenForm from '../component/UrlTokenForm';
 import ConnectionStatus from '../component/ConnectionStatus';
+import SourcePlatformPicker from '../component/SourcePlatformPicker';
+import SourceCredentialsForm from '../component/SourceCredentialsForm';
+import SourceConnectionStatus from '../component/SourceConnectionStatus';
 import { getHoustonRoute, proxyHeaders, proxyUrl } from '../util';
 import { getWorkspaceDeploymentsQuery } from '../constants';
 
@@ -35,6 +38,9 @@ export default function SetupPage() {
   // Collapsible section states
   const step1 = useDisclosure({ defaultIsOpen: true });
   const step2 = useDisclosure({ defaultIsOpen: false });
+  // Source steps are collapsed by default — only matter for Cutover users.
+  const step3 = useDisclosure({ defaultIsOpen: false });
+  const step4 = useDisclosure({ defaultIsOpen: false });
 
   // Reset confirmation dialog
   const resetDialog = useDisclosure();
@@ -46,10 +52,30 @@ export default function SetupPage() {
   // Animation states for checkmarks
   const [showStep1Check, setShowStep1Check] = useState(false);
   const [showStep2Check, setShowStep2Check] = useState(false);
+  const [showStep3Check, setShowStep3Check] = useState(false);
+  const [showStep4Check, setShowStep4Check] = useState(false);
 
   // Step completion logic
   const isStep1Complete = state.isValidUrl && state.token;
   const isStep2Complete = state.isAirflow && state.isStarship;
+
+  // Source creds present for the selected platform
+  const sourceHasCreds = (() => {
+    switch (state.sourcePlatform) {
+      case 'astro':
+        return !!state.sourceToken;
+      case 'oss':
+        return !!state.sourceToken || !!(state.sourceLogin && state.sourcePassword);
+      case 'gcc':
+        return true;
+      case 'mwaa':
+        return !!state.sourceRegion;
+      default:
+        return false;
+    }
+  })();
+  const isStep3Complete = !!state.sourcePlatform && state.sourceIsValidUrl && sourceHasCreds;
+  const isStep4Complete = state.isSourceSetupComplete;
 
   // Auto-open sections on mount based on completion state
   useEffect(() => {
@@ -75,6 +101,26 @@ export default function SetupPage() {
       setTimeout(() => step2.onClose(), 1000);
     }
   }, [isStep2Complete, showStep2Check, step2]);
+
+  // Auto-open source connection-status step once creds + URL are in place.
+  useEffect(() => {
+    if (isStep3Complete && !isStep4Complete && !step4.isOpen) {
+      step4.onOpen();
+    }
+  }, [isStep3Complete, isStep4Complete, step4]);
+
+  useEffect(() => {
+    if (isStep3Complete && !showStep3Check) {
+      setShowStep3Check(true);
+    }
+  }, [isStep3Complete, showStep3Check]);
+
+  useEffect(() => {
+    if (isStep4Complete && !showStep4Check) {
+      setShowStep4Check(true);
+      setTimeout(() => step4.onClose(), 1000);
+    }
+  }, [isStep4Complete, showStep4Check, step4]);
 
   // Show success toast when setup completes
   useEffect(() => {
@@ -143,9 +189,13 @@ export default function SetupPage() {
     resetDialog.onClose();
     setShowStep1Check(false);
     setShowStep2Check(false);
+    setShowStep3Check(false);
+    setShowStep4Check(false);
     hasShownCompleteToast.current = false;
     step1.onOpen();
     step2.onOpen();
+    step3.onClose();
+    step4.onClose();
   };
 
   // Memoize callbacks to prevent infinite re-renders in ValidatedUrlCheckbox
@@ -155,6 +205,32 @@ export default function SetupPage() {
   );
   const handleStarshipChange = useCallback(
     (value) => dispatch({ type: 'set-is-starship', isStarship: value }),
+    [dispatch],
+  );
+
+  // Source-side callbacks
+  const handleSourcePlatformChange = useCallback(
+    (platform) => dispatch({ type: 'set-source-platform', platform }),
+    [dispatch],
+  );
+  const handleSourceUrlChange = useCallback(
+    (sourceUrl) => dispatch({ type: 'set-source-url', sourceUrl }),
+    [dispatch],
+  );
+  const handleSourceCredsChange = useCallback(
+    (partial) => dispatch({ type: 'set-source-creds', ...partial }),
+    [dispatch],
+  );
+  const handleSourceAirflowChange = useCallback(
+    (value) => dispatch({ type: 'set-source-is-airflow', isAirflow: value }),
+    [dispatch],
+  );
+  const handleSourceStarshipChange = useCallback(
+    (value) => dispatch({ type: 'set-source-is-starship', isStarship: value }),
+    [dispatch],
+  );
+  const handleSourceConnectionSavedChange = useCallback(
+    (saved) => dispatch({ type: 'set-source-connection-saved', saved }),
     [dispatch],
   );
 
@@ -227,6 +303,75 @@ export default function SetupPage() {
             isStarship={state.isStarship}
             onAirflowChange={handleAirflowChange}
             onStarshipChange={handleStarshipChange}
+          />
+        </SetupStep>
+
+        {/* Step 3: Source Airflow (Cutover) — optional */}
+        <SetupStep
+          stepNumber="3"
+          title="Configure Source Airflow (optional — enables Cutover)"
+          tooltip="Required only if you're migrating DAG metadata INTO this Airflow. Saved as an Airflow Connection named `starship_source`."
+          isComplete={isStep3Complete}
+          showCheck={showStep3Check}
+          isOpen={step3.isOpen}
+          onToggle={step3.onToggle}
+        >
+          <VStack align="stretch" spacing={4}>
+            <Text fontSize="xs" color="gray.600">
+              Pick the platform of the Airflow you are migrating FROM, then provide its URL and credentials. When
+              the connection is verified and saved, the <strong>Cutover</strong> tabs unlock in the navigation above.
+            </Text>
+            <SourcePlatformPicker value={state.sourcePlatform} onChange={handleSourcePlatformChange} />
+            {state.sourcePlatform && (
+              <SourceCredentialsForm
+                platform={state.sourcePlatform}
+                url={state.sourceUrl}
+                token={state.sourceToken}
+                login={state.sourceLogin}
+                password={state.sourcePassword}
+                impersonationChain={state.sourceImpersonationChain}
+                region={state.sourceRegion}
+                roleArn={state.sourceRoleArn}
+                environmentName={state.sourceEnvironmentName}
+                isTouched={state.sourceIsTouched}
+                credsTouched={state.sourceCredsTouched}
+                isValidUrl={state.sourceIsValidUrl}
+                onUrlChange={handleSourceUrlChange}
+                onCredsChange={handleSourceCredsChange}
+              />
+            )}
+          </VStack>
+        </SetupStep>
+
+        {/* Step 4: Source Connection Status — save as Airflow Connection */}
+        <SetupStep
+          stepNumber="4"
+          title="Source Connection Status"
+          tooltip="Verifies source connectivity and saves the Airflow Connection `starship_source` used by the Cutover Tool."
+          isComplete={isStep4Complete}
+          showCheck={showStep4Check}
+          isOpen={step4.isOpen}
+          onToggle={step4.onToggle}
+          isDisabled={!isStep3Complete}
+        >
+          <SourceConnectionStatus
+            platform={state.sourcePlatform}
+            url={state.sourceUrl}
+            token={state.sourceToken}
+            login={state.sourceLogin}
+            password={state.sourcePassword}
+            impersonationChain={state.sourceImpersonationChain}
+            region={state.sourceRegion}
+            roleArn={state.sourceRoleArn}
+            environmentName={state.sourceEnvironmentName}
+            isValidUrl={state.sourceIsValidUrl}
+            isAirflow={state.sourceIsAirflow}
+            isStarship={state.sourceIsStarship}
+            connectionSaved={state.sourceConnectionSaved}
+            hasCreds={sourceHasCreds}
+            onAirflowChange={handleSourceAirflowChange}
+            onStarshipChange={handleSourceStarshipChange}
+            onConnectionSavedChange={handleSourceConnectionSavedChange}
           />
         </SetupStep>
       </VStack>

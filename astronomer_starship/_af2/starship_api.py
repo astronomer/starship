@@ -12,7 +12,14 @@ from flask_appbuilder import BaseView, expose
 from astronomer_starship._af2.starship_compatability import (
     StarshipCompatabilityLayer,
 )
-from astronomer_starship.common import HttpError, get_kwargs_fn, telescope
+from astronomer_starship.common import (
+    STARSHIP_SOURCE_CONN_ID,
+    HttpError,
+    build_source_connection_kwargs,
+    get_kwargs_fn,
+    read_source_connection,
+    telescope,
+)
 
 if TYPE_CHECKING:
     from typing import Callable
@@ -230,6 +237,34 @@ class StarshipApi(BaseView):
             delete=starship_compat.delete_task_log,
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.task_log_attrs()),
         )
+
+    @expose("/source_connection", methods=["GET", "POST", "DELETE"])
+    @csrf.exempt
+    def source_connection(self):
+        """Manage the ``starship_source`` Airflow Connection used by the Cutover Tool.
+
+        The frontend posts a platform-specific payload here; we translate it to a
+        standard Airflow HTTP Connection so the operator/template DAG and the
+        wave engine can reuse it unchanged.
+        """
+        starship_compat = StarshipCompatabilityLayer()
+
+        def _get():
+            return read_source_connection(starship_compat.session)
+
+        def _post():
+            kwargs = build_source_connection_kwargs(request.json or {})
+            try:
+                starship_compat.delete_connection(conn_id=STARSHIP_SOURCE_CONN_ID)
+            except Exception:
+                # Delete-if-exists: ignore not-found and keep going to the create.
+                pass
+            return starship_compat.set_connection(**kwargs)
+
+        def _delete():
+            return starship_compat.delete_connection(conn_id=STARSHIP_SOURCE_CONN_ID)
+
+        return starship_route(get=_get, post=_post, delete=_delete)
 
     # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_TASK_INSTANCE)])
     @expose("/xcom", methods=["GET", "POST", "DELETE"])

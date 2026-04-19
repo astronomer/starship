@@ -38,7 +38,68 @@ const initialState = {
 
   // Local Airflow info
   localAirflowVersion: null,
+
+  // -------------------------------------------------------------------
+  // Source Airflow configuration (Cutover Tool)
+  // Optional. When complete, enables the Cutover tabs.
+  // -------------------------------------------------------------------
+  sourcePlatform: null, // 'astro' | 'mwaa' | 'gcc' | 'oss'
+  sourceUrl: '',
+  sourceToken: null,
+  sourceLogin: null,
+  sourcePassword: null,
+  // Platform-specific
+  sourceImpersonationChain: '', // gcc - newline-separated textarea value
+  sourceRegion: '', // mwaa
+  sourceRoleArn: '', // mwaa
+  sourceEnvironmentName: '', // mwaa
+  // Validation
+  sourceIsTouched: false,
+  sourceCredsTouched: false,
+  sourceIsValidUrl: false,
+  sourceIsAirflow: false,
+  sourceIsStarship: false,
+  sourceConnectionSaved: false,
+  isSourceSetupComplete: false,
 };
+
+function isValidHttpUrl(url) {
+  if (!url || typeof url !== 'string') return false;
+  try {
+    const u = new URL(url);
+    return (u.protocol === 'http:' || u.protocol === 'https:') && !!u.hostname;
+  } catch {
+    return false;
+  }
+}
+
+function hasSourceCreds(state, overrides = {}) {
+  const merged = { ...state, ...overrides };
+  switch (merged.sourcePlatform) {
+    case 'astro':
+      return !!merged.sourceToken;
+    case 'oss':
+      return !!merged.sourceToken || !!(merged.sourceLogin && merged.sourcePassword);
+    case 'gcc':
+      return true; // ADC: no UI-side creds required
+    case 'mwaa':
+      return !!merged.sourceRegion;
+    default:
+      return false;
+  }
+}
+
+function calculateIsSourceSetupComplete(state, overrides = {}) {
+  const merged = { ...state, ...overrides };
+  return !!(
+    merged.sourcePlatform &&
+    merged.sourceIsValidUrl &&
+    merged.sourceIsAirflow &&
+    merged.sourceIsStarship &&
+    merged.sourceConnectionSaved &&
+    hasSourceCreds(merged)
+  );
+}
 
 // REDUCER
 
@@ -111,6 +172,90 @@ function reducer(state, action) {
       return { ...state, batchSize: action.batchSize };
     case 'set-local-airflow-version':
       return { ...state, localAirflowVersion: action.version };
+    case 'set-source-platform': {
+      // Changing platform invalidates creds and saved-connection state.
+      const next = {
+        ...state,
+        sourcePlatform: action.platform,
+        sourceToken: null,
+        sourceLogin: null,
+        sourcePassword: null,
+        sourceImpersonationChain: '',
+        sourceRegion: '',
+        sourceRoleArn: '',
+        sourceEnvironmentName: '',
+        sourceCredsTouched: false,
+        sourceIsAirflow: false,
+        sourceIsStarship: false,
+        sourceConnectionSaved: false,
+      };
+      return { ...next, isSourceSetupComplete: calculateIsSourceSetupComplete(next) };
+    }
+    case 'set-source-url': {
+      const sourceIsValidUrl = isValidHttpUrl(action.sourceUrl);
+      // URL change invalidates saved connection + connectivity checks.
+      const next = {
+        ...state,
+        sourceIsTouched: true,
+        sourceUrl: action.sourceUrl,
+        sourceIsValidUrl,
+        sourceIsAirflow: false,
+        sourceIsStarship: false,
+        sourceConnectionSaved: false,
+      };
+      return { ...next, isSourceSetupComplete: calculateIsSourceSetupComplete(next) };
+    }
+    case 'set-source-creds': {
+      // Partial update of whichever credential fields the active platform uses.
+      const next = {
+        ...state,
+        sourceCredsTouched: true,
+        ...('token' in action ? { sourceToken: action.token } : {}),
+        ...('login' in action ? { sourceLogin: action.login } : {}),
+        ...('password' in action ? { sourcePassword: action.password } : {}),
+        ...('impersonationChain' in action ? { sourceImpersonationChain: action.impersonationChain } : {}),
+        ...('region' in action ? { sourceRegion: action.region } : {}),
+        ...('roleArn' in action ? { sourceRoleArn: action.roleArn } : {}),
+        ...('environmentName' in action ? { sourceEnvironmentName: action.environmentName } : {}),
+        // Any cred change invalidates connectivity + saved state.
+        sourceIsAirflow: false,
+        sourceIsStarship: false,
+        sourceConnectionSaved: false,
+      };
+      return { ...next, isSourceSetupComplete: calculateIsSourceSetupComplete(next) };
+    }
+    case 'set-source-is-airflow': {
+      const next = { ...state, sourceIsAirflow: action.isAirflow };
+      return { ...next, isSourceSetupComplete: calculateIsSourceSetupComplete(next) };
+    }
+    case 'set-source-is-starship': {
+      const next = { ...state, sourceIsStarship: action.isStarship };
+      return { ...next, isSourceSetupComplete: calculateIsSourceSetupComplete(next) };
+    }
+    case 'set-source-connection-saved': {
+      const next = { ...state, sourceConnectionSaved: action.saved };
+      return { ...next, isSourceSetupComplete: calculateIsSourceSetupComplete(next) };
+    }
+    case 'reset-source':
+      return {
+        ...state,
+        sourcePlatform: null,
+        sourceUrl: '',
+        sourceToken: null,
+        sourceLogin: null,
+        sourcePassword: null,
+        sourceImpersonationChain: '',
+        sourceRegion: '',
+        sourceRoleArn: '',
+        sourceEnvironmentName: '',
+        sourceIsTouched: false,
+        sourceCredsTouched: false,
+        sourceIsValidUrl: false,
+        sourceIsAirflow: false,
+        sourceIsStarship: false,
+        sourceConnectionSaved: false,
+        isSourceSetupComplete: false,
+      };
     case 'reset':
       return initialState;
     case 'invalidate-token':
@@ -195,6 +340,51 @@ AppProvider.propTypes = {
 export function useSetupComplete() {
   const { isSetupComplete } = useAppState();
   return isSetupComplete;
+}
+
+export function useSourceSetupComplete() {
+  const { isSourceSetupComplete } = useAppState();
+  return isSourceSetupComplete;
+}
+
+export function useSourceConfig() {
+  const state = useAppState();
+  return useMemo(
+    () => ({
+      platform: state.sourcePlatform,
+      url: state.sourceUrl,
+      token: state.sourceToken,
+      login: state.sourceLogin,
+      password: state.sourcePassword,
+      impersonationChain: state.sourceImpersonationChain,
+      region: state.sourceRegion,
+      roleArn: state.sourceRoleArn,
+      environmentName: state.sourceEnvironmentName,
+      isTouched: state.sourceIsTouched,
+      credsTouched: state.sourceCredsTouched,
+      isValidUrl: state.sourceIsValidUrl,
+      isAirflow: state.sourceIsAirflow,
+      isStarship: state.sourceIsStarship,
+      connectionSaved: state.sourceConnectionSaved,
+    }),
+    [
+      state.sourcePlatform,
+      state.sourceUrl,
+      state.sourceToken,
+      state.sourceLogin,
+      state.sourcePassword,
+      state.sourceImpersonationChain,
+      state.sourceRegion,
+      state.sourceRoleArn,
+      state.sourceEnvironmentName,
+      state.sourceIsTouched,
+      state.sourceCredsTouched,
+      state.sourceIsValidUrl,
+      state.sourceIsAirflow,
+      state.sourceIsStarship,
+      state.sourceConnectionSaved,
+    ],
+  );
 }
 
 export function useTargetConfig() {

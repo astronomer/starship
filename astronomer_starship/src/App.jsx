@@ -4,7 +4,7 @@ import { Box, Button, Divider, Flex, Heading, HStack, Icon, Image, Spinner, Text
 import { GoRocket } from 'react-icons/go';
 import PropTypes from 'prop-types';
 import AstronomerLogo from './astronomer-logo.svg';
-import { AppProvider, useSetupComplete } from './AppContext';
+import { AppProvider, useSetupComplete, useSourceSetupComplete } from './AppContext';
 import { ROUTES } from './constants';
 import './index.css';
 
@@ -16,6 +16,7 @@ const PoolsPage = lazy(() => import('./pages/PoolsPage'));
 const EnvVarsPage = lazy(() => import('./pages/EnvVarsPage'));
 const DAGHistoryPage = lazy(() => import('./pages/DAGHistoryPage'));
 const TelescopePage = lazy(() => import('./pages/TelescopePage'));
+const CutoverPage = lazy(() => import('./pages/CutoverPage'));
 
 // Loading fallback for lazy-loaded pages
 function PageLoader() {
@@ -67,13 +68,17 @@ const NAV_ITEMS = [
   { to: `/${ROUTES.POOLS}`, label: 'Pools', requiresSetup: true },
   { to: `/${ROUTES.ENV_VARS}`, label: 'Environment Variables', requiresSetup: true },
   { to: `/${ROUTES.DAGS}`, label: 'DAG History', requiresSetup: true },
+  { to: `/${ROUTES.CUTOVER}`, label: 'Cutover', requiresSourceSetup: true },
 ];
 
 const DISABLED_MESSAGE =
   'Complete the Setup tab to configure your target Airflow instance before accessing migration features';
+const CUTOVER_DISABLED_MESSAGE =
+  'Complete "Configure Source Airflow" in the Setup tab to enable the Cutover Tool';
 
 function AppLayout() {
   const isSetupComplete = useSetupComplete();
+  const isSourceSetupComplete = useSourceSetupComplete();
 
   return (
     <>
@@ -96,15 +101,20 @@ function AppLayout() {
           },
         }}
       >
-        {NAV_ITEMS.map(({ to, label, requiresSetup }) => (
-          <NavButton
-            key={to}
-            to={to}
-            label={label}
-            isDisabled={requiresSetup && !isSetupComplete}
-            disabledMessage={requiresSetup ? DISABLED_MESSAGE : ''}
-          />
-        ))}
+        {NAV_ITEMS.map(({ to, label, requiresSetup, requiresSourceSetup }) => {
+          let isDisabled = false;
+          let disabledMessage = '';
+          if (requiresSetup && !isSetupComplete) {
+            isDisabled = true;
+            disabledMessage = DISABLED_MESSAGE;
+          } else if (requiresSourceSetup && !isSourceSetupComplete) {
+            isDisabled = true;
+            disabledMessage = CUTOVER_DISABLED_MESSAGE;
+          }
+          return (
+            <NavButton key={to} to={to} label={label} isDisabled={isDisabled} disabledMessage={disabledMessage} />
+          );
+        })}
       </Flex>
       <Box
         as="main"
@@ -146,6 +156,7 @@ const router = createHashRouter([
       { path: ROUTES.ENV_VARS, element: <EnvVarsPage /> },
       { path: ROUTES.DAGS, element: <DAGHistoryPage /> },
       { path: ROUTES.TELESCOPE, element: <TelescopePage /> },
+      { path: ROUTES.CUTOVER, element: <CutoverPage /> },
     ],
   },
 ]);
