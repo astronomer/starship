@@ -355,6 +355,55 @@ class StarshipDagHistoryMigrationOperator(StarshipMigrationOperator):
         )
 
 
+class StarshipCutoverMigrationOperator(BaseOperator):
+    """Cutover-direction DAG migration: remote source → local target.
+
+    Inverse of :class:`StarshipDagHistoryMigrationOperator`. Uses the
+    Starship auth factory to resolve the source connection, so Astro,
+    MWAA, GCC and OSS sources all work from the same operator.
+
+    Defaults to cutover behaviour: pre-checks on, TI history on.
+    """
+
+    def __init__(
+        self,
+        target_dag_id: str,
+        source_conn_id: str = "starship_source",
+        dag_run_limit: int = 500,
+        pause_dag_in_source: bool = True,
+        unpause_dag_in_target: bool = False,
+        pre_checks: bool = True,
+        migrate_ti_history: bool = True,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.target_dag_id = target_dag_id
+        self.source_conn_id = source_conn_id
+        self.dag_run_limit = dag_run_limit
+        self.pause_dag_in_source = pause_dag_in_source
+        self.unpause_dag_in_target = unpause_dag_in_target
+        self.pre_checks = pre_checks
+        self.migrate_ti_history = migrate_ti_history
+
+    def execute(self, context):
+        # Deferred import keeps the operator usable when the auth factory's
+        # cloud-SDK branches aren't installed (the factory itself is lazy).
+        from astronomer_starship.providers.starship.auth import resolve_source_hook
+
+        source_hook = resolve_source_hook(self.source_conn_id)
+        target_hook = StarshipLocalHook()
+        return migrate_dag_history(
+            source_hook=source_hook,
+            target_hook=target_hook,
+            target_dag_id=self.target_dag_id,
+            dag_run_limit=self.dag_run_limit,
+            pause_dag_in_source=self.pause_dag_in_source,
+            unpause_dag_in_target=self.unpause_dag_in_target,
+            pre_checks=self.pre_checks,
+            migrate_ti_history=self.migrate_ti_history,
+        )
+
+
 def starship_dag_history_migration(dag_ids: List[str] = None, **kwargs):
     """TaskGroup to fetch and migrate DAGs with their history from one Airflow instance to another."""
     with TaskGroup("dag_history") as tg:

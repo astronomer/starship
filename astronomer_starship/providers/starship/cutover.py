@@ -786,3 +786,252 @@ def start_migration_thread(migration_id: str, dag_ids: List[str], config: dict) 
     t.start()
     logger.info("Started wave thread for %s (%d DAGs).", migration_id, len(dag_ids))
     return t
+
+
+# ---------------------------------------------------------------------------
+# High-level orchestration (consumed by the REST API and the template DAG)
+# ---------------------------------------------------------------------------
+
+
+def list_migrations(limit: int = 25) -> dict:
+    """Return recent waves (newest first) plus the total count."""
+    state = get_state()
+    all_migrations = list(reversed(state.get("migrations", [])))
+    return {
+        "migrations": all_migrations[:limit],
+        "total": len(all_migrations),
+        "limit": limit,
+    }
+
+
+def _normalize_config(raw: Optional[dict]) -> dict:
+    raw = raw or {}
+    return {
+        "source_conn_id": (raw.get("source_conn_id") or _DEFAULT_SOURCE_CONN_ID).strip() or _DEFAULT_SOURCE_CONN_ID,
+        "dag_run_limit": int(raw.get("dag_run_limit", 500)),
+        "parallel_workers": min(int(raw.get("parallel_workers", 4)), 16),
+        "pause_in_source": bool(raw.get("pause_in_source", True)),
+        "unpause_in_target": bool(raw.get("unpause_in_target", raw.get("unpause_in_destination", False))),
+        "wait_for_scheduler": bool(raw.get("wait_for_scheduler", False)),
+        "wait_for_running": bool(raw.get("wait_for_running", False)),
+        "retry_interval": int(raw.get("retry_interval", 120)),
+        "max_retries": int(raw.get("max_retries", 3)),
+    }
+
+
+def start_wave(strategy: str, patterns: List[str], config: Optional[dict] = None) -> dict:
+    """Resolve DAGs, persist a new wave, and launch the background thread.
+
+    ``strategy`` must be ``"bigbang"`` or ``"incremental"``. For ``bigbang``,
+    ``patterns`` is the list of exclude patterns (can be empty). For
+    ``incremental`` it is the list of include fnmatch patterns (required).
+
+    Returns the created wave dict.
+    """
+    if strategy not in ("bigbang", "incremental"):
+        raise ValueError(f"Unsupported strategy: {strategy!r}")
+
+    normalized_config = _normalize_config(config)
+    patterns = [p.strip() for p in (patterns or []) if p and p.strip()]
+
+    source_hook = resolve_source_hook(normalized_config["source_conn_id"])
+    local_hook = StarshipLocalHook()
+
+    if strategy == "incremental":
+        if not patterns:
+            raise ValueError("Incremental waves require at least one DAG pattern.")
+        dag_ids = resolve_dag_patterns(source_hook=source_hook, patterns=patterns, local_hook=local_hook)
+    else:  # bigbang
+        dag_ids = resolve_dag_patterns(source_hook=source_hook, patterns=[], local_hook=local_hook)
+        if patterns:
+            excluded = set()
+            for pat in patterns:
+                for d in dag_ids:
+                    if fnmatch.fnmatch(d, pat):
+                        excluded.add(d)
+            dag_ids = [d for d in dag_ids if d not in excluded]
+
+    if not dag_ids:
+        raise ValueError("No DAGs matched — verify the source connection and patterns.")
+
+    migration_id = create_migration(strategy, normalized_config, dag_ids)
+    start_migration_thread(migration_id, dag_ids, normalized_config)
+    return get_migration(migration_id)
+
+
+def _reset_dags_for_retry(migration_id: str, dag_ids: List[str]) -> None:
+    """Clean up partial data and reset DAG state so they can re-run."""
+    migration = get_migration(migration_id)
+    if not migration:
+        return
+    for dag_id in dag_ids:
+        dag_state = migration["dags"].get(dag_id, {})
+        if dag_state.get("latest_data_interval_end"):
+            try:
+                delete_migrated_dag_data(
+                    dag_id=dag_id,
+                    latest_data_interval_end=dag_state["latest_data_interval_end"],
+                )
+            except Exception:
+                logger.exception("Failed to clean up partial data for %s before retry.", dag_id)
+        update_dag_status(
+            migration_id,
+            dag_id,
+            "pending",
+            step=None,
+            error=None,
+            dag_runs_migrated=0,
+            task_instances_migrated=0,
+            latest_data_interval_end=None,
+            source_paused_by_us=False,
+            target_unpaused_by_us=False,
+        )
+
+
+def _retry_batch_worker(migration_id: str, dag_ids: List[str], config: dict) -> None:
+    """Background worker for retry — re-runs the batch and recomputes wave status."""
+    try:
+        _run_dag_batch(migration_id, dag_ids, config)
+
+        # Mark anything left pending as aborted when the wave was aborted.
+        if _is_aborted(migration_id):
+            for dag_id in dag_ids:
+                migration = get_migration(migration_id)
+                if migration and migration["dags"].get(dag_id, {}).get("status") == "pending":
+                    update_dag_status(migration_id, dag_id, "aborted")
+
+        migration = get_migration(migration_id)
+        if not migration:
+            return
+
+        all_terminal = all(
+            d["status"] in ("completed", "failed", "skipped", "aborted", "rolled_back")
+            for d in migration["dags"].values()
+        )
+        if not all_terminal:
+            return
+
+        # Final status is derived from the just-retried DAGs so a successful
+        # retry flips the wave out of "failed" when nothing else is broken.
+        retried_statuses = [migration["dags"][d]["status"] for d in dag_ids if d in migration["dags"]]
+        has_failures = any(s in ("failed", "aborted") for s in retried_statuses)
+
+        if _is_aborted(migration_id):
+            update_migration_status(migration_id, "aborted")
+        elif has_failures:
+            update_migration_status(migration_id, "failed")
+        else:
+            update_migration_status(migration_id, "completed")
+    finally:
+        _cleanup_abort_event(migration_id)
+
+
+def start_retry(migration_id: str, dag_ids: List[str]) -> None:
+    """Roll back partial data, reset DAG state, and kick off a background retry thread."""
+    migration = get_migration(migration_id)
+    if not migration:
+        raise ValueError(f"Wave '{migration_id}' not found.")
+
+    _reset_dags_for_retry(migration_id, dag_ids)
+    update_migration_status(migration_id, "running")
+    _abort_events[migration_id] = threading.Event()
+
+    t = threading.Thread(
+        target=_retry_batch_worker,
+        args=(migration_id, dag_ids, migration["config"]),
+        daemon=True,
+        name=f"retry-{migration_id}",
+    )
+    t.start()
+
+
+def retry_dags_in_wave(migration_id: str, selector: str) -> List[str]:
+    """Retry a subset of DAGs in a wave.
+
+    ``selector`` is one of ``"failed"`` / ``"skipped"`` / a specific
+    ``dag_id``. Returns the list of DAGs that were scheduled for retry.
+    """
+    migration = get_migration(migration_id)
+    if not migration:
+        raise ValueError(f"Wave '{migration_id}' not found.")
+
+    if selector == "failed":
+        dag_ids = [d for d, s in migration["dags"].items() if s["status"] == "failed"]
+    elif selector == "skipped":
+        dag_ids = [d for d, s in migration["dags"].items() if s["status"] == "skipped"]
+    else:
+        dag_state = migration["dags"].get(selector)
+        if not dag_state:
+            raise ValueError(f"DAG '{selector}' is not in wave '{migration_id}'.")
+        if dag_state["status"] not in ("failed", "skipped"):
+            raise ValueError(f"DAG '{selector}' is not in a failed/skipped state.")
+        dag_ids = [selector]
+
+    if not dag_ids:
+        return []
+
+    start_retry(migration_id, dag_ids)
+    return dag_ids
+
+
+def purge_wave_metadata(migration_id: str) -> dict:
+    """Purge destination metadata for every DAG in a wave (except running/rolled-back)."""
+    migration = get_migration(migration_id)
+    if not migration:
+        raise ValueError(f"Wave '{migration_id}' not found.")
+
+    purged = 0
+    errors = 0
+    for dag_id, dag_state in migration["dags"].items():
+        if dag_state["status"] in ("running", "rolled_back"):
+            continue
+        try:
+            purge_dag_metadata(dag_id)
+            update_dag_status(
+                migration_id,
+                dag_id,
+                "rolled_back",
+                step="Purged",
+                dag_runs_migrated=0,
+                task_instances_migrated=0,
+                latest_data_interval_end=None,
+                error=None,
+            )
+            purged += 1
+        except Exception as e:
+            logger.exception("Purge failed for DAG %s.", dag_id)
+            update_dag_status(migration_id, dag_id, "failed", error=f"Purge failed: {e}"[:500])
+            errors += 1
+    return {"purged": purged, "errors": errors}
+
+
+def enrich_wave_for_display(migration_id: str) -> Optional[dict]:
+    """Return the wave with in-memory step labels overlaid on running DAGs.
+
+    Convenience wrapper for UIs that poll for status: the persisted state
+    carries the last terminal step, and this fills in the live step for
+    DAGs currently mid-migration.
+    """
+    migration = get_migration(migration_id)
+    if not migration:
+        return None
+
+    for dag_id, dag_state in migration["dags"].items():
+        if dag_state["status"] == "running":
+            mem_step = get_step_label(migration_id, dag_id)
+            if mem_step:
+                dag_state["step"] = mem_step
+
+    dag_statuses = [d["status"] for d in migration["dags"].values()]
+    migration["summary"] = {
+        "total": len(dag_statuses),
+        "completed": dag_statuses.count("completed"),
+        "failed": dag_statuses.count("failed"),
+        "pending": dag_statuses.count("pending"),
+        "running": dag_statuses.count("running"),
+        "rolled_back": dag_statuses.count("rolled_back"),
+        "deferred": dag_statuses.count("deferred"),
+        "aborted": dag_statuses.count("aborted"),
+        "skipped": dag_statuses.count("skipped"),
+    }
+    return migration

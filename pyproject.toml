@@ -40,9 +40,6 @@ include-package-data = false
 "astronomer_starship.static" = ["*.js", "*.html", "*.css"]
 "astronomer_starship.static.assets" = ["*.js", "*.html", "*.css"]
 "astronomer_starship.templates" = ["*.js", "*.html", "*.css"]
-"astronomer_starship.cutover" = ["*.html", "*.css", "*.js"]
-"astronomer_starship.cutover.templates" = ["*.html", "*.css", "*.js"]
-"astronomer_starship.cutover.templates.cutover" = ["*.html", "*.css", "*.js"]
 
 [tool.setuptools.dynamic]
 version = { attr = "astronomer_starship.__version__" }

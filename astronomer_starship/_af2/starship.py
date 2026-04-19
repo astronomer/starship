@@ -89,23 +89,6 @@ starship_bp = Blueprint(
     static_url_path="/starship/static",  # so static/foo.html is at /starship/static/foo.html
 )
 
-try:
-    from astronomer_starship._af2.cutover import CutoverView  # noqa: E402
-
-    cutover_view = CutoverView()
-    _cutover_views = [
-        {
-            "name": "Cutover Tool 🚀 Starship",
-            "category": "Astronomer",
-            "view": cutover_view,
-        },
-    ]
-except Exception:
-    import logging as _logging
-
-    _logging.getLogger(__name__).exception("Failed to load CutoverView — Cutover Tool will be unavailable.")
-    _cutover_views = []
-
 
 class StarshipPlugin(AirflowPlugin):
     name = "starship"
@@ -116,5 +99,4 @@ class StarshipPlugin(AirflowPlugin):
             "category": "Astronomer",
             "view": starship_view,
         },
-        *_cutover_views,
     ]
