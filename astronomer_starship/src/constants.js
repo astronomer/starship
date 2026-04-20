@@ -27,7 +27,6 @@ export const ROUTES = Object.freeze({
   DAGS: 'dags',
   TELESCOPE: 'telescope',
   CUTOVER: 'cutover',
-  CUTOVER_STATUS: 'cutover/status',
 });
 
 /**

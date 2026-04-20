@@ -18,6 +18,7 @@ const EnvVarsPage = lazy(() => import('./pages/EnvVarsPage'));
 const DAGHistoryPage = lazy(() => import('./pages/DAGHistoryPage'));
 const TelescopePage = lazy(() => import('./pages/TelescopePage'));
 const CutoverPage = lazy(() => import('./pages/CutoverPage'));
+const CutoverStatusPage = lazy(() => import('./pages/CutoverStatusPage'));
 
 // Loading fallback for lazy-loaded pages
 function PageLoader() {
@@ -159,6 +160,7 @@ const router = createHashRouter([
       { path: ROUTES.DAGS, element: <DAGHistoryPage /> },
       { path: ROUTES.TELESCOPE, element: <TelescopePage /> },
       { path: ROUTES.CUTOVER, element: <CutoverPage /> },
+      { path: `${ROUTES.CUTOVER}/:migrationId`, element: <CutoverStatusPage /> },
     ],
   },
 ]);
