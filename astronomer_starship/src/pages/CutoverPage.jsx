@@ -44,12 +44,14 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react';
-import { ChevronDownIcon, ChevronUpIcon, InfoIcon, RepeatIcon, TimeIcon } from '@chakra-ui/icons';
+import { ChevronDownIcon, ChevronUpIcon, InfoIcon, RepeatIcon, TimeIcon, WarningTwoIcon } from '@chakra-ui/icons';
 import axios from 'axios';
 import { NavLink } from 'react-router-dom';
 import { useSourceConfig, useSourceSetupComplete } from '../AppContext';
 import constants, { ROUTES } from '../constants';
 import { localRoute } from '../util';
+import ConfirmDialog from '../component/ConfirmDialog';
+import useConfirm from '../hooks/useConfirm';
 
 const STRATEGIES = [
   {
@@ -586,6 +588,67 @@ function RecentWaves({ waves, isLoading, onRefresh }) {
 }
 
 // ---------------------------------------------------------------------------
+// Danger zone — instance-wide escape hatches. Intentionally ugly so it feels
+// consequential. Collapsed by default.
+// ---------------------------------------------------------------------------
+
+function DangerZone({ onPurgeAll }) {
+  const disclosure = useDisclosure({ defaultIsOpen: false });
+  return (
+    <Card variant="outline" borderColor="error.200" bg="error.50">
+      <CardBody py={3}>
+        <HStack
+          justify="space-between"
+          cursor="pointer"
+          onClick={disclosure.onToggle}
+          _hover={{ bg: 'error.100' }}
+          borderRadius="md"
+          px={2}
+          py={1}
+          mx={-2}
+        >
+          <HStack>
+            <WarningTwoIcon color="error.500" />
+            <Heading size="sm" color="error.700">
+              Danger zone
+            </Heading>
+          </HStack>
+          <IconButton
+            size="xs"
+            variant="ghost"
+            aria-label={disclosure.isOpen ? 'Collapse' : 'Expand'}
+            icon={disclosure.isOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
+          />
+        </HStack>
+        <Collapse in={disclosure.isOpen} animateOpacity>
+          <VStack align="stretch" spacing={3} mt={3}>
+            <Text fontSize="xs" color="error.700">
+              Instance-wide escape hatches. These actions are not scoped to a single wave and cannot be undone. Use
+              them only when rollback or per-wave purge aren&apos;t enough.
+            </Text>
+            <HStack justify="space-between" borderWidth="1px" borderColor="error.200" bg="white" p={3} borderRadius="md">
+              <Box>
+                <Text fontSize="sm" fontWeight="semibold">
+                  Purge ALL destination DAG metadata
+                </Text>
+                <Text fontSize="xs" color="gray.700">
+                  Deletes every <Code fontSize="2xs">dag_run</Code>, <Code fontSize="2xs">task_instance</Code>, and TI
+                  history row on this Airflow — for every DAG, regardless of which wave (if any) migrated them. Use
+                  this to start from a blank slate.
+                </Text>
+              </Box>
+              <Button size="sm" colorScheme="red" onClick={onPurgeAll}>
+                Purge all
+              </Button>
+            </HStack>
+          </VStack>
+        </Collapse>
+      </CardBody>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Page shell
 // ---------------------------------------------------------------------------
 
@@ -639,6 +702,7 @@ export default function CutoverPage() {
   const source = useSourceConfig();
   const isSourceReady = useSourceSetupComplete();
   const toast = useToast();
+  const [confirmProps, ask] = useConfirm();
 
   const [waves, setWaves] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -696,6 +760,46 @@ export default function CutoverPage() {
     [fetchWaves],
   );
 
+  const handlePurgeAll = useCallback(() => {
+    ask({
+      title: 'Purge ALL destination DAG metadata?',
+      body: (
+        <>
+          This deletes every <Code>dag_run</Code>, <Code>task_instance</Code>, and TI history row on this Airflow —
+          for every DAG, including ones that were never part of a cutover wave. <strong>It cannot be undone.</strong>{' '}
+          Make sure you have a fresh database backup.
+        </>
+      ),
+      confirmLabel: 'Purge everything',
+      colorScheme: 'red',
+      onConfirm: async () => {
+        try {
+          const res = await axios.post(localRoute(constants.CUTOVER_PURGE_ALL_ROUTE));
+          toast({
+            title: 'Purge complete',
+            description: `Purged ${res.data?.purged ?? 0} DAGs${res.data?.errors ? `, ${res.data.errors} errors` : ''}.`,
+            status: 'success',
+            duration: 6000,
+            isClosable: true,
+            variant: 'outline',
+          });
+          fetchWaves(false);
+        } catch (err) {
+          const raw = err.response?.data?.error || err.message || 'Unknown error';
+          toast({
+            title: 'Purge failed',
+            description: typeof raw === 'string' ? raw : JSON.stringify(raw),
+            status: 'error',
+            duration: 8000,
+            isClosable: true,
+            variant: 'outline',
+          });
+          throw err;
+        }
+      },
+    });
+  }, [ask, toast, fetchWaves]);
+
   if (!isSourceReady) {
     return (
       <Box>
@@ -741,7 +845,9 @@ export default function CutoverPage() {
         <GettingStarted />
         <LaunchForm onLaunched={handleLaunched} />
         <RecentWaves waves={waves} isLoading={isLoading} onRefresh={() => fetchWaves(true)} />
+        <DangerZone onPurgeAll={handlePurgeAll} />
       </VStack>
+      <ConfirmDialog {...confirmProps} />
     </Box>
   );
 }
