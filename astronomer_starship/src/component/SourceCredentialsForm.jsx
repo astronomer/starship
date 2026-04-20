@@ -2,6 +2,8 @@ import PropTypes from 'prop-types';
 import {
   Alert,
   AlertIcon,
+  Box,
+  Code,
   Divider,
   FormControl,
   FormErrorMessage,
@@ -9,11 +11,52 @@ import {
   FormLabel,
   HStack,
   Input,
+  Text,
   Textarea,
   Tooltip,
   VStack,
 } from '@chakra-ui/react';
 import { InfoIcon } from '@chakra-ui/icons';
+
+/**
+ * Per-platform URL examples shown alongside the Source URL field.
+ * Each entry: a placeholder for the input, plus one or more labelled
+ * example strings rendered in a Code block below the helper text.
+ */
+const URL_EXAMPLES = {
+  astro: {
+    placeholder: 'https://cljabc123def.astronomer.run/abc12def',
+    examples: [
+      { label: 'Astro Cloud', value: 'https://cljabc123def.astronomer.run/abc12def' },
+      { label: 'Astro Software', value: 'https://deployments.basedomain.com/release-name-1234/airflow' },
+    ],
+  },
+  gcc: {
+    placeholder: 'https://<hash>-dot-<region>.composer.googleusercontent.com',
+    examples: [
+      {
+        label: 'Composer 2 / 3',
+        value: 'https://e3954c2af6834e90aa5bf8xxxxxxxxxx-dot-us-central1.composer.googleusercontent.com',
+      },
+    ],
+  },
+  mwaa: {
+    placeholder: 'https://<env-hash>.<cluster>.<region>.airflow.amazonaws.com',
+    examples: [
+      {
+        label: 'MWAA',
+        value: 'https://abcdef12-3456-7890-abcd-ef1234567890.c17.us-west-2.airflow.amazonaws.com',
+      },
+    ],
+  },
+  oss: {
+    placeholder: 'https://airflow.example.com',
+    examples: [
+      { label: 'OSS (hostname)', value: 'https://airflow.example.com' },
+      { label: 'OSS (host + port)', value: 'https://airflow.example.com:8080' },
+    ],
+  },
+};
 
 /**
  * Credential fields for the source Airflow. The visible fields depend on the
@@ -38,6 +81,8 @@ export default function SourceCredentialsForm({
   onUrlChange,
   onCredsChange,
 }) {
+  const urlHints = platform ? URL_EXAMPLES[platform] : null;
+
   return (
     <VStack align="stretch" spacing={3}>
       <FormControl isInvalid={isTouched && !isValidUrl} isRequired>
@@ -53,7 +98,7 @@ export default function SourceCredentialsForm({
         </HStack>
         <Input
           size="sm"
-          placeholder="https://source-airflow.example.com"
+          placeholder={urlHints?.placeholder || 'https://source-airflow.example.com'}
           value={url || ''}
           onChange={(e) => onUrlChange(e.target.value)}
         />
@@ -61,6 +106,26 @@ export default function SourceCredentialsForm({
           Paste the full webserver URL of the Airflow you are migrating from.
         </FormHelperText>
         <FormErrorMessage>Please enter a valid URL (http:// or https://).</FormErrorMessage>
+
+        {urlHints && (
+          <Box mt={2} p={2} bg="gray.50" borderRadius="md" borderWidth="1px" borderColor="gray.200">
+            <Text fontSize="2xs" fontWeight="semibold" color="gray.600" mb={1}>
+              Expected URL format
+            </Text>
+            <VStack align="stretch" spacing={1}>
+              {urlHints.examples.map((ex) => (
+                <Box key={ex.value}>
+                  <Text fontSize="2xs" color="gray.500">
+                    {ex.label}
+                  </Text>
+                  <Code fontSize="2xs" px={2} py={1} borderRadius="sm" display="block" wordBreak="break-all">
+                    {ex.value}
+                  </Code>
+                </Box>
+              ))}
+            </VStack>
+          </Box>
+        )}
       </FormControl>
 
       <Divider />

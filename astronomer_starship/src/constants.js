@@ -19,6 +19,7 @@ export default constants;
  */
 export const ROUTES = Object.freeze({
   SETUP: 'setup',
+  SOURCE_SETUP: 'source-setup',
   VARIABLES: 'variables',
   CONNECTIONS: 'connections',
   POOLS: 'pools',

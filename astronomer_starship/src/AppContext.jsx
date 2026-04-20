@@ -236,6 +236,47 @@ function reducer(state, action) {
       const next = { ...state, sourceConnectionSaved: action.saved };
       return { ...next, isSourceSetupComplete: calculateIsSourceSetupComplete(next) };
     }
+    case 'reset-target': {
+      // Wipe target-only state. Source config is preserved so Cutover users
+      // don't lose their source setup when they re-run Target Setup.
+      const {
+        sourcePlatform,
+        sourceUrl,
+        sourceToken,
+        sourceLogin,
+        sourcePassword,
+        sourceImpersonationChain,
+        sourceRegion,
+        sourceRoleArn,
+        sourceEnvironmentName,
+        sourceIsTouched,
+        sourceCredsTouched,
+        sourceIsValidUrl,
+        sourceIsAirflow,
+        sourceIsStarship,
+        sourceConnectionSaved,
+        isSourceSetupComplete,
+      } = state;
+      return {
+        ...initialState,
+        sourcePlatform,
+        sourceUrl,
+        sourceToken,
+        sourceLogin,
+        sourcePassword,
+        sourceImpersonationChain,
+        sourceRegion,
+        sourceRoleArn,
+        sourceEnvironmentName,
+        sourceIsTouched,
+        sourceCredsTouched,
+        sourceIsValidUrl,
+        sourceIsAirflow,
+        sourceIsStarship,
+        sourceConnectionSaved,
+        isSourceSetupComplete,
+      };
+    }
     case 'reset-source':
       return {
         ...state,
