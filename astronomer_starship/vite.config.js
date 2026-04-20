@@ -49,20 +49,37 @@ export default defineConfig(({ mode }) => ({
         entryFileNames: 'assets/[name].js',
         chunkFileNames: 'assets/[name].js',
         assetFileNames: 'assets/[name].[ext]',
-        // Granular manual chunks for better caching and tree-shaking
-        manualChunks: {
-          // Core React - smallest, most stable
-          'react-core': ['react', 'react-dom'],
-          // Router - separate chunk
-          router: ['react-router-dom', 'react-router'],
-          // Chakra UI and its dependencies - large, infrequently updated
-          chakra: ['@chakra-ui/react', '@chakra-ui/icons', '@emotion/react', '@emotion/styled', 'framer-motion'],
-          // Data table - only needed on data pages
-          table: ['@tanstack/react-table'],
-          // HTTP client
-          http: ['axios'],
-          // Icons - can be large
-          icons: ['react-icons'],
+        // Granular manual chunks for better caching and tree-shaking.
+        // Uses a function so Chakra's transitive peer deps (@zag-js, @popperjs,
+        // react-remove-scroll, @internationalized, etc.) land in the `chakra`
+        // chunk alongside @chakra-ui itself. If they leak into other chunks,
+        // cross-chunk named imports break at runtime after minification.
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+          // Chakra and its ecosystem — must stay together.
+          if (
+            id.includes('@chakra-ui') ||
+            id.includes('@emotion') ||
+            id.includes('framer-motion') ||
+            id.includes('@zag-js') ||
+            id.includes('@popperjs') ||
+            id.includes('react-remove-scroll') ||
+            id.includes('react-style-singleton') ||
+            id.includes('@internationalized') ||
+            id.includes('aria-hidden') ||
+            id.includes('focus-lock') ||
+            id.includes('react-focus-lock') ||
+            id.includes('use-callback-ref') ||
+            id.includes('use-sidecar')
+          ) {
+            return 'chakra';
+          }
+          if (id.includes('react-router')) return 'router';
+          if (id.includes('@tanstack/react-table')) return 'table';
+          if (id.includes('react-icons')) return 'icons';
+          if (id.includes('axios')) return 'http';
+          if (id.includes('/react-dom/') || id.includes('/react/')) return 'react-core';
+          return undefined;
         },
       },
     },
