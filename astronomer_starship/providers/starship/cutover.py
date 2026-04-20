@@ -831,15 +831,16 @@ def start_wave(strategy: str, patterns: List[str], config: Optional[dict] = None
     if strategy not in ("bigbang", "incremental"):
         raise ValueError(f"Unsupported strategy: {strategy!r}")
 
-    normalized_config = _normalize_config(config)
     patterns = [p.strip() for p in (patterns or []) if p and p.strip()]
+    # Validate before touching the source so bad input fails fast.
+    if strategy == "incremental" and not patterns:
+        raise ValueError("Incremental waves require at least one DAG pattern.")
 
+    normalized_config = _normalize_config(config)
     source_hook = resolve_source_hook(normalized_config["source_conn_id"])
     local_hook = StarshipLocalHook()
 
     if strategy == "incremental":
-        if not patterns:
-            raise ValueError("Incremental waves require at least one DAG pattern.")
         dag_ids = resolve_dag_patterns(source_hook=source_hook, patterns=patterns, local_hook=local_hook)
     else:  # bigbang
         dag_ids = resolve_dag_patterns(source_hook=source_hook, patterns=[], local_hook=local_hook)
