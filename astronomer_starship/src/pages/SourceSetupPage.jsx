@@ -117,6 +117,10 @@ export default function SourceSetupPage() {
     (platform) => dispatch({ type: 'set-source-platform', platform }),
     [dispatch],
   );
+  const handleSourceConnIdChange = useCallback(
+    (connId) => dispatch({ type: 'set-source-conn-id', connId }),
+    [dispatch],
+  );
   const handleSourceUrlChange = useCallback(
     (sourceUrl) => dispatch({ type: 'set-source-url', sourceUrl }),
     [dispatch],
@@ -181,6 +185,7 @@ export default function SourceSetupPage() {
             {state.sourcePlatform && (
               <SourceCredentialsForm
                 platform={state.sourcePlatform}
+                connId={state.sourceConnId}
                 url={state.sourceUrl}
                 token={state.sourceToken}
                 login={state.sourceLogin}
@@ -192,6 +197,7 @@ export default function SourceSetupPage() {
                 isTouched={state.sourceIsTouched}
                 credsTouched={state.sourceCredsTouched}
                 isValidUrl={state.sourceIsValidUrl}
+                onConnIdChange={handleSourceConnIdChange}
                 onUrlChange={handleSourceUrlChange}
                 onCredsChange={handleSourceCredsChange}
               />
@@ -211,6 +217,7 @@ export default function SourceSetupPage() {
         >
           <SourceConnectionStatus
             platform={state.sourcePlatform}
+            connId={state.sourceConnId}
             url={state.sourceUrl}
             token={state.sourceToken}
             login={state.sourceLogin}

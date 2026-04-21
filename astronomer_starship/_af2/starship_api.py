@@ -15,9 +15,11 @@ from astronomer_starship._af2.starship_compatability import (
 from astronomer_starship.common import (
     STARSHIP_SOURCE_CONN_ID,
     HttpError,
+    _normalize_source_conn_id,
     build_source_connection_kwargs,
     get_kwargs_fn,
     read_source_connection,
+    source_connection_exists,
     telescope,
 )
 
@@ -255,6 +257,10 @@ class StarshipApi(BaseView):
                 return _cutover.start_wave(strategy=strategy, patterns=patterns, config=body.get("config"))
             except ValueError as e:
                 raise HttpError(str(e), 400) from e
+            except RuntimeError as e:
+                # Misconfigured source connection surfaces as RuntimeError
+                # from the auth factory. That's user-actionable, not a 500.
+                raise HttpError(str(e), 400) from e
 
         return starship_route(get=_get, post=_post)
 
@@ -343,28 +349,46 @@ class StarshipApi(BaseView):
     @expose("/source_connection", methods=["GET", "POST", "DELETE"])
     @csrf.exempt
     def source_connection(self):
-        """Manage the ``starship_source`` Airflow Connection used by the Cutover Tool.
+        """Manage a source-Airflow Connection used by the Cutover Tool.
 
-        The frontend posts a platform-specific payload here; we translate it to a
-        standard Airflow HTTP Connection so the operator/template DAG and the
-        wave engine can reuse it unchanged.
+        The frontend POSTs a platform-specific payload including the
+        desired ``conn_id`` (default ``starship_source``); we translate it
+        to a standard Airflow HTTP Connection so the operator/template DAG
+        and the wave engine can reuse it unchanged. GET and DELETE accept
+        ``?conn_id=`` to operate on a specific connection.
         """
         starship_compat = StarshipCompatabilityLayer()
 
+        def _resolve_conn_id(sources):
+            for src in sources:
+                if src:
+                    return _normalize_source_conn_id(src)
+            return STARSHIP_SOURCE_CONN_ID
+
         def _get():
-            return read_source_connection(starship_compat.session)
+            conn_id = _resolve_conn_id([request.args.get("conn_id")])
+            return read_source_connection(starship_compat.session, conn_id=conn_id)
 
         def _post():
-            kwargs = build_source_connection_kwargs(request.json or {})
+            payload = request.json or {}
+            kwargs = build_source_connection_kwargs(payload)
+            conn_id = kwargs["conn_id"]
+            existed = source_connection_exists(starship_compat.session, conn_id)
             try:
-                starship_compat.delete_connection(conn_id=STARSHIP_SOURCE_CONN_ID)
+                starship_compat.delete_connection(conn_id=conn_id)
             except Exception:
                 # Delete-if-exists: ignore not-found and keep going to the create.
                 pass
-            return starship_compat.set_connection(**kwargs)
+            created = starship_compat.set_connection(**kwargs)
+            return {
+                **created,
+                "action": "updated" if existed else "created",
+                "conn_id": conn_id,
+            }
 
         def _delete():
-            return starship_compat.delete_connection(conn_id=STARSHIP_SOURCE_CONN_ID)
+            conn_id = _resolve_conn_id([request.args.get("conn_id")])
+            return starship_compat.delete_connection(conn_id=conn_id)
 
         return starship_route(get=_get, post=_post, delete=_delete)
 

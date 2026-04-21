@@ -23,10 +23,10 @@ export default function ConfirmDialog({
   isOpen,
   title,
   body,
-  confirmLabel,
-  cancelLabel,
-  colorScheme,
-  isLoading,
+  confirmLabel = 'Confirm',
+  cancelLabel = 'Cancel',
+  colorScheme = 'red',
+  isLoading = false,
   onConfirm,
   onClose,
 }) {
@@ -65,9 +65,3 @@ ConfirmDialog.propTypes = {
   onClose: PropTypes.func.isRequired,
 };
 
-ConfirmDialog.defaultProps = {
-  confirmLabel: 'Confirm',
-  cancelLabel: 'Cancel',
-  colorScheme: 'red',
-  isLoading: false,
-};

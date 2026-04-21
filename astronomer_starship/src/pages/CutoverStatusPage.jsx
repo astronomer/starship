@@ -37,6 +37,7 @@ import {
 } from '@chakra-ui/react';
 import { ArrowBackIcon, ChevronDownIcon, RepeatIcon } from '@chakra-ui/icons';
 import axios from 'axios';
+import PropTypes from 'prop-types';
 import { NavLink, useParams } from 'react-router-dom';
 import constants, { ROUTES } from '../constants';
 import { localRoute } from '../util';
@@ -60,6 +61,31 @@ const CAN_ROLLBACK_DAG = new Set(['completed', 'failed']);
 const CAN_RETRY_DAG = new Set(['failed', 'skipped']);
 const CAN_PURGE_DAG = new Set(['completed', 'failed', 'skipped', 'aborted', 'rolled_back']);
 
+// Shared PropTypes shape so every component that reads a wave summary
+// validates the same keys. `dags` is free-form by DAG id → per-DAG state.
+const SUMMARY_SHAPE = PropTypes.shape({
+  total: PropTypes.number,
+  completed: PropTypes.number,
+  running: PropTypes.number,
+  pending: PropTypes.number,
+  failed: PropTypes.number,
+  rolled_back: PropTypes.number,
+  deferred: PropTypes.number,
+  aborted: PropTypes.number,
+  skipped: PropTypes.number,
+});
+const WAVE_SHAPE = PropTypes.shape({
+  id: PropTypes.string,
+  type: PropTypes.string,
+  status: PropTypes.string,
+  abort_requested: PropTypes.bool,
+  started_at: PropTypes.string,
+  completed_at: PropTypes.string,
+  summary: SUMMARY_SHAPE,
+  dags: PropTypes.objectOf(PropTypes.object),
+  config: PropTypes.object,
+});
+
 function formatTimestamp(iso) {
   if (!iso) return '—';
   try {
@@ -74,7 +100,7 @@ function extractError(err) {
   return typeof raw === 'string' ? raw : JSON.stringify(raw);
 }
 
-function ProgressBar({ summary }) {
+function ProgressBar({ summary = null }) {
   const total = summary?.total || 0;
   if (!total) return null;
   const done = (summary.completed || 0) + (summary.failed || 0) + (summary.rolled_back || 0);
@@ -90,8 +116,9 @@ function ProgressBar({ summary }) {
     </Box>
   );
 }
+ProgressBar.propTypes = { summary: SUMMARY_SHAPE };
 
-function SummaryGrid({ summary }) {
+function SummaryGrid({ summary = null }) {
   if (!summary) return null;
   const cells = [
     { label: 'Total', value: summary.total, color: 'gray.700' },
@@ -119,6 +146,8 @@ function SummaryGrid({ summary }) {
     </HStack>
   );
 }
+
+SummaryGrid.propTypes = { summary: SUMMARY_SHAPE };
 
 // ---------------------------------------------------------------------------
 // Wave-level action bar
@@ -184,11 +213,16 @@ function WaveActions({ wave, onAction }) {
   );
 }
 
+WaveActions.propTypes = {
+  wave: WAVE_SHAPE.isRequired,
+  onAction: PropTypes.func.isRequired,
+};
+
 // ---------------------------------------------------------------------------
 // Per-DAG table with per-row actions
 // ---------------------------------------------------------------------------
 
-function DagTable({ dags, isWaveRunning, onDagAction }) {
+function DagTable({ dags = null, isWaveRunning, onDagAction }) {
   const rows = useMemo(
     () =>
       Object.entries(dags || {})
@@ -282,6 +316,12 @@ function DagTable({ dags, isWaveRunning, onDagAction }) {
     </TableContainer>
   );
 }
+
+DagTable.propTypes = {
+  dags: PropTypes.objectOf(PropTypes.object),
+  isWaveRunning: PropTypes.bool.isRequired,
+  onDagAction: PropTypes.func.isRequired,
+};
 
 // ---------------------------------------------------------------------------
 // Page

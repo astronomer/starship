@@ -6,7 +6,7 @@ import { SOURCE_PLATFORMS } from '../constants';
  * Radio-card picker for the source Airflow platform.
  * Selecting a platform swaps in the matching credential fields below.
  */
-export default function SourcePlatformPicker({ value, onChange }) {
+export default function SourcePlatformPicker({ value = null, onChange }) {
   return (
     <RadioGroup value={value || ''} onChange={onChange}>
       <VStack align="stretch" spacing={2}>
@@ -49,8 +49,4 @@ export default function SourcePlatformPicker({ value, onChange }) {
 SourcePlatformPicker.propTypes = {
   value: PropTypes.string,
   onChange: PropTypes.func.isRequired,
-};
-
-SourcePlatformPicker.defaultProps = {
-  value: null,
 };

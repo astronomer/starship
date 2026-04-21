@@ -39,7 +39,9 @@ class TestBuildSourceConnectionKwargs:
         )
         assert k["conn_id"] == STARSHIP_SOURCE_CONN_ID
         assert k["conn_type"] == "http"
-        assert k["host"] == "foo.astronomer.run"
+        # Full URL lives in host so HttpHook uses it verbatim (covers the
+        # Astro deployment-slug path segment).
+        assert k["host"] == "https://foo.astronomer.run/bar"
         assert k["schema"] == "https"
         assert k["password"] == "tok"
         extras = json.loads(k["extra"])
@@ -102,8 +104,34 @@ class TestBuildSourceConnectionKwargs:
         assert k["login"] == "u"
         assert k["password"] == "p"
         assert k["port"] == 8080
+        # Full base URL lives in `host` so HttpHook uses it verbatim as
+        # the base URL, preserving the /base deployment-path segment.
+        assert k["host"] == "https://airflow.example.com:8080/base"
+
+    def test_astro_style_path_segment_is_preserved_in_host(self):
+        """Regression test for the Astro deployment-slug bug: the user's
+        URL has ``/<slug>`` as a path; we must keep it in ``host`` so
+        plugin-endpoint calls hit ``.../<slug>/api/starship/...`` rather
+        than the bare hostname (which Astro's edge proxy rejects)."""
+        k = build_source_connection_kwargs(
+            {
+                "platform": "astro",
+                "url": "https://abc123.astronomer.run/slug-xyz",
+                "token": "tok",
+            }
+        )
+        assert k["host"] == "https://abc123.astronomer.run/slug-xyz"
+        # extras.endpoint is no longer used — path lives in host.
         extras = json.loads(k["extra"])
-        assert extras["endpoint"] == "/base"
+        assert "endpoint" not in extras
+
+    def test_url_without_path_still_works(self):
+        """Hostnames without a path (MWAA, some OSS installs) must still
+        produce a valid base URL — ``https://host`` with no trailing path."""
+        k = build_source_connection_kwargs(
+            {"platform": "astro", "url": "https://abc123.astronomer.run", "token": "tok"}
+        )
+        assert k["host"] == "https://abc123.astronomer.run"
 
     def test_oss_bearer_only(self):
         k = build_source_connection_kwargs(
@@ -307,6 +335,54 @@ class TestHttpHookHeaderStrip:
         # Legit HTTP headers are preserved.
         assert session.headers["Accept"] == "application/json"
         assert session.headers["Authorization"] == "Bearer legit"
+
+
+class TestHttpHookBearerRebind:
+    def test_bearer_token_conn_rebinds_auth_with_password(self):
+        """Airflow 2.10 HttpHook calls ``auth_type()`` with zero args when
+        ``conn.login`` is empty. For bearer-token-in-password connections
+        (Astro, OSS-bearer) that strips the token. StarshipHttpHook must
+        re-instantiate auth with both (login, password) so the token lands."""
+        from astronomer_starship.providers.starship.auth.astro import AstroBearerAuth
+        from astronomer_starship.providers.starship.hooks.starship import StarshipHttpHook
+
+        hook = StarshipHttpHook(http_conn_id="dummy", auth_type=AstroBearerAuth)
+        fake_session = requests.Session()
+        # Simulate what HttpHook's zero-arg branch does: session.auth set to
+        # an AstroBearerAuth with no token.
+        fake_session.auth = AstroBearerAuth()
+        fake_conn = MagicMock(login=None, password="my-token")
+
+        with (
+            patch("airflow.providers.http.hooks.http.HttpHook.get_conn", return_value=fake_session),
+            patch.object(StarshipHttpHook, "get_connection", return_value=fake_conn),
+        ):
+            session = hook.get_conn()
+
+        # Rebound: a fresh AstroBearerAuth carrying the real token.
+        assert isinstance(session.auth, AstroBearerAuth)
+        assert session.auth.token == "my-token"
+
+    def test_rebind_is_skipped_when_login_is_set(self):
+        """HTTP Basic (login + password) already works via super(); don't
+        overwrite the correctly-bound auth."""
+        from astronomer_starship.providers.starship.auth.oss import OssBearerAuth
+        from astronomer_starship.providers.starship.hooks.starship import StarshipHttpHook
+
+        hook = StarshipHttpHook(http_conn_id="dummy", auth_type=OssBearerAuth)
+        sentinel_auth = object()
+        fake_session = requests.Session()
+        fake_session.auth = sentinel_auth  # pretend super() bound it correctly
+        fake_conn = MagicMock(login="user", password="pw")
+
+        with (
+            patch("airflow.providers.http.hooks.http.HttpHook.get_conn", return_value=fake_session),
+            patch.object(StarshipHttpHook, "get_connection", return_value=fake_conn),
+        ):
+            session = hook.get_conn()
+
+        # Untouched — the rebind guard only fires when login is empty.
+        assert session.auth is sentinel_auth
 
 
 # ---------------------------------------------------------------------------

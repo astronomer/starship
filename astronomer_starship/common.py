@@ -36,7 +36,32 @@ STARSHIP_SOURCE_CONN_ID = "starship_source"
 SUPPORTED_SOURCE_PLATFORMS = ("astro", "mwaa", "gcc", "oss")
 
 
-def build_source_connection_kwargs(payload: dict) -> dict:
+def _normalize_source_conn_id(value) -> str:
+    """Validate + normalize a user-supplied connection id.
+
+    Falls back to ``STARSHIP_SOURCE_CONN_ID`` when blank. Rejects anything
+    Airflow would reject (empty, whitespace-only, or contains characters
+    unsafe for a conn_id URL segment).
+    """
+    if value is None:
+        return STARSHIP_SOURCE_CONN_ID
+    candidate = str(value).strip()
+    if not candidate:
+        return STARSHIP_SOURCE_CONN_ID
+    # Airflow connection ids are commonly snake_case. We relax that but
+    # still forbid whitespace and path/query separators to keep URLs sane.
+    bad_chars = set(candidate) & set(" \t\n/?#&")
+    if bad_chars:
+        raise HttpError(
+            f"`conn_id` contains invalid characters: {sorted(bad_chars)!r}",
+            400,
+        )
+    if len(candidate) > 250:
+        raise HttpError("`conn_id` must be 250 characters or fewer", 400)
+    return candidate
+
+
+def build_source_connection_kwargs(payload: dict) -> dict:  # noqa: C901
     """Map a source-setup payload to Airflow Connection kwargs.
 
     The resulting Connection (``conn_id=starship_source``) is consumed at
@@ -76,13 +101,26 @@ def build_source_connection_kwargs(payload: dict) -> dict:
 
     extras = dict(payload.get("extras") or {})
     extras.setdefault("starship_platform", platform)
+
+    # Save the full base URL (scheme + host + port + path) in ``host``.
+    # Airflow's HttpHook treats a ``host`` that already contains ``://`` as
+    # a literal base URL and skips building one from scheme/port. This is
+    # critical for Astro-style URLs like ``https://<hash>.astronomer.run/
+    # <deployment-slug>`` where the deployment lives in a path segment —
+    # without this, plugin endpoints get called at the bare hostname and
+    # Astro's edge proxy denies them (403).
+    base_url = f"{parsed.scheme}://{parsed.hostname}"
+    if parsed.port:
+        base_url += f":{parsed.port}"
     if parsed.path and parsed.path != "/":
-        extras.setdefault("endpoint", parsed.path)
+        base_url += parsed.path.rstrip("/")
 
     kwargs = {
-        "conn_id": STARSHIP_SOURCE_CONN_ID,
+        "conn_id": _normalize_source_conn_id(payload.get("conn_id")),
         "conn_type": "http",
-        "host": parsed.hostname,
+        "host": base_url,
+        # schema/port retained for display in the Airflow Connections UI;
+        # HttpHook ignores them when host contains ``://``.
         "schema": parsed.scheme,
     }
     if parsed.port:
@@ -123,16 +161,23 @@ def build_source_connection_kwargs(payload: dict) -> dict:
     return kwargs
 
 
-def read_source_connection(session: Session) -> dict:
-    """Return the current ``starship_source`` connection as a safe-for-UI dict.
+def source_connection_exists(session: Session, conn_id: str) -> bool:
+    """Return True iff an Airflow Connection with ``conn_id`` already exists."""
+    from airflow.models import Connection
+
+    return session.query(Connection).filter(Connection.conn_id == conn_id).count() > 0
+
+
+def read_source_connection(session: Session, conn_id: str = STARSHIP_SOURCE_CONN_ID) -> dict:
+    """Return the named source connection as a safe-for-UI dict.
 
     Raises ``NotFoundError`` if not configured. Never returns the password.
     """
     from airflow.models import Connection
 
-    conn = session.query(Connection).filter(Connection.conn_id == STARSHIP_SOURCE_CONN_ID).one_or_none()
+    conn = session.query(Connection).filter(Connection.conn_id == conn_id).one_or_none()
     if not conn:
-        raise NotFoundError("No source connection configured")
+        raise NotFoundError(f"No source connection configured for conn_id={conn_id!r}")
 
     try:
         extras_dict = json.loads(conn.extra) if conn.extra else {}

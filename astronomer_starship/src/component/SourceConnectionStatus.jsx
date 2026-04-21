@@ -1,11 +1,11 @@
 import PropTypes from 'prop-types';
 import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
-import { Alert, AlertIcon, Box, Button, HStack, Link, Text, VStack, useToast } from '@chakra-ui/react';
+import { Alert, AlertIcon, Box, Button, Code, HStack, Link, Text, VStack, useToast } from '@chakra-ui/react';
 import { ExternalLinkIcon } from '@chakra-ui/icons';
-import ValidatedUrlCheckbox from './ValidatedUrlCheckbox';
 import constants from '../constants';
 import { localRoute } from '../util';
+import ValidatedUrlCheckbox from './ValidatedUrlCheckbox';
 
 /**
  * Validates the source Airflow connection and, on success, saves it as an
@@ -16,15 +16,16 @@ import { localRoute } from '../util';
  * URL is valid — actual connectivity is verified server-side at wave launch.
  */
 export default function SourceConnectionStatus({
-  platform,
-  url,
-  token,
-  login,
-  password,
-  impersonationChain,
-  region,
-  roleArn,
-  environmentName,
+  platform = null,
+  connId = 'starship_source',
+  url = '',
+  token = null,
+  login = null,
+  password = null,
+  impersonationChain = '',
+  region = '',
+  roleArn = '',
+  environmentName = '',
   isValidUrl,
   isAirflow,
   isStarship,
@@ -50,8 +51,10 @@ export default function SourceConnectionStatus({
     }
   }, [isReady, canProxyProbe, isAirflow, isStarship, onAirflowChange, onStarshipChange]);
 
+  const effectiveConnId = (connId && connId.trim()) || 'starship_source';
+
   const buildPayload = useCallback(() => {
-    const payload = { platform, url };
+    const payload = { platform, url, conn_id: effectiveConnId };
     if (platform === 'astro') {
       payload.token = token;
     } else if (platform === 'oss') {
@@ -73,28 +76,35 @@ export default function SourceConnectionStatus({
       if (environmentName) payload.environment_name = environmentName;
     }
     return payload;
-  }, [platform, url, token, login, password, impersonationChain, region, roleArn, environmentName]);
+  }, [platform, url, effectiveConnId, token, login, password, impersonationChain, region, roleArn, environmentName]);
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await axios.post(localRoute(constants.SOURCE_CONNECTION_ROUTE), buildPayload());
+      const res = await axios.post(localRoute(constants.SOURCE_CONNECTION_ROUTE), buildPayload());
       onConnectionSavedChange(true);
+      const action = res.data?.action === 'updated' ? 'updated' : 'created';
+      const savedId = res.data?.conn_id || effectiveConnId;
       toast({
-        title: 'Source connection saved',
-        description: 'Cutover tabs are now enabled in the navigation above.',
+        title: action === 'updated' ? 'Source connection updated' : 'Source connection created',
+        description: (
+          action === 'updated'
+            ? `Airflow Connection ${savedId} was updated with the current credentials. Cutover is ready to use.`
+            : `Airflow Connection ${savedId} was created. Cutover tabs are now enabled above.`
+        ),
         status: 'success',
-        duration: 4000,
+        duration: 5000,
         isClosable: true,
         variant: 'outline',
       });
     } catch (err) {
-      const msg = err.response?.data?.error || err.message || 'Unknown error';
+      const data = err.response?.data || {};
+      const msg = data.error_message || data.error || err.message || 'Unknown error';
       toast({
         title: 'Failed to save source connection',
         description: typeof msg === 'string' ? msg : JSON.stringify(msg),
         status: 'error',
-        duration: 6000,
+        duration: 8000,
         isClosable: true,
         variant: 'outline',
       });
@@ -145,12 +155,16 @@ export default function SourceConnectionStatus({
               url={`${url}/api/v1/health`}
               token={token}
             />
+            {/* Probes /api/starship/dags (not /info) on purpose: /info is a
+                static ping that returns 200 even when the token lacks DAG
+                read permissions, which would false-positive this checkbox
+                and make Launch fail with a 403 on the first /dags call. */}
             <ValidatedUrlCheckbox
               colorScheme="success"
-              text="Starship Plugin"
+              text="Starship Plugin (DAG access)"
               valid={isStarship}
               setValid={onStarshipChange}
-              url={`${url}/api/starship/info`}
+              url={`${url}/api/starship/dags`}
               token={token}
             />
           </>
@@ -164,6 +178,29 @@ export default function SourceConnectionStatus({
         )}
       </VStack>
 
+      <Alert status={connectionSaved ? 'success' : 'info'} variant="subtle" fontSize="xs" borderRadius="md" mb={2}>
+        <AlertIcon boxSize={3} />
+        <Box>
+          {connectionSaved ? (
+            <>
+              <Text>
+                Saved as Airflow Connection <Code fontSize="2xs">{effectiveConnId}</Code>. Clicking below will update
+                it with any changes you&apos;ve made above.
+              </Text>
+              <Text color="gray.600" mt={1}>
+                Note: if you open this connection in Admin → Connections, Airflow shows the Password field blank —
+                that&apos;s a deliberate UI safeguard, the token is stored and used at runtime.
+              </Text>
+            </>
+          ) : (
+            <Text>
+              Clicking below will <strong>create or update</strong> an Airflow Connection named{' '}
+              <Code fontSize="2xs">{effectiveConnId}</Code> with these credentials. The wave engine and the
+              template DAG read from this connection at runtime.
+            </Text>
+          )}
+        </Box>
+      </Alert>
       <HStack justify="flex-end">
         <Button
           size="sm"
@@ -181,6 +218,7 @@ export default function SourceConnectionStatus({
 
 SourceConnectionStatus.propTypes = {
   platform: PropTypes.string,
+  connId: PropTypes.string,
   url: PropTypes.string,
   token: PropTypes.string,
   login: PropTypes.string,
@@ -199,14 +237,3 @@ SourceConnectionStatus.propTypes = {
   onConnectionSavedChange: PropTypes.func.isRequired,
 };
 
-SourceConnectionStatus.defaultProps = {
-  platform: null,
-  url: '',
-  token: null,
-  login: null,
-  password: null,
-  impersonationChain: '',
-  region: '',
-  roleArn: '',
-  environmentName: '',
-};

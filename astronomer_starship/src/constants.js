@@ -27,6 +27,7 @@ export const ROUTES = Object.freeze({
   DAGS: 'dags',
   TELESCOPE: 'telescope',
   CUTOVER: 'cutover',
+  CUTOVER_HISTORY: 'cutover-history',
 });
 
 /**
@@ -37,7 +38,8 @@ export const SOURCE_PLATFORMS = Object.freeze([
   {
     id: 'astro',
     label: 'Astro',
-    description: 'Astronomer Cloud or Software deployment. Uses a Deployment API token.',
+    description:
+      'Astronomer Cloud or Software deployment. Uses an Organization, Workspace, or Personal access token.',
   },
   {
     id: 'gcc',

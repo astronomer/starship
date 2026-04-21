@@ -466,7 +466,7 @@ def purge_all_instance_dag_metadata(session: Session = NEW_SESSION) -> dict:
     return {"purged": purged, "errors": errors}
 
 
-def rollback_dag(
+def rollback_dag(  # noqa: C901
     migration_id: str,
     dag_id: str,
     source_hook: Optional[StarshipHttpHook] = None,

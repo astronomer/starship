@@ -220,11 +220,29 @@ class StarshipHttpHook(HttpHook, StarshipHook):
         session as headers. Starship uses ``extra`` to stash auth-factory
         hints (e.g. ``impersonation_chain``, ``starship_platform``,
         ``region_name``), and those must not be sent as HTTP headers.
+
+        Also rebinds ``session.auth`` for bearer-token-in-password
+        connections (Astro, OSS-bearer) because Airflow's ``HttpHook``
+        instantiates ``auth_type()`` with **zero args** when the
+        connection has no ``login``, losing the token.
         """
         session = super().get_conn(headers=headers)
+
         extra_keys = [k for k in session.headers if k.lower() not in _STANDARD_HTTP_HEADERS]
         for key in extra_keys:
             session.headers.pop(key, None)
+
+        if getattr(self, "_auth_type", None) and getattr(self, "http_conn_id", None):
+            try:
+                conn = self.get_connection(self.http_conn_id)
+            except Exception:
+                return session
+            # Upstream HttpHook only passes creds when conn.login is set;
+            # for token-in-password connections that means our auth class
+            # is called with no args. Rebind explicitly with both fields.
+            if not conn.login and conn.password:
+                session.auth = self._auth_type(conn.login, conn.password)
+
         return session
 
     def get_variables(self):

@@ -7,7 +7,6 @@ the appropriate auth factory from the sibling modules.
 """
 
 import json
-from typing import Optional
 
 from astronomer_starship.providers.starship.auth.astro import AstroBearerAuth
 from astronomer_starship.providers.starship.auth.oss import resolve_oss_auth
@@ -22,6 +21,37 @@ def _load_extras(conn) -> dict:
         return json.loads(raw)
     except (TypeError, ValueError):
         return {}
+
+
+def _assert_required_fields(conn_id: str, platform: str, conn, extras: dict) -> None:
+    """Fail fast with a clear, user-actionable message if the saved Connection
+    is missing fields this platform needs. Runs before we open an HTTP session,
+    so the caller gets a proper error instead of a cryptic auth-time exception.
+    """
+    if platform == "astro":
+        if not conn.password:
+            raise RuntimeError(
+                f"Airflow Connection '{conn_id}' is configured as an Astro source but has no password set. "
+                f"Re-open the Starship Source Setup page and save the connection with a Deployment API token."
+            )
+    elif platform == "oss":
+        if not conn.password:
+            raise RuntimeError(
+                f"Airflow Connection '{conn_id}' is configured as an OSS source but has no password set. "
+                f"Provide either a bearer token or a login + password via the Starship Source Setup page."
+            )
+    elif platform == "mwaa":
+        if not extras.get("region_name"):
+            raise RuntimeError(
+                f"Airflow Connection '{conn_id}' is configured as an MWAA source but has no `region_name` "
+                f"in its extras. Re-save via the Starship Source Setup page with an AWS region."
+            )
+        if not extras.get("environment_name"):
+            raise RuntimeError(
+                f"Airflow Connection '{conn_id}' is configured as an MWAA source but has no `environment_name` "
+                f"in its extras. Re-save via the Starship Source Setup page with the MWAA environment name."
+            )
+    # gcc uses ADC — nothing to check at setup time; failures surface on first token refresh.
 
 
 def resolve_source_auth(conn_id: str):
@@ -42,6 +72,8 @@ def resolve_source_auth(conn_id: str):
         if conn.password and not conn.login:
             return AstroBearerAuth
         return resolve_oss_auth(conn.login, conn.password)
+
+    _assert_required_fields(conn_id, platform, conn, extras)
 
     if platform == "astro":
         return AstroBearerAuth
@@ -72,29 +104,16 @@ def resolve_source_auth(conn_id: str):
     raise RuntimeError(f"Unsupported starship_platform '{platform}' on connection '{conn_id}'.")
 
 
-def resolve_source_hook(conn_id: str, endpoint: Optional[str] = None) -> StarshipHttpHook:
+def resolve_source_hook(conn_id: str) -> StarshipHttpHook:
     """Construct a :class:`StarshipHttpHook` bound to ``conn_id``.
 
-    If the connection's ``extra`` carries an ``endpoint`` key (set by the
-    source_connection endpoint when the URL has a path), it's forwarded to
-    the hook.
+    The source_connection endpoint stores the full base URL (including
+    any deployment-path segment) in ``conn.host``, so the hook picks up
+    the correct ``base_url`` automatically via Airflow's native
+    ``HttpHook`` behaviour — no endpoint-prefix juggling needed here.
     """
     auth_type = resolve_source_auth(conn_id)
     kwargs = {"http_conn_id": conn_id}
     if auth_type is not None:
         kwargs["auth_type"] = auth_type
-    hook = StarshipHttpHook(**kwargs)
-
-    if endpoint is None:
-        from airflow.hooks.base import BaseHook
-
-        conn = BaseHook.get_connection(conn_id)
-        extras = _load_extras(conn)
-        endpoint = extras.get("endpoint")
-    if endpoint:
-        # ``base_url`` is not set at construction time on HttpHook — callers
-        # that need path-aware URL building should pass ``endpoint`` to
-        # ``url_from_endpoint`` themselves; we just annotate the hook for
-        # convenience of downstream consumers.
-        hook.starship_endpoint_prefix = endpoint
-    return hook
+    return StarshipHttpHook(**kwargs)

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Alert,
   AlertIcon,
@@ -25,33 +25,21 @@ import {
   NumberInputStepper,
   Radio,
   RadioGroup,
-  Spinner,
   Stack,
-  Stat,
-  StatLabel,
-  StatNumber,
-  Table,
-  TableContainer,
-  Tbody,
-  Td,
   Text,
   Textarea,
-  Th,
-  Thead,
   Tooltip,
-  Tr,
   useDisclosure,
   useToast,
   VStack,
 } from '@chakra-ui/react';
-import { ChevronDownIcon, ChevronUpIcon, InfoIcon, RepeatIcon, TimeIcon, WarningTwoIcon } from '@chakra-ui/icons';
+import { ChevronDownIcon, ChevronUpIcon, InfoIcon } from '@chakra-ui/icons';
 import axios from 'axios';
-import { NavLink } from 'react-router-dom';
+import PropTypes from 'prop-types';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useSourceConfig, useSourceSetupComplete } from '../AppContext';
 import constants, { ROUTES } from '../constants';
 import { localRoute } from '../util';
-import ConfirmDialog from '../component/ConfirmDialog';
-import useConfirm from '../hooks/useConfirm';
 
 const STRATEGIES = [
   {
@@ -65,37 +53,6 @@ const STRATEGIES = [
     hint: 'Migrate every DAG present on both source and target in one shot. Best for small environments or a final cutover.',
   },
 ];
-
-const STATUS_COLORS = {
-  running: 'info',
-  completed: 'success',
-  failed: 'error',
-  aborted: 'warning',
-  rolled_back: 'warning',
-  pending: 'gray',
-};
-
-function formatTimestamp(iso) {
-  if (!iso) return '—';
-  try {
-    return new Date(iso).toLocaleString();
-  } catch {
-    return iso;
-  }
-}
-
-function buildSummary(dagDict) {
-  const statuses = Object.values(dagDict || {}).map((d) => d.status);
-  const count = (s) => statuses.filter((x) => x === s).length;
-  return {
-    total: statuses.length,
-    completed: count('completed'),
-    failed: count('failed'),
-    running: count('running'),
-    pending: count('pending'),
-    rolled_back: count('rolled_back'),
-  };
-}
 
 // ---------------------------------------------------------------------------
 // Getting Started panel — first-time-user context, explicit by design.
@@ -170,6 +127,13 @@ function GettingStarted() {
                 <Text>• Pause on source + unpause on target can be coordinated atomically per DAG.</Text>
                 <Text>• Rollback removes migrated rows and reverses pause/unpause — per DAG or per wave.</Text>
                 <Text>• Abort stops a running wave; in-flight writes finish cleanly.</Text>
+                <Text>
+                  • Use{' '}
+                  <Link as={NavLink} to={`/${ROUTES.CUTOVER_HISTORY}`} color="brand.500" fontWeight="semibold">
+                    Cutover History
+                  </Link>{' '}
+                  to revisit any past wave — nothing is lost between visits.
+                </Text>
               </VStack>
             </Box>
           </VStack>
@@ -194,7 +158,7 @@ const DEFAULT_CONFIG = {
   max_retries: 3,
 };
 
-function LaunchForm({ onLaunched }) {
+function LaunchForm({ sourceConnId = '', onLaunched = null }) {
   const toast = useToast();
   const advanced = useDisclosure({ defaultIsOpen: false });
   const [strategy, setStrategy] = useState('incremental');
@@ -223,31 +187,37 @@ function LaunchForm({ onLaunched }) {
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
+      const waveConfig = { ...config };
+      if (sourceConnId && sourceConnId.trim()) {
+        waveConfig.source_conn_id = sourceConnId.trim();
+      }
       const res = await axios.post(localRoute(constants.CUTOVER_WAVES_ROUTE), {
         strategy,
         patterns,
-        config,
+        config: waveConfig,
       });
+      const dagCount = res.data?.dags ? Object.keys(res.data.dags).length : null;
       toast({
         title: 'Wave launched',
-        description: `${res.data?.dags ? Object.keys(res.data.dags).length : '—'} DAGs queued. Wave id: ${
-          res.data?.id || 'n/a'
-        }`,
+        description: dagCount != null ? `${dagCount} DAGs queued. Opening status view...` : 'Opening status view...',
         status: 'success',
         duration: 5000,
         isClosable: true,
         variant: 'outline',
       });
-      onLaunched?.(res.data);
-      // Reset patterns so the user can't accidentally re-run the same wave.
       setPatternsRaw('');
+      onLaunched?.(res.data);
     } catch (err) {
-      const raw = err.response?.data?.error || err.message || 'Unknown error';
+      // starship_route wraps uncaught exceptions as { error, error_message }
+      // where `error` is a short label and `error_message` is the Python
+      // traceback. Prefer the traceback when present.
+      const data = err.response?.data || {};
+      const description = data.error_message || data.error || err.message || 'Unknown error';
       toast({
         title: 'Failed to launch wave',
-        description: typeof raw === 'string' ? raw : JSON.stringify(raw),
+        description: typeof description === 'string' ? description : JSON.stringify(description),
         status: 'error',
-        duration: 8000,
+        duration: 12000,
         isClosable: true,
         variant: 'outline',
       });
@@ -265,8 +235,8 @@ function LaunchForm({ onLaunched }) {
               Launch a wave
             </Heading>
             <Text fontSize="xs" color="gray.600">
-              Pick a strategy, list the DAGs, then hit <strong>Launch wave</strong>. You&apos;ll be able to watch
-              progress and roll back from the status view.
+              Pick a strategy, list the DAGs, then hit <strong>Launch wave</strong>. You&apos;ll be taken straight
+              to the wave&apos;s status view.
             </Text>
           </Box>
 
@@ -418,7 +388,8 @@ function LaunchForm({ onLaunched }) {
                   >
                     <Text fontSize="sm">Defer DAGs that are actively running in source, retry later</Text>
                     <Text fontSize="xs" color="gray.600">
-                      Uses <Code fontSize="2xs">retry_interval</Code> and <Code fontSize="2xs">max_retries</Code> below.
+                      Uses <Code fontSize="2xs">retry_interval</Code> and <Code fontSize="2xs">max_retries</Code>{' '}
+                      below.
                     </Text>
                   </Checkbox>
                 </VStack>
@@ -447,16 +418,32 @@ function LaunchForm({ onLaunched }) {
             </Collapse>
           </Box>
 
-          <HStack justify="flex-end" pt={2}>
-            <Button
-              colorScheme="brand"
-              onClick={handleSubmit}
-              isLoading={submitting}
-              isDisabled={!canSubmit}
-              size="sm"
+          <HStack justify="space-between" pt={2} align="center">
+            <Text fontSize="xs" color={canSubmit ? 'gray.500' : 'error.500'}>
+              {canSubmit
+                ? `Ready to launch — ${patterns.length || 'no'} ${
+                    strategy === 'incremental' ? 'include' : 'exclude'
+                  } pattern${patterns.length === 1 ? '' : 's'}.`
+                : 'Add at least one include pattern above to launch an incremental wave.'}
+            </Text>
+            <Tooltip
+              label={canSubmit ? '' : 'Enter at least one include pattern (e.g. etl_*) to enable.'}
+              placement="top"
+              hasArrow
+              isDisabled={canSubmit}
             >
-              Launch wave
-            </Button>
+              <Box>
+                <Button
+                  colorScheme="brand"
+                  onClick={handleSubmit}
+                  isLoading={submitting}
+                  isDisabled={!canSubmit}
+                  size="sm"
+                >
+                  Launch wave
+                </Button>
+              </Box>
+            </Tooltip>
           </HStack>
         </VStack>
       </CardBody>
@@ -464,7 +451,12 @@ function LaunchForm({ onLaunched }) {
   );
 }
 
-function NumberField({ label, helper, value, onChange, min, max }) {
+LaunchForm.propTypes = {
+  sourceConnId: PropTypes.string,
+  onLaunched: PropTypes.func,
+};
+
+function NumberField({ label, helper = '', value, onChange, min, max }) {
   return (
     <FormControl>
       <FormLabel fontSize="sm" mb={1}>
@@ -488,317 +480,23 @@ function NumberField({ label, helper, value, onChange, min, max }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Recent waves list — polls while any wave is running.
-// ---------------------------------------------------------------------------
-
-function RecentWaves({ waves, isLoading, onRefresh }) {
-  return (
-    <Card>
-      <CardBody>
-        <HStack justify="space-between" mb={3}>
-          <Box>
-            <Heading size="sm">Recent waves</Heading>
-            <Text fontSize="xs" color="gray.600">
-              The 25 most recent waves on this Airflow. Click a wave to open its status view.
-            </Text>
-          </Box>
-          <HStack>
-            {isLoading && <Spinner size="xs" color="brand.400" />}
-            <Tooltip label="Refresh" placement="top" hasArrow>
-              <IconButton
-                size="xs"
-                variant="ghost"
-                aria-label="Refresh"
-                icon={<RepeatIcon />}
-                onClick={onRefresh}
-              />
-            </Tooltip>
-          </HStack>
-        </HStack>
-        {waves.length === 0 ? (
-          <Text fontSize="sm" color="gray.500" fontStyle="italic">
-            No waves yet — launch one above to see it here.
-          </Text>
-        ) : (
-          <TableContainer>
-            <Table size="sm" variant="striped">
-              <Thead>
-                <Tr>
-                  <Th>Wave id</Th>
-                  <Th>Strategy</Th>
-                  <Th>Status</Th>
-                  <Th>Progress</Th>
-                  <Th>Started</Th>
-                </Tr>
-              </Thead>
-              <Tbody>
-                {waves.map((w) => {
-                  const summary = buildSummary(w.dags);
-                  return (
-                    <Tr key={w.id}>
-                      <Td>
-                        <Link
-                          as={NavLink}
-                          to={`/${ROUTES.CUTOVER}/${encodeURIComponent(w.id)}`}
-                          fontFamily="mono"
-                          fontSize="xs"
-                          color="brand.500"
-                        >
-                          {w.id}
-                        </Link>
-                      </Td>
-                      <Td>
-                        <Badge colorScheme={w.type === 'bigbang' ? 'amethyst' : 'brand'}>{w.type}</Badge>
-                      </Td>
-                      <Td>
-                        <Badge colorScheme={STATUS_COLORS[w.status] || 'gray'}>{w.status}</Badge>
-                      </Td>
-                      <Td>
-                        <Text fontSize="xs">
-                          {summary.completed}/{summary.total}{' '}
-                          {summary.failed > 0 && (
-                            <Text as="span" color="error.500">
-                              ({summary.failed} failed)
-                            </Text>
-                          )}
-                          {summary.running > 0 && (
-                            <Text as="span" color="info.500">
-                              ({summary.running} running)
-                            </Text>
-                          )}
-                        </Text>
-                      </Td>
-                      <Td>
-                        <HStack fontSize="xs" color="gray.600">
-                          <TimeIcon boxSize={3} />
-                          <Text>{formatTimestamp(w.started_at)}</Text>
-                        </HStack>
-                      </Td>
-                    </Tr>
-                  );
-                })}
-              </Tbody>
-            </Table>
-          </TableContainer>
-        )}
-      </CardBody>
-    </Card>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Danger zone — instance-wide escape hatches. Intentionally ugly so it feels
-// consequential. Collapsed by default.
-// ---------------------------------------------------------------------------
-
-function DangerZone({ onPurgeAll }) {
-  const disclosure = useDisclosure({ defaultIsOpen: false });
-  return (
-    <Card variant="outline" borderColor="error.200" bg="error.50">
-      <CardBody py={3}>
-        <HStack
-          justify="space-between"
-          cursor="pointer"
-          onClick={disclosure.onToggle}
-          _hover={{ bg: 'error.100' }}
-          borderRadius="md"
-          px={2}
-          py={1}
-          mx={-2}
-        >
-          <HStack>
-            <WarningTwoIcon color="error.500" />
-            <Heading size="sm" color="error.700">
-              Danger zone
-            </Heading>
-          </HStack>
-          <IconButton
-            size="xs"
-            variant="ghost"
-            aria-label={disclosure.isOpen ? 'Collapse' : 'Expand'}
-            icon={disclosure.isOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
-          />
-        </HStack>
-        <Collapse in={disclosure.isOpen} animateOpacity>
-          <VStack align="stretch" spacing={3} mt={3}>
-            <Text fontSize="xs" color="error.700">
-              Instance-wide escape hatches. These actions are not scoped to a single wave and cannot be undone. Use
-              them only when rollback or per-wave purge aren&apos;t enough.
-            </Text>
-            <HStack justify="space-between" borderWidth="1px" borderColor="error.200" bg="white" p={3} borderRadius="md">
-              <Box>
-                <Text fontSize="sm" fontWeight="semibold">
-                  Purge ALL destination DAG metadata
-                </Text>
-                <Text fontSize="xs" color="gray.700">
-                  Deletes every <Code fontSize="2xs">dag_run</Code>, <Code fontSize="2xs">task_instance</Code>, and TI
-                  history row on this Airflow — for every DAG, regardless of which wave (if any) migrated them. Use
-                  this to start from a blank slate.
-                </Text>
-              </Box>
-              <Button size="sm" colorScheme="red" onClick={onPurgeAll}>
-                Purge all
-              </Button>
-            </HStack>
-          </VStack>
-        </Collapse>
-      </CardBody>
-    </Card>
-  );
-}
+NumberField.propTypes = {
+  label: PropTypes.string.isRequired,
+  helper: PropTypes.string,
+  value: PropTypes.number.isRequired,
+  onChange: PropTypes.func.isRequired,
+  min: PropTypes.number.isRequired,
+  max: PropTypes.number.isRequired,
+};
 
 // ---------------------------------------------------------------------------
 // Page shell
 // ---------------------------------------------------------------------------
 
-function SummaryStrip({ waves }) {
-  const agg = useMemo(() => {
-    const out = { total: 0, running: 0, completed: 0, failed: 0 };
-    waves.forEach((w) => {
-      out.total += 1;
-      if (w.status === 'running') out.running += 1;
-      else if (w.status === 'completed') out.completed += 1;
-      else if (w.status === 'failed' || w.status === 'aborted') out.failed += 1;
-    });
-    return out;
-  }, [waves]);
-
-  return (
-    <HStack spacing={6} wrap="wrap">
-      <Stat size="sm">
-        <StatLabel fontSize="xs">Waves on record</StatLabel>
-        <StatNumber fontSize="lg">{agg.total}</StatNumber>
-      </Stat>
-      <Stat size="sm">
-        <StatLabel fontSize="xs" color="info.500">
-          In flight
-        </StatLabel>
-        <StatNumber fontSize="lg" color="info.500">
-          {agg.running}
-        </StatNumber>
-      </Stat>
-      <Stat size="sm">
-        <StatLabel fontSize="xs" color="success.500">
-          Completed
-        </StatLabel>
-        <StatNumber fontSize="lg" color="success.500">
-          {agg.completed}
-        </StatNumber>
-      </Stat>
-      <Stat size="sm">
-        <StatLabel fontSize="xs" color="error.500">
-          Failed / aborted
-        </StatLabel>
-        <StatNumber fontSize="lg" color="error.500">
-          {agg.failed}
-        </StatNumber>
-      </Stat>
-    </HStack>
-  );
-}
-
 export default function CutoverPage() {
   const source = useSourceConfig();
   const isSourceReady = useSourceSetupComplete();
-  const toast = useToast();
-  const [confirmProps, ask] = useConfirm();
-
-  const [waves, setWaves] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  // Track the latest successful fetch so a failing poll doesn't flash "no waves".
-  const lastGoodRef = useRef([]);
-
-  const fetchWaves = useCallback(
-    async (showLoader = false) => {
-      if (showLoader) setIsLoading(true);
-      try {
-        const res = await axios.get(localRoute(constants.CUTOVER_WAVES_ROUTE), { params: { limit: 25 } });
-        const next = res.data?.migrations || [];
-        setWaves(next);
-        lastGoodRef.current = next;
-      } catch (err) {
-        if (showLoader) {
-          const raw = err.response?.data?.error || err.message || 'Unknown error';
-          toast({
-            title: 'Could not load waves',
-            description: typeof raw === 'string' ? raw : JSON.stringify(raw),
-            status: 'error',
-            duration: 5000,
-            isClosable: true,
-            variant: 'outline',
-          });
-        }
-      } finally {
-        if (showLoader) setIsLoading(false);
-      }
-    },
-    [toast],
-  );
-
-  useEffect(() => {
-    fetchWaves(true);
-  }, [fetchWaves]);
-
-  // Poll while any wave is in flight — cheaper than a constant interval.
-  const hasInFlight = waves.some((w) => w.status === 'running');
-  useEffect(() => {
-    if (!hasInFlight) return undefined;
-    const id = setInterval(() => fetchWaves(false), 5000);
-    return () => clearInterval(id);
-  }, [hasInFlight, fetchWaves]);
-
-  const handleLaunched = useCallback(
-    (newWave) => {
-      // Optimistically prepend so the user sees the launch immediately even
-      // if the next poll is a few seconds out.
-      if (newWave?.id) {
-        setWaves((prev) => [newWave, ...prev.filter((w) => w.id !== newWave.id)]);
-      }
-      fetchWaves(false);
-    },
-    [fetchWaves],
-  );
-
-  const handlePurgeAll = useCallback(() => {
-    ask({
-      title: 'Purge ALL destination DAG metadata?',
-      body: (
-        <>
-          This deletes every <Code>dag_run</Code>, <Code>task_instance</Code>, and TI history row on this Airflow —
-          for every DAG, including ones that were never part of a cutover wave. <strong>It cannot be undone.</strong>{' '}
-          Make sure you have a fresh database backup.
-        </>
-      ),
-      confirmLabel: 'Purge everything',
-      colorScheme: 'red',
-      onConfirm: async () => {
-        try {
-          const res = await axios.post(localRoute(constants.CUTOVER_PURGE_ALL_ROUTE));
-          toast({
-            title: 'Purge complete',
-            description: `Purged ${res.data?.purged ?? 0} DAGs${res.data?.errors ? `, ${res.data.errors} errors` : ''}.`,
-            status: 'success',
-            duration: 6000,
-            isClosable: true,
-            variant: 'outline',
-          });
-          fetchWaves(false);
-        } catch (err) {
-          const raw = err.response?.data?.error || err.message || 'Unknown error';
-          toast({
-            title: 'Purge failed',
-            description: typeof raw === 'string' ? raw : JSON.stringify(raw),
-            status: 'error',
-            duration: 8000,
-            isClosable: true,
-            variant: 'outline',
-          });
-          throw err;
-        }
-      },
-    });
-  }, [ask, toast, fetchWaves]);
+  const navigate = useNavigate();
 
   if (!isSourceReady) {
     return (
@@ -822,6 +520,15 @@ export default function CutoverPage() {
     );
   }
 
+  // Auto-navigate to the newly-launched wave's status view — that's almost
+  // always what the user wants after hitting Launch. Cutover History stays
+  // one click away in the nav if they want the full list.
+  const handleLaunched = (newWave) => {
+    if (newWave?.id) {
+      navigate(`/${ROUTES.CUTOVER}/${encodeURIComponent(newWave.id)}`);
+    }
+  };
+
   return (
     <Box>
       <Stack
@@ -835,19 +542,25 @@ export default function CutoverPage() {
             Cutover
           </Heading>
           <Text fontSize="xs" color="gray.600">
-            Migrating from <strong>{source.url}</strong> ({source.platform}) into this Airflow.
+            Migrating from <strong>{source.url}</strong> ({source.platform}) via Airflow Connection{' '}
+            <Code fontSize="2xs">{source.connId || 'starship_source'}</Code> into this Airflow.
           </Text>
         </Box>
-        <SummaryStrip waves={waves} />
+        <Button
+          as={NavLink}
+          to={`/${ROUTES.CUTOVER_HISTORY}`}
+          size="sm"
+          variant="outline"
+          colorScheme="brand"
+        >
+          Cutover History
+        </Button>
       </Stack>
 
       <VStack align="stretch" spacing={4}>
         <GettingStarted />
-        <LaunchForm onLaunched={handleLaunched} />
-        <RecentWaves waves={waves} isLoading={isLoading} onRefresh={() => fetchWaves(true)} />
-        <DangerZone onPurgeAll={handlePurgeAll} />
+        <LaunchForm sourceConnId={source.connId} onLaunched={handleLaunched} />
       </VStack>
-      <ConfirmDialog {...confirmProps} />
     </Box>
   );
 }

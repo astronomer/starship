@@ -44,6 +44,9 @@ const initialState = {
   // Optional. When complete, enables the Cutover tabs.
   // -------------------------------------------------------------------
   sourcePlatform: null, // 'astro' | 'mwaa' | 'gcc' | 'oss'
+  // Airflow Connection id where the credentials will be stored. Users can
+  // rename this if they need multiple source connections side-by-side.
+  sourceConnId: 'starship_source',
   sourceUrl: '',
   sourceToken: null,
   sourceLogin: null,
@@ -172,6 +175,16 @@ function reducer(state, action) {
       return { ...state, batchSize: action.batchSize };
     case 'set-local-airflow-version':
       return { ...state, localAirflowVersion: action.version };
+    case 'set-source-conn-id': {
+      // Changing the target conn_id invalidates "is this connection saved?"
+      // since the saved record might live under the old id.
+      const next = {
+        ...state,
+        sourceConnId: action.connId,
+        sourceConnectionSaved: false,
+      };
+      return { ...next, isSourceSetupComplete: calculateIsSourceSetupComplete(next) };
+    }
     case 'set-source-platform': {
       // Changing platform invalidates creds and saved-connection state.
       const next = {
@@ -241,6 +254,7 @@ function reducer(state, action) {
       // don't lose their source setup when they re-run Target Setup.
       const {
         sourcePlatform,
+        sourceConnId,
         sourceUrl,
         sourceToken,
         sourceLogin,
@@ -260,6 +274,7 @@ function reducer(state, action) {
       return {
         ...initialState,
         sourcePlatform,
+        sourceConnId,
         sourceUrl,
         sourceToken,
         sourceLogin,
@@ -281,6 +296,7 @@ function reducer(state, action) {
       return {
         ...state,
         sourcePlatform: null,
+        sourceConnId: 'starship_source',
         sourceUrl: '',
         sourceToken: null,
         sourceLogin: null,
@@ -393,6 +409,7 @@ export function useSourceConfig() {
   return useMemo(
     () => ({
       platform: state.sourcePlatform,
+      connId: state.sourceConnId,
       url: state.sourceUrl,
       token: state.sourceToken,
       login: state.sourceLogin,
@@ -410,6 +427,7 @@ export function useSourceConfig() {
     }),
     [
       state.sourcePlatform,
+      state.sourceConnId,
       state.sourceUrl,
       state.sourceToken,
       state.sourceLogin,

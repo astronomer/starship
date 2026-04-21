@@ -10,6 +10,7 @@ import { proxyHeaders, proxyUrl } from '../util';
 function getResourceName(text) {
   if (text === 'Airflow API') return 'Airflow API';
   if (text === 'Starship Plugin') return 'Starship Plugin API';
+  if (text === 'Starship Plugin (DAG access)') return 'Starship Plugin DAG API';
   return text;
 }
 
@@ -61,7 +62,7 @@ function getErrorDetails(err, text, url) {
       };
 
     case 404:
-      if (text === 'Starship Plugin') {
+      if (text === 'Starship Plugin' || text === 'Starship Plugin (DAG access)') {
         return {
           title: 'Starship Plugin not found',
           description:

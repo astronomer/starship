@@ -66,22 +66,34 @@ const URL_EXAMPLES = {
  * action shape, e.g. `{ token: 'abc' }` or `{ region: 'us-west-2' }`.
  */
 export default function SourceCredentialsForm({
-  platform,
-  url,
-  token,
-  login,
-  password,
-  impersonationChain,
-  region,
-  roleArn,
-  environmentName,
+  platform = null,
+  connId = '',
+  url = '',
+  token = null,
+  login = null,
+  password = null,
+  impersonationChain = '',
+  region = '',
+  roleArn = '',
+  environmentName = '',
   isTouched,
   credsTouched,
   isValidUrl,
+  onConnIdChange,
   onUrlChange,
   onCredsChange,
 }) {
   const urlHints = platform ? URL_EXAMPLES[platform] : null;
+
+  // Normalize on input: strip trailing slashes and a trailing /home so users
+  // can paste straight from the Airflow browser address bar without breaking
+  // the /api/starship/info check.
+  const handleUrlChange = (value) => {
+    let cleaned = (value || '').trim();
+    cleaned = cleaned.replace(/\/+$/, '');
+    cleaned = cleaned.replace(/\/home$/, '');
+    onUrlChange(cleaned);
+  };
 
   return (
     <VStack align="stretch" spacing={3}>
@@ -100,7 +112,8 @@ export default function SourceCredentialsForm({
           size="sm"
           placeholder={urlHints?.placeholder || 'https://source-airflow.example.com'}
           value={url || ''}
-          onChange={(e) => onUrlChange(e.target.value)}
+          onChange={(e) => handleUrlChange(e.target.value)}
+          onBlur={(e) => handleUrlChange(e.target.value)}
         />
         <FormHelperText fontSize="xs">
           Paste the full webserver URL of the Airflow you are migrating from.
@@ -128,11 +141,43 @@ export default function SourceCredentialsForm({
         )}
       </FormControl>
 
+      <FormControl>
+        <HStack mb={1}>
+          <FormLabel mb={0}>Airflow Connection name</FormLabel>
+          <Tooltip
+            label="The Airflow Connection id these credentials will be saved under. Change only if you need multiple source connections side-by-side."
+            placement="top"
+            hasArrow
+          >
+            <InfoIcon color="gray.400" boxSize={3} cursor="help" />
+          </Tooltip>
+        </HStack>
+        <Input
+          size="sm"
+          value={connId || ''}
+          placeholder="starship_source"
+          onChange={(e) => onConnIdChange(e.target.value)}
+        />
+        <FormHelperText fontSize="xs">
+          Defaults to <Code fontSize="2xs">starship_source</Code>. Clicking Save below will create or update an
+          Airflow Connection under this name. The wave engine and the template DAG read from this same connection.
+        </FormHelperText>
+      </FormControl>
+
       <Divider />
 
       {platform === 'astro' && (
         <FormControl isInvalid={credsTouched && !token} isRequired>
-          <FormLabel mb={1}>Deployment API Token</FormLabel>
+          <HStack mb={1}>
+            <FormLabel mb={0}>Access Token</FormLabel>
+            <Tooltip
+              label="Organization, Workspace, or Personal access token. Deployment API Tokens do NOT work for the Starship API on Astro — Astro's edge proxy rejects them on plugin endpoints."
+              placement="top"
+              hasArrow
+            >
+              <InfoIcon color="gray.400" boxSize={3} cursor="help" />
+            </Tooltip>
+          </HStack>
           <Input
             size="sm"
             type="password"
@@ -142,7 +187,9 @@ export default function SourceCredentialsForm({
             onChange={(e) => onCredsChange({ token: e.target.value })}
           />
           <FormHelperText fontSize="xs">
-            An Organization, Workspace, or Deployment API token for the source Astro deployment.
+            Use an <strong>Organization</strong>, <strong>Workspace</strong>, or <strong>Personal</strong> access
+            token from the source Astro. <strong>Deployment API Tokens do not work</strong> — Astro&apos;s edge
+            proxy (Istio) rejects them on the Starship plugin endpoints.
           </FormHelperText>
           <FormErrorMessage>Token is required for Astro sources.</FormErrorMessage>
         </FormControl>
@@ -253,6 +300,7 @@ export default function SourceCredentialsForm({
 
 SourceCredentialsForm.propTypes = {
   platform: PropTypes.oneOf(['astro', 'mwaa', 'gcc', 'oss']),
+  connId: PropTypes.string,
   url: PropTypes.string,
   token: PropTypes.string,
   login: PropTypes.string,
@@ -264,18 +312,8 @@ SourceCredentialsForm.propTypes = {
   isTouched: PropTypes.bool.isRequired,
   credsTouched: PropTypes.bool.isRequired,
   isValidUrl: PropTypes.bool.isRequired,
+  onConnIdChange: PropTypes.func.isRequired,
   onUrlChange: PropTypes.func.isRequired,
   onCredsChange: PropTypes.func.isRequired,
 };
 
-SourceCredentialsForm.defaultProps = {
-  platform: null,
-  url: '',
-  token: null,
-  login: null,
-  password: null,
-  impersonationChain: '',
-  region: '',
-  roleArn: '',
-  environmentName: '',
-};

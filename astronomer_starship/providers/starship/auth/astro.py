@@ -1,10 +1,16 @@
-"""Astro Deployment API-token auth for source Airflow connections."""
+"""Astro access-token auth for source Airflow connections.
+
+Works with **Organization**, **Workspace**, and **Personal** access tokens.
+Deployment API Tokens are *not* supported — Astro's edge proxy (Istio)
+rejects them on Starship plugin endpoints with a 401. This matches the
+Target Setup flow, which has always used Org/Workspace/Personal tokens.
+"""
 
 import requests
 
 
 class AstroBearerAuth(requests.auth.AuthBase):
-    """Bearer-token auth backed by a static Astro Deployment API key.
+    """Static bearer-token auth for an Astro source.
 
     The token is read from the HTTP Connection's ``password`` field by
     Airflow's ``HttpHook`` before this auth object is constructed.
