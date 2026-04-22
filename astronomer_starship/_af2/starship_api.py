@@ -12,7 +12,16 @@ from flask_appbuilder import BaseView, expose
 from astronomer_starship._af2.starship_compatability import (
     StarshipCompatabilityLayer,
 )
-from astronomer_starship.common import HttpError, get_kwargs_fn, telescope
+from astronomer_starship.common import (
+    STARSHIP_SOURCE_CONN_ID,
+    HttpError,
+    _normalize_source_conn_id,
+    build_source_connection_kwargs,
+    get_kwargs_fn,
+    read_source_connection,
+    source_connection_exists,
+    telescope,
+)
 
 if TYPE_CHECKING:
     from typing import Callable
@@ -230,6 +239,55 @@ class StarshipApi(BaseView):
             delete=starship_compat.delete_task_log,
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.task_log_attrs()),
         )
+
+    @expose("/source_connection", methods=["GET", "POST", "DELETE"])
+    @csrf.exempt
+    def source_connection(self):
+        """Manage a source-Airflow Connection used by the Cutover Tool.
+
+        The frontend POSTs a platform-specific payload including the
+        desired ``conn_id`` (default ``starship_source``); we translate it
+        to a standard Airflow HTTP Connection so the operator/template DAG
+        and the wave engine can reuse it unchanged. GET and DELETE accept
+        ``?conn_id=`` to operate on a specific connection.
+        """
+        starship_compat = StarshipCompatabilityLayer()
+
+        def _resolve_conn_id(sources):
+            for src in sources:
+                if src:
+                    return _normalize_source_conn_id(src)
+            return STARSHIP_SOURCE_CONN_ID
+
+        def _get():
+            conn_id = _resolve_conn_id([request.args.get("conn_id")])
+            return read_source_connection(starship_compat.session, conn_id=conn_id)
+
+        def _post():
+            payload = request.json or {}
+            kwargs = build_source_connection_kwargs(payload)
+            conn_id = kwargs["conn_id"]
+            existed = source_connection_exists(starship_compat.session, conn_id)
+            # Delete-if-exists: we intentionally swallow any exception because
+            # any failure here (e.g. not-found, transient DB hiccup) should
+            # still let the subsequent set_connection attempt the upsert;
+            # real DB errors will surface from set_connection itself.
+            try:
+                starship_compat.delete_connection(conn_id=conn_id)
+            except Exception:  # nosec B110
+                pass
+            created = starship_compat.set_connection(**kwargs)
+            return {
+                **created,
+                "action": "updated" if existed else "created",
+                "conn_id": conn_id,
+            }
+
+        def _delete():
+            conn_id = _resolve_conn_id([request.args.get("conn_id")])
+            return starship_compat.delete_connection(conn_id=conn_id)
+
+        return starship_route(get=_get, post=_post, delete=_delete)
 
     # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_TASK_INSTANCE)])
     @expose("/xcom", methods=["GET", "POST", "DELETE"])
