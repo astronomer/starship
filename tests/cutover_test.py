@@ -16,13 +16,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 import requests
 
-# Eagerly import ``airflow.hooks.base`` so ``patch("airflow.hooks.base...")``
-# can resolve the dotted path. ``airflow.hooks`` is a namespace package and
-# its ``base`` child is NOT auto-imported on a fresh interpreter — mock's
-# _dot_lookup then fails with "module 'airflow.hooks' has no attribute 'base'".
-# Local dev happens to have it loaded by prior imports; CI's clean Python 3.10
-# did not.
-import airflow.hooks.base  # noqa: F401, E402  isort:skip
+# Import BaseHook directly so ``patch.object(BaseHook, ...)`` can target the
+# already-loaded class. The earlier attempt to use
+# ``patch("airflow.hooks.base.BaseHook.get_connection", ...)`` broke on CI
+# because Airflow 2.10's ``airflow.hooks`` package uses deprecation
+# shims that interfere with ``mock._dot_lookup``'s attribute walk, even
+# after ``import airflow.hooks.base``.
+from airflow.hooks.base import BaseHook  # noqa: E402  isort:skip
 
 from astronomer_starship.common import (
     STARSHIP_SOURCE_CONN_ID,
@@ -232,16 +232,12 @@ def _fake_conn(password=None, login=None, extra=None):
 
 
 class TestResolveSourceAuth:
-    def _patch(self, conn):
-        return patch(
-            "astronomer_starship.providers.starship.auth.factory.BaseHook.get_connection",
-            return_value=conn,
-            create=False,
-        )
-
     def _get_connection_patch(self, conn):
-        # BaseHook is imported inside the function, so patch where it comes from.
-        return patch("airflow.hooks.base.BaseHook.get_connection", return_value=conn)
+        # Patch ``get_connection`` on the already-imported ``BaseHook`` class.
+        # Using ``patch.object`` avoids mock's dotted-string ``_dot_lookup``
+        # which can't walk ``airflow.hooks.base`` on clean CI interpreters
+        # (Airflow's deprecation shims drop the attribute after import).
+        return patch.object(BaseHook, "get_connection", return_value=conn)
 
     def test_astro_dispatch(self):
         from astronomer_starship.providers.starship.auth import factory
