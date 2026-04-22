@@ -12,7 +12,16 @@ from flask_appbuilder import BaseView, expose
 from astronomer_starship._af2.starship_compatability import (
     StarshipCompatabilityLayer,
 )
-from astronomer_starship.common import HttpError, get_kwargs_fn, telescope
+from astronomer_starship.common import (
+    STARSHIP_SOURCE_CONN_ID,
+    HttpError,
+    _normalize_source_conn_id,
+    build_source_connection_kwargs,
+    get_kwargs_fn,
+    read_source_connection,
+    source_connection_exists,
+    telescope,
+)
 
 if TYPE_CHECKING:
     from typing import Callable
@@ -230,6 +239,161 @@ class StarshipApi(BaseView):
             delete=starship_compat.delete_task_log,
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.task_log_attrs()),
         )
+
+    @expose("/cutover/waves", methods=["GET", "POST"])
+    @csrf.exempt
+    def cutover_waves(self):
+        from astronomer_starship.providers.starship import cutover as _cutover
+
+        def _get():
+            limit = int(request.args.get("limit", 25))
+            return _cutover.list_migrations(limit=limit)
+
+        def _post():
+            body = request.json or {}
+            strategy = body.get("strategy", "incremental")
+            patterns = body.get("patterns", [])
+            try:
+                return _cutover.start_wave(strategy=strategy, patterns=patterns, config=body.get("config"))
+            except ValueError as e:
+                raise HttpError(str(e), 400) from e
+            except RuntimeError as e:
+                # Misconfigured source connection surfaces as RuntimeError
+                # from the auth factory. That's user-actionable, not a 500.
+                raise HttpError(str(e), 400) from e
+
+        return starship_route(get=_get, post=_post)
+
+    @expose("/cutover/waves/<migration_id>", methods=["GET"])
+    @csrf.exempt
+    def cutover_wave_detail(self, migration_id):
+        from astronomer_starship.providers.starship import cutover as _cutover
+
+        def _get():
+            migration = _cutover.enrich_wave_for_display(migration_id)
+            if migration is None:
+                raise HttpError(f"Wave '{migration_id}' not found", 404)
+            return migration
+
+        return starship_route(get=_get)
+
+    @expose("/cutover/waves/<migration_id>/abort", methods=["POST"])
+    @csrf.exempt
+    def cutover_wave_abort(self, migration_id):
+        from astronomer_starship.providers.starship import cutover as _cutover
+
+        def _post():
+            _cutover.request_abort(migration_id)
+            return {"migration_id": migration_id, "status": "abort_requested"}
+
+        return starship_route(post=_post)
+
+    @expose("/cutover/waves/<migration_id>/rollback", methods=["POST"])
+    @csrf.exempt
+    def cutover_wave_rollback(self, migration_id):
+        from astronomer_starship.providers.starship import cutover as _cutover
+
+        def _post():
+            body = request.json or {}
+            dag_id = body.get("dag_id")
+            if dag_id:
+                _cutover.rollback_dag(migration_id=migration_id, dag_id=dag_id)
+                return {"migration_id": migration_id, "dag_id": dag_id, "rolled_back": True}
+            _cutover.rollback_migration(migration_id)
+            return {"migration_id": migration_id, "rolled_back": True}
+
+        return starship_route(post=_post)
+
+    @expose("/cutover/waves/<migration_id>/retry", methods=["POST"])
+    @csrf.exempt
+    def cutover_wave_retry(self, migration_id):
+        from astronomer_starship.providers.starship import cutover as _cutover
+
+        def _post():
+            body = request.json or {}
+            # Selector is either 'failed' / 'skipped' / a specific dag_id.
+            selector = body.get("selector") or body.get("dag_id") or "failed"
+            try:
+                dag_ids = _cutover.retry_dags_in_wave(migration_id, selector)
+            except ValueError as e:
+                raise HttpError(str(e), 400) from e
+            return {"migration_id": migration_id, "retry_dag_ids": dag_ids}
+
+        return starship_route(post=_post)
+
+    @expose("/cutover/waves/<migration_id>/purge", methods=["POST"])
+    @csrf.exempt
+    def cutover_wave_purge(self, migration_id):
+        from astronomer_starship.providers.starship import cutover as _cutover
+
+        def _post():
+            body = request.json or {}
+            dag_id = body.get("dag_id")
+            if dag_id:
+                deleted = _cutover.purge_dag_metadata(dag_id=dag_id)
+                return {"migration_id": migration_id, "dag_id": dag_id, "runs_deleted": deleted}
+            return _cutover.purge_wave_metadata(migration_id)
+
+        return starship_route(post=_post)
+
+    @expose("/cutover/purge_all", methods=["POST"])
+    @csrf.exempt
+    def cutover_purge_all(self):
+        from astronomer_starship.providers.starship import cutover as _cutover
+
+        def _post():
+            return _cutover.purge_all_instance_dag_metadata()
+
+        return starship_route(post=_post)
+
+    @expose("/source_connection", methods=["GET", "POST", "DELETE"])
+    @csrf.exempt
+    def source_connection(self):
+        """Manage a source-Airflow Connection used by the Cutover Tool.
+
+        The frontend POSTs a platform-specific payload including the
+        desired ``conn_id`` (default ``starship_source``); we translate it
+        to a standard Airflow HTTP Connection so the operator/template DAG
+        and the wave engine can reuse it unchanged. GET and DELETE accept
+        ``?conn_id=`` to operate on a specific connection.
+        """
+        starship_compat = StarshipCompatabilityLayer()
+
+        def _resolve_conn_id(sources):
+            for src in sources:
+                if src:
+                    return _normalize_source_conn_id(src)
+            return STARSHIP_SOURCE_CONN_ID
+
+        def _get():
+            conn_id = _resolve_conn_id([request.args.get("conn_id")])
+            return read_source_connection(starship_compat.session, conn_id=conn_id)
+
+        def _post():
+            payload = request.json or {}
+            kwargs = build_source_connection_kwargs(payload)
+            conn_id = kwargs["conn_id"]
+            existed = source_connection_exists(starship_compat.session, conn_id)
+            # Delete-if-exists: we intentionally swallow any exception because
+            # any failure here (e.g. not-found, transient DB hiccup) should
+            # still let the subsequent set_connection attempt the upsert;
+            # real DB errors will surface from set_connection itself.
+            try:
+                starship_compat.delete_connection(conn_id=conn_id)
+            except Exception:  # nosec B110
+                pass
+            created = starship_compat.set_connection(**kwargs)
+            return {
+                **created,
+                "action": "updated" if existed else "created",
+                "conn_id": conn_id,
+            }
+
+        def _delete():
+            conn_id = _resolve_conn_id([request.args.get("conn_id")])
+            return starship_compat.delete_connection(conn_id=conn_id)
+
+        return starship_route(get=_get, post=_post, delete=_delete)
 
     # @auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_TASK_INSTANCE)])
     @expose("/xcom", methods=["GET", "POST", "DELETE"])

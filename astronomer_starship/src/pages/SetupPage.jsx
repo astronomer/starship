@@ -81,9 +81,9 @@ export default function SetupPage() {
     if (isStep2Complete && !hasShownCompleteToast.current) {
       hasShownCompleteToast.current = true;
       toast({
-        title: 'Setup Complete!',
+        title: 'Target Setup Complete!',
         description:
-          'Your Starship configuration is ready. Use the navigation links above to migrate your Airflow metadata.',
+          'Your target Airflow is configured. Use the navigation above to migrate metadata, or configure Source Setup to enable Cutover.',
         status: 'success',
         duration: 6000,
         isClosable: true,
@@ -139,7 +139,7 @@ export default function SetupPage() {
   ]);
 
   const handleReset = () => {
-    dispatch({ type: 'reset' });
+    dispatch({ type: 'reset-target' });
     resetDialog.onClose();
     setShowStep1Check(false);
     setShowStep2Check(false);
@@ -168,10 +168,10 @@ export default function SetupPage() {
       >
         <Box>
           <Heading size="md" mb={0.5}>
-            Getting Started
+            Target Setup
           </Heading>
           <Text fontSize="xs" color="gray.600">
-            Configure Starship to migrate Airflow metadata between instances
+            Configure the Airflow instance you want to migrate metadata <strong>into</strong>.
           </Text>
         </Box>
         <HStack>
@@ -236,12 +236,12 @@ export default function SetupPage() {
         <AlertDialogOverlay>
           <AlertDialogContent>
             <AlertDialogHeader fontSize="lg" fontWeight="bold">
-              Reset Configuration
+              Reset Target Configuration
             </AlertDialogHeader>
 
             <AlertDialogBody>
-              Are you sure you want to reset all configuration? This will clear your deployment URL, authentication
-              token, and connection status.
+              Are you sure you want to reset the target configuration? This will clear your deployment URL,
+              authentication token, and connection status. Source Setup will remain untouched.
             </AlertDialogBody>
 
             <AlertDialogFooter>

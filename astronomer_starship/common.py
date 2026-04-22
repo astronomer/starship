@@ -32,6 +32,170 @@ class HttpError(Exception):
         self.status_code = status_code
 
 
+STARSHIP_SOURCE_CONN_ID = "starship_source"
+SUPPORTED_SOURCE_PLATFORMS = ("astro", "mwaa", "gcc", "oss")
+
+
+def _normalize_source_conn_id(value) -> str:
+    """Validate + normalize a user-supplied connection id.
+
+    Falls back to ``STARSHIP_SOURCE_CONN_ID`` when blank. Rejects anything
+    Airflow would reject (empty, whitespace-only, or contains characters
+    unsafe for a conn_id URL segment).
+    """
+    if value is None:
+        return STARSHIP_SOURCE_CONN_ID
+    candidate = str(value).strip()
+    if not candidate:
+        return STARSHIP_SOURCE_CONN_ID
+    # Airflow connection ids are commonly snake_case. We relax that but
+    # still forbid whitespace and path/query separators to keep URLs sane.
+    bad_chars = set(candidate) & set(" \t\n/?#&")
+    if bad_chars:
+        raise HttpError(
+            f"`conn_id` contains invalid characters: {sorted(bad_chars)!r}",
+            400,
+        )
+    if len(candidate) > 250:
+        raise HttpError("`conn_id` must be 250 characters or fewer", 400)
+    return candidate
+
+
+def build_source_connection_kwargs(payload: dict) -> dict:  # noqa: C901
+    """Map a source-setup payload to Airflow Connection kwargs.
+
+    The resulting Connection (``conn_id=starship_source``) is consumed at
+    cutover-run time by the wave engine and the operator/template DAG.
+
+    Expected payload::
+
+        {
+            "platform": "astro" | "mwaa" | "gcc" | "oss",
+            "url": "https://source.airflow.example/",
+            # platform-dependent, optional:
+            "token": "...",
+            "login": "...",
+            "password": "...",
+            "impersonation_chain": ["sa@project.iam.gserviceaccount.com"],
+            "region": "us-west-2",
+            "role_arn": "arn:aws:iam::...",
+            "environment_name": "my-mwaa-env",
+            "extras": {"arbitrary": "extra JSON"},
+        }
+    """
+    from urllib.parse import urlparse
+
+    platform = (payload or {}).get("platform")
+    url = (payload or {}).get("url")
+    if not platform or not url:
+        raise HttpError("`platform` and `url` are required", 400)
+    if platform not in SUPPORTED_SOURCE_PLATFORMS:
+        raise HttpError(
+            f"Unsupported platform: {platform}. Must be one of {SUPPORTED_SOURCE_PLATFORMS}",
+            400,
+        )
+
+    parsed = urlparse(url)
+    if not parsed.scheme or not parsed.hostname:
+        raise HttpError(f"Invalid url: {url}", 400)
+
+    extras = dict(payload.get("extras") or {})
+    extras.setdefault("starship_platform", platform)
+
+    # Save the full base URL (scheme + host + port + path) in ``host``.
+    # Airflow's HttpHook treats a ``host`` that already contains ``://`` as
+    # a literal base URL and skips building one from scheme/port. This is
+    # critical for Astro-style URLs like ``https://<hash>.astronomer.run/
+    # <deployment-slug>`` where the deployment lives in a path segment —
+    # without this, plugin endpoints get called at the bare hostname and
+    # Astro's edge proxy denies them (403).
+    base_url = f"{parsed.scheme}://{parsed.hostname}"
+    if parsed.port:
+        base_url += f":{parsed.port}"
+    if parsed.path and parsed.path != "/":
+        base_url += parsed.path.rstrip("/")
+
+    kwargs = {
+        "conn_id": _normalize_source_conn_id(payload.get("conn_id")),
+        "conn_type": "http",
+        "host": base_url,
+        # schema/port retained for display in the Airflow Connections UI;
+        # HttpHook ignores them when host contains ``://``.
+        "schema": parsed.scheme,
+    }
+    if parsed.port:
+        kwargs["port"] = parsed.port
+
+    if platform == "astro":
+        token = payload.get("token")
+        if not token:
+            raise HttpError("Astro source requires `token`", 400)
+        kwargs["password"] = token
+    elif platform == "oss":
+        if payload.get("token"):
+            kwargs["password"] = payload["token"]
+        else:
+            login = payload.get("login")
+            password = payload.get("password")
+            if not login or not password:
+                raise HttpError("OSS source requires `token` or `login` + `password`", 400)
+            kwargs["login"] = login
+            kwargs["password"] = password
+    elif platform == "gcc":
+        chain = payload.get("impersonation_chain")
+        if chain:
+            if not isinstance(chain, list):
+                raise HttpError("`impersonation_chain` must be a list", 400)
+            extras["impersonation_chain"] = chain
+    elif platform == "mwaa":
+        region = payload.get("region")
+        if not region:
+            raise HttpError("MWAA source requires `region`", 400)
+        extras["region_name"] = region
+        if payload.get("role_arn"):
+            extras["role_arn"] = payload["role_arn"]
+        if payload.get("environment_name"):
+            extras["environment_name"] = payload["environment_name"]
+
+    kwargs["extra"] = json.dumps(extras)
+    return kwargs
+
+
+def source_connection_exists(session: Session, conn_id: str) -> bool:
+    """Return True iff an Airflow Connection with ``conn_id`` already exists."""
+    from airflow.models import Connection
+
+    return session.query(Connection).filter(Connection.conn_id == conn_id).count() > 0
+
+
+def read_source_connection(session: Session, conn_id: str = STARSHIP_SOURCE_CONN_ID) -> dict:
+    """Return the named source connection as a safe-for-UI dict.
+
+    Raises ``NotFoundError`` if not configured. Never returns the password.
+    """
+    from airflow.models import Connection
+
+    conn = session.query(Connection).filter(Connection.conn_id == conn_id).one_or_none()
+    if not conn:
+        raise NotFoundError(f"No source connection configured for conn_id={conn_id!r}")
+
+    try:
+        extras_dict = json.loads(conn.extra) if conn.extra else {}
+    except (TypeError, ValueError):
+        extras_dict = {}
+
+    return {
+        "conn_id": conn.conn_id,
+        "host": conn.host,
+        "schema": conn.schema,
+        "port": conn.port,
+        "login": conn.login,
+        "has_password": bool(conn.password),
+        "platform": extras_dict.get("starship_platform"),
+        "extras": extras_dict,
+    }
+
+
 class NotFoundError(HttpError):
     """Not Found 404"""
 
