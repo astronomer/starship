@@ -26,7 +26,6 @@ from astronomer_starship.providers.starship.auth.astro import AstroBearerAuth
 from astronomer_starship.providers.starship.auth.mwaa import make_mwaa_auth
 from astronomer_starship.providers.starship.auth.oss import OssBearerAuth, resolve_oss_auth
 
-
 # ---------------------------------------------------------------------------
 # common.build_source_connection_kwargs
 # ---------------------------------------------------------------------------
@@ -43,7 +42,7 @@ class TestBuildSourceConnectionKwargs:
         # Astro deployment-slug path segment).
         assert k["host"] == "https://foo.astronomer.run/bar"
         assert k["schema"] == "https"
-        assert k["password"] == "tok"
+        assert k["password"] == "tok"  # pragma: allowlist secret
         extras = json.loads(k["extra"])
         assert extras["starship_platform"] == "astro"
 
@@ -134,10 +133,8 @@ class TestBuildSourceConnectionKwargs:
         assert k["host"] == "https://abc123.astronomer.run"
 
     def test_oss_bearer_only(self):
-        k = build_source_connection_kwargs(
-            {"platform": "oss", "url": "https://airflow.example.com/", "token": "tok"}
-        )
-        assert k["password"] == "tok"
+        k = build_source_connection_kwargs({"platform": "oss", "url": "https://airflow.example.com/", "token": "tok"})
+        assert k["password"] == "tok"  # pragma: allowlist secret
         assert "login" not in k
 
     def test_oss_without_creds_is_rejected(self):
@@ -241,20 +238,24 @@ class TestResolveSourceAuth:
     def test_astro_dispatch(self):
         from astronomer_starship.providers.starship.auth import factory
 
-        with self._get_connection_patch(_fake_conn(password="tok", extra={"starship_platform": "astro"})):
+        with self._get_connection_patch(
+            _fake_conn(password="tok", extra={"starship_platform": "astro"})  # pragma: allowlist secret
+        ):
             assert factory.resolve_source_auth("starship_source") is AstroBearerAuth
 
     def test_oss_bearer_dispatch(self):
         from astronomer_starship.providers.starship.auth import factory
 
-        with self._get_connection_patch(_fake_conn(password="tok", extra={"starship_platform": "oss"})):
+        with self._get_connection_patch(
+            _fake_conn(password="tok", extra={"starship_platform": "oss"})  # pragma: allowlist secret
+        ):
             assert factory.resolve_source_auth("starship_source") is OssBearerAuth
 
     def test_oss_basic_dispatch_returns_none(self):
         from astronomer_starship.providers.starship.auth import factory
 
         with self._get_connection_patch(
-            _fake_conn(login="user", password="pw", extra={"starship_platform": "oss"})
+            _fake_conn(login="user", password="pw", extra={"starship_platform": "oss"})  # pragma: allowlist secret
         ):
             # None = HttpHook does Basic natively.
             assert factory.resolve_source_auth("starship_source") is None
@@ -302,7 +303,7 @@ class TestResolveSourceAuth:
         Fall back to AstroBearerAuth when only password is set."""
         from astronomer_starship.providers.starship.auth import factory
 
-        with self._get_connection_patch(_fake_conn(password="tok")):
+        with self._get_connection_patch(_fake_conn(password="tok")):  # pragma: allowlist secret
             assert factory.resolve_source_auth("starship_source") is AstroBearerAuth
 
 
@@ -353,9 +354,8 @@ class TestHttpHookBearerRebind:
         fake_session.auth = AstroBearerAuth()
         fake_conn = MagicMock(login=None, password="my-token")
 
-        with (
-            patch("airflow.providers.http.hooks.http.HttpHook.get_conn", return_value=fake_session),
-            patch.object(StarshipHttpHook, "get_connection", return_value=fake_conn),
+        with patch("airflow.providers.http.hooks.http.HttpHook.get_conn", return_value=fake_session), patch.object(
+            StarshipHttpHook, "get_connection", return_value=fake_conn
         ):
             session = hook.get_conn()
 
@@ -375,9 +375,8 @@ class TestHttpHookBearerRebind:
         fake_session.auth = sentinel_auth  # pretend super() bound it correctly
         fake_conn = MagicMock(login="user", password="pw")
 
-        with (
-            patch("airflow.providers.http.hooks.http.HttpHook.get_conn", return_value=fake_session),
-            patch.object(StarshipHttpHook, "get_connection", return_value=fake_conn),
+        with patch("airflow.providers.http.hooks.http.HttpHook.get_conn", return_value=fake_session), patch.object(
+            StarshipHttpHook, "get_connection", return_value=fake_conn
         ):
             session = hook.get_conn()
 
@@ -407,8 +406,12 @@ class TestMigrateDagHistory:
 
         src, tgt = _mk_hook(), _mk_hook()
         result = migrate_dag_history(
-            source_hook=src, target_hook=tgt, target_dag_id="d1", dag_run_limit=10,
-            pause_dag_in_source=False, unpause_dag_in_target=False,
+            source_hook=src,
+            target_hook=tgt,
+            target_dag_id="d1",
+            dag_run_limit=10,
+            pause_dag_in_source=False,
+            unpause_dag_in_target=False,
         )
         assert result["dag_runs_migrated"] == 1
         assert result["task_instances_migrated"] == 1
@@ -420,13 +423,17 @@ class TestMigrateDagHistory:
 
     def test_empty_dag_runs_skips(self):
         from airflow.exceptions import AirflowSkipException
+
         from astronomer_starship.providers.starship.operators.starship import migrate_dag_history
 
         src = _mk_hook()
         src.get_dag_runs.return_value = {"dag_runs": []}
         with pytest.raises(AirflowSkipException):
             migrate_dag_history(
-                source_hook=src, target_hook=_mk_hook(), target_dag_id="d1", pause_dag_in_source=False,
+                source_hook=src,
+                target_hook=_mk_hook(),
+                target_dag_id="d1",
+                pause_dag_in_source=False,
             )
 
     def test_pause_in_source_calls_source_set_paused(self):
@@ -434,7 +441,10 @@ class TestMigrateDagHistory:
 
         src, tgt = _mk_hook(), _mk_hook()
         migrate_dag_history(
-            source_hook=src, target_hook=tgt, target_dag_id="d1", pause_dag_in_source=True,
+            source_hook=src,
+            target_hook=tgt,
+            target_dag_id="d1",
+            pause_dag_in_source=True,
         )
         src.set_dag_is_paused.assert_any_call(dag_id="d1", is_paused=True)
 
@@ -443,8 +453,11 @@ class TestMigrateDagHistory:
 
         src, tgt = _mk_hook(), _mk_hook()
         migrate_dag_history(
-            source_hook=src, target_hook=tgt, target_dag_id="d1",
-            pause_dag_in_source=False, unpause_dag_in_target=True,
+            source_hook=src,
+            target_hook=tgt,
+            target_dag_id="d1",
+            pause_dag_in_source=False,
+            unpause_dag_in_target=True,
         )
         tgt.set_dag_is_paused.assert_any_call(dag_id="d1", is_paused=False)
 
@@ -455,8 +468,11 @@ class TestMigrateDagHistory:
         tgt.get_dag.return_value = {"is_paused": False, "dag_run_count": 0}
         with pytest.raises(RuntimeError, match="active in target"):
             migrate_dag_history(
-                source_hook=src, target_hook=tgt, target_dag_id="d1",
-                pause_dag_in_source=False, pre_checks=True,
+                source_hook=src,
+                target_hook=tgt,
+                target_dag_id="d1",
+                pause_dag_in_source=False,
+                pre_checks=True,
             )
 
     def test_pre_checks_reject_target_with_existing_runs(self):
@@ -466,20 +482,24 @@ class TestMigrateDagHistory:
         tgt.get_dag.return_value = {"is_paused": True, "dag_run_count": 42}
         with pytest.raises(RuntimeError, match="already has runs"):
             migrate_dag_history(
-                source_hook=src, target_hook=tgt, target_dag_id="d1",
-                pause_dag_in_source=False, pre_checks=True,
+                source_hook=src,
+                target_hook=tgt,
+                target_dag_id="d1",
+                pause_dag_in_source=False,
+                pre_checks=True,
             )
 
     def test_migrate_ti_history_fetches_and_writes(self):
         from astronomer_starship.providers.starship.operators.starship import migrate_dag_history
 
         src, tgt = _mk_hook(), _mk_hook()
-        src.get_task_instance_history.return_value = {
-            "task_instances": [{"task_id": "t1", "try_number": 1}]
-        }
+        src.get_task_instance_history.return_value = {"task_instances": [{"task_id": "t1", "try_number": 1}]}
         result = migrate_dag_history(
-            source_hook=src, target_hook=tgt, target_dag_id="d1",
-            pause_dag_in_source=False, migrate_ti_history=True,
+            source_hook=src,
+            target_hook=tgt,
+            target_dag_id="d1",
+            pause_dag_in_source=False,
+            migrate_ti_history=True,
         )
         src.get_task_instance_history.assert_called_once()
         tgt.set_task_instance_history.assert_called_once()
@@ -490,8 +510,11 @@ class TestMigrateDagHistory:
 
         steps = []
         migrate_dag_history(
-            source_hook=_mk_hook(), target_hook=_mk_hook(), target_dag_id="d1",
-            pause_dag_in_source=False, on_step=steps.append,
+            source_hook=_mk_hook(),
+            target_hook=_mk_hook(),
+            target_dag_id="d1",
+            pause_dag_in_source=False,
+            on_step=steps.append,
         )
         # At minimum we touched "Fetching DAG runs" / "Fetching task instances"
         # / "Writing DAG runs" / "Writing task instances".
@@ -510,8 +533,11 @@ class TestMigrateDagHistory:
 
         with pytest.raises(AbortedError):
             migrate_dag_history(
-                source_hook=_mk_hook(), target_hook=_mk_hook(), target_dag_id="d1",
-                pause_dag_in_source=False, check_abort=_raise,
+                source_hook=_mk_hook(),
+                target_hook=_mk_hook(),
+                target_dag_id="d1",
+                pause_dag_in_source=False,
+                check_abort=_raise,
             )
 
 
@@ -521,8 +547,11 @@ class TestPauseUnpauseDag:
 
         src, tgt = MagicMock(), MagicMock()
         r = pause_unpause_dag(
-            dag_id="d1", source_hook=src, target_hook=tgt,
-            pause_in_source=True, unpause_in_target=False,
+            dag_id="d1",
+            source_hook=src,
+            target_hook=tgt,
+            pause_in_source=True,
+            unpause_in_target=False,
         )
         assert r == {"source_paused_by_us": True, "target_unpaused_by_us": False}
         src.set_dag_is_paused.assert_called_once_with(dag_id="d1", is_paused=True)
@@ -533,8 +562,11 @@ class TestPauseUnpauseDag:
 
         src, tgt = MagicMock(), MagicMock()
         r = pause_unpause_dag(
-            dag_id="d1", source_hook=src, target_hook=tgt,
-            pause_in_source=False, unpause_in_target=True,
+            dag_id="d1",
+            source_hook=src,
+            target_hook=tgt,
+            pause_in_source=False,
+            unpause_in_target=True,
         )
         assert r == {"source_paused_by_us": False, "target_unpaused_by_us": True}
         tgt.set_dag_is_paused.assert_called_once_with(dag_id="d1", is_paused=False)
@@ -545,8 +577,11 @@ class TestPauseUnpauseDag:
 
         src, tgt = MagicMock(), MagicMock()
         r = pause_unpause_dag(
-            dag_id="d1", source_hook=src, target_hook=tgt,
-            pause_in_source=False, unpause_in_target=False,
+            dag_id="d1",
+            source_hook=src,
+            target_hook=tgt,
+            pause_in_source=False,
+            unpause_in_target=False,
         )
         assert r == {"source_paused_by_us": False, "target_unpaused_by_us": False}
         src.set_dag_is_paused.assert_not_called()

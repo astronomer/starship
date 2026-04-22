@@ -432,9 +432,10 @@ class StarshipApi(FastAPI):
             kwargs = build_source_connection_kwargs(payload)
             conn_id = kwargs["conn_id"]
             existed = source_connection_exists(starship_compat.session, conn_id)
+            # Delete-if-exists; real errors will surface from set_connection.
             try:
                 starship_compat.delete_connection(conn_id=conn_id)
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             created = starship_compat.set_connection(**kwargs)
             return {

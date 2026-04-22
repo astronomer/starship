@@ -374,10 +374,13 @@ class StarshipApi(BaseView):
             kwargs = build_source_connection_kwargs(payload)
             conn_id = kwargs["conn_id"]
             existed = source_connection_exists(starship_compat.session, conn_id)
+            # Delete-if-exists: we intentionally swallow any exception because
+            # any failure here (e.g. not-found, transient DB hiccup) should
+            # still let the subsequent set_connection attempt the upsert;
+            # real DB errors will surface from set_connection itself.
             try:
                 starship_compat.delete_connection(conn_id=conn_id)
-            except Exception:
-                # Delete-if-exists: ignore not-found and keep going to the create.
+            except Exception:  # nosec B110
                 pass
             created = starship_compat.set_connection(**kwargs)
             return {

@@ -100,11 +100,7 @@ export default function SourceCredentialsForm({
       <FormControl isInvalid={isTouched && !isValidUrl} isRequired>
         <HStack mb={1}>
           <FormLabel mb={0}>Source Airflow URL</FormLabel>
-          <Tooltip
-            label="The base URL of the Airflow webserver you are migrating from"
-            placement="top"
-            hasArrow
-          >
+          <Tooltip label="The base URL of the Airflow webserver you are migrating from" placement="top" hasArrow>
             <InfoIcon color="gray.400" boxSize={3} cursor="help" />
           </Tooltip>
         </HStack>
@@ -159,8 +155,8 @@ export default function SourceCredentialsForm({
           onChange={(e) => onConnIdChange(e.target.value)}
         />
         <FormHelperText fontSize="xs">
-          Defaults to <Code fontSize="2xs">starship_source</Code>. Clicking Save below will create or update an
-          Airflow Connection under this name. The wave engine and the template DAG read from this same connection.
+          Defaults to <Code fontSize="2xs">starship_source</Code>. Clicking Save below will create or update an Airflow
+          Connection under this name. The wave engine and the template DAG read from this same connection.
         </FormHelperText>
       </FormControl>
 
@@ -187,9 +183,9 @@ export default function SourceCredentialsForm({
             onChange={(e) => onCredsChange({ token: e.target.value })}
           />
           <FormHelperText fontSize="xs">
-            Use an <strong>Organization</strong>, <strong>Workspace</strong>, or <strong>Personal</strong> access
-            token from the source Astro. <strong>Deployment API Tokens do not work</strong> — Astro&apos;s edge
-            proxy (Istio) rejects them on the Starship plugin endpoints.
+            Use an <strong>Organization</strong>, <strong>Workspace</strong>, or <strong>Personal</strong> access token
+            from the source Astro. <strong>Deployment API Tokens do not work</strong> — Astro&apos;s edge proxy (Istio)
+            rejects them on the Starship plugin endpoints.
           </FormHelperText>
           <FormErrorMessage>Token is required for Astro sources.</FormErrorMessage>
         </FormControl>
@@ -259,7 +255,8 @@ export default function SourceCredentialsForm({
         <>
           <Alert status="info" variant="left-accent" fontSize="xs" py={2}>
             <AlertIcon boxSize={3} />
-            MWAA uses IAM credentials from the worker&apos;s environment (boto3 default chain) against the specified region.
+            MWAA uses IAM credentials from the worker&apos;s environment (boto3 default chain) against the specified
+            region.
           </Alert>
           <FormControl isInvalid={credsTouched && !region} isRequired>
             <FormLabel mb={1}>AWS Region</FormLabel>
@@ -316,4 +313,3 @@ SourceCredentialsForm.propTypes = {
   onUrlChange: PropTypes.func.isRequired,
   onCredsChange: PropTypes.func.isRequired,
 };
-

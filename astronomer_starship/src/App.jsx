@@ -115,9 +115,7 @@ function AppLayout() {
             isDisabled = true;
             disabledMessage = CUTOVER_DISABLED_MESSAGE;
           }
-          return (
-            <NavButton key={to} to={to} label={label} isDisabled={isDisabled} disabledMessage={disabledMessage} />
-          );
+          return <NavButton key={to} to={to} label={label} isDisabled={isDisabled} disabledMessage={disabledMessage} />;
         })}
       </Flex>
       <Box

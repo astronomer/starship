@@ -250,8 +250,8 @@ function DangerZone({ onPurgeAll }) {
         <Collapse in={disclosure.isOpen} animateOpacity>
           <VStack align="stretch" spacing={3} mt={3}>
             <Text fontSize="xs" color="error.700">
-              Instance-wide escape hatches. These actions are not scoped to a single wave and cannot be undone. Use
-              them only when rollback or per-wave purge aren&apos;t enough.
+              Instance-wide escape hatches. These actions are not scoped to a single wave and cannot be undone. Use them
+              only when rollback or per-wave purge aren&apos;t enough.
             </Text>
             <HStack
               justify="space-between"
@@ -267,8 +267,8 @@ function DangerZone({ onPurgeAll }) {
                 </Text>
                 <Text fontSize="xs" color="gray.700">
                   Deletes every <Code fontSize="2xs">dag_run</Code>, <Code fontSize="2xs">task_instance</Code>, and TI
-                  history row on this Airflow — for every DAG, regardless of which wave (if any) migrated them. Use
-                  this to start from a blank slate.
+                  history row on this Airflow — for every DAG, regardless of which wave (if any) migrated them. Use this
+                  to start from a blank slate.
                 </Text>
               </Box>
               <Button size="sm" colorScheme="red" onClick={onPurgeAll}>
@@ -333,9 +333,9 @@ export default function CutoverHistoryPage() {
       title: 'Purge ALL destination DAG metadata?',
       body: (
         <>
-          This deletes every <Code>dag_run</Code>, <Code>task_instance</Code>, and TI history row on this Airflow —
-          for every DAG, including ones that were never part of a cutover wave. <strong>It cannot be undone.</strong>{' '}
-          Make sure you have a fresh database backup.
+          This deletes every <Code>dag_run</Code>, <Code>task_instance</Code>, and TI history row on this Airflow — for
+          every DAG, including ones that were never part of a cutover wave. <strong>It cannot be undone.</strong> Make
+          sure you have a fresh database backup.
         </>
       ),
       confirmLabel: 'Purge everything',

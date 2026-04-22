@@ -298,11 +298,7 @@ function DagTable({ dags = null, isWaveRunning, onDagAction }) {
                         Rollback this DAG
                       </MenuItem>
                       <MenuDivider />
-                      <MenuItem
-                        color="error.600"
-                        isDisabled={!canPurge}
-                        onClick={() => onDagAction('purge', r.dagId)}
-                      >
+                      <MenuItem color="error.600" isDisabled={!canPurge} onClick={() => onDagAction('purge', r.dagId)}>
                         Purge this DAG&apos;s metadata
                       </MenuItem>
                     </MenuList>
@@ -341,9 +337,7 @@ export default function CutoverStatusPage() {
     async (showLoader = false) => {
       if (showLoader) setIsLoading(true);
       try {
-        const res = await axios.get(
-          localRoute(`${constants.CUTOVER_WAVES_ROUTE}/${encodeURIComponent(migrationId)}`),
-        );
+        const res = await axios.get(localRoute(`${constants.CUTOVER_WAVES_ROUTE}/${encodeURIComponent(migrationId)}`));
         if (!abortRef.current) {
           setWave(res.data);
           setError(null);
@@ -438,11 +432,10 @@ export default function CutoverStatusPage() {
         case 'retry-failed':
           ask({
             title: 'Retry failed DAGs?',
-            body: 'Rolls back any partial data for failed DAGs and re-runs them with the wave’s original config.',
+            body: 'Rolls back any partial data for failed DAGs and re-runs them with the original wave config.',
             confirmLabel: 'Retry failed',
             colorScheme: 'blue',
-            onConfirm: () =>
-              postAction({ path: '/retry', body: { selector: 'failed' }, successTitle: 'Retry queued' }),
+            onConfirm: () => postAction({ path: '/retry', body: { selector: 'failed' }, successTitle: 'Retry queued' }),
           });
           break;
         case 'retry-skipped':
@@ -501,8 +494,7 @@ export default function CutoverStatusPage() {
             body: 'Rolls back any partial data for this DAG and re-runs it.',
             confirmLabel: 'Retry',
             colorScheme: 'blue',
-            onConfirm: () =>
-              postAction({ path: '/retry', body: { selector: dagId }, successTitle: 'Retry queued' }),
+            onConfirm: () => postAction({ path: '/retry', body: { selector: dagId }, successTitle: 'Retry queued' }),
           });
           break;
         case 'rollback':
@@ -516,7 +508,8 @@ export default function CutoverStatusPage() {
             ),
             confirmLabel: 'Roll back DAG',
             colorScheme: 'red',
-            onConfirm: () => postAction({ path: '/rollback', body: { dag_id: dagId }, successTitle: 'DAG rolled back' }),
+            onConfirm: () =>
+              postAction({ path: '/rollback', body: { dag_id: dagId }, successTitle: 'DAG rolled back' }),
           });
           break;
         case 'purge':
@@ -550,13 +543,7 @@ export default function CutoverStatusPage() {
       >
         <Box>
           <HStack mb={1}>
-            <Button
-              as={NavLink}
-              to={`/${ROUTES.CUTOVER}`}
-              size="xs"
-              variant="ghost"
-              leftIcon={<ArrowBackIcon />}
-            >
+            <Button as={NavLink} to={`/${ROUTES.CUTOVER}`} size="xs" variant="ghost" leftIcon={<ArrowBackIcon />}>
               Back to Cutover
             </Button>
           </HStack>

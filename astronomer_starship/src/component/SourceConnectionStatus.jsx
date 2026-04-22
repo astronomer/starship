@@ -87,11 +87,10 @@ export default function SourceConnectionStatus({
       const savedId = res.data?.conn_id || effectiveConnId;
       toast({
         title: action === 'updated' ? 'Source connection updated' : 'Source connection created',
-        description: (
+        description:
           action === 'updated'
             ? `Airflow Connection ${savedId} was updated with the current credentials. Cutover is ready to use.`
-            : `Airflow Connection ${savedId} was created. Cutover tabs are now enabled above.`
-        ),
+            : `Airflow Connection ${savedId} was created. Cutover tabs are now enabled above.`,
         status: 'success',
         duration: 5000,
         isClosable: true,
@@ -171,9 +170,12 @@ export default function SourceConnectionStatus({
         ) : (
           <Alert status="info" variant="left-accent" fontSize="xs" py={2}>
             <AlertIcon boxSize={3} />
-            {platform === 'gcc' && 'Composer ADC cannot be verified from the browser — connectivity is checked server-side at wave launch.'}
-            {platform === 'mwaa' && 'MWAA IAM cannot be verified from the browser — connectivity is checked server-side at wave launch.'}
-            {platform === 'oss' && 'HTTP Basic cannot be verified from the browser — connectivity is checked server-side at wave launch.'}
+            {platform === 'gcc' &&
+              'Composer ADC cannot be verified from the browser — connectivity is checked server-side at wave launch.'}
+            {platform === 'mwaa' &&
+              'MWAA IAM cannot be verified from the browser — connectivity is checked server-side at wave launch.'}
+            {platform === 'oss' &&
+              'HTTP Basic cannot be verified from the browser — connectivity is checked server-side at wave launch.'}
           </Alert>
         )}
       </VStack>
@@ -184,8 +186,8 @@ export default function SourceConnectionStatus({
           {connectionSaved ? (
             <>
               <Text>
-                Saved as Airflow Connection <Code fontSize="2xs">{effectiveConnId}</Code>. Clicking below will update
-                it with any changes you&apos;ve made above.
+                Saved as Airflow Connection <Code fontSize="2xs">{effectiveConnId}</Code>. Clicking below will update it
+                with any changes you&apos;ve made above.
               </Text>
               <Text color="gray.600" mt={1}>
                 Note: if you open this connection in Admin → Connections, Airflow shows the Password field blank —
@@ -195,8 +197,8 @@ export default function SourceConnectionStatus({
           ) : (
             <Text>
               Clicking below will <strong>create or update</strong> an Airflow Connection named{' '}
-              <Code fontSize="2xs">{effectiveConnId}</Code> with these credentials. The wave engine and the
-              template DAG read from this connection at runtime.
+              <Code fontSize="2xs">{effectiveConnId}</Code> with these credentials. The wave engine and the template DAG
+              read from this connection at runtime.
             </Text>
           )}
         </Box>
@@ -236,4 +238,3 @@ SourceConnectionStatus.propTypes = {
   onStarshipChange: PropTypes.func.isRequired,
   onConnectionSavedChange: PropTypes.func.isRequired,
 };
-

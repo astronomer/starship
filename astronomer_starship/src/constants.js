@@ -38,13 +38,13 @@ export const SOURCE_PLATFORMS = Object.freeze([
   {
     id: 'astro',
     label: 'Astro',
-    description:
-      'Astronomer Cloud or Software deployment. Uses an Organization, Workspace, or Personal access token.',
+    description: 'Astronomer Cloud or Software deployment. Uses an Organization, Workspace, or Personal access token.',
   },
   {
     id: 'gcc',
     label: 'Google Cloud Composer',
-    description: 'Composer 2/3. Uses Application Default Credentials (ADC), with optional service-account impersonation.',
+    description:
+      'Composer 2/3. Uses Application Default Credentials (ADC), with optional service-account impersonation.',
   },
   {
     id: 'mwaa',

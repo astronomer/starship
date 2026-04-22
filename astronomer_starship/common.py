@@ -70,17 +70,17 @@ def build_source_connection_kwargs(payload: dict) -> dict:  # noqa: C901
     Expected payload::
 
         {
-          "platform": "astro" | "mwaa" | "gcc" | "oss",
-          "url": "https://source.airflow.example/",
-          # platform-dependent, optional:
-          "token": "...",
-          "login": "...",
-          "password": "...",
-          "impersonation_chain": ["sa@project.iam.gserviceaccount.com"],
-          "region": "us-west-2",
-          "role_arn": "arn:aws:iam::...",
-          "environment_name": "my-mwaa-env",
-          "extras": {"arbitrary": "extra JSON"},
+            "platform": "astro" | "mwaa" | "gcc" | "oss",
+            "url": "https://source.airflow.example/",
+            # platform-dependent, optional:
+            "token": "...",
+            "login": "...",
+            "password": "...",
+            "impersonation_chain": ["sa@project.iam.gserviceaccount.com"],
+            "region": "us-west-2",
+            "role_arn": "arn:aws:iam::...",
+            "environment_name": "my-mwaa-env",
+            "extras": {"arbitrary": "extra JSON"},
         }
     """
     from urllib.parse import urlparse

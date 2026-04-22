@@ -87,8 +87,8 @@ function GettingStarted() {
         <Collapse in={disclosure.isOpen} animateOpacity>
           <VStack align="stretch" spacing={3} mt={3}>
             <Text fontSize="sm">
-              The Cutover Tool migrates DAG metadata (DAG runs, task instances, TI history) from your source
-              Airflow <strong>into this Airflow</strong>, in waves you can observe, roll back, and retry.
+              The Cutover Tool migrates DAG metadata (DAG runs, task instances, TI history) from your source Airflow{' '}
+              <strong>into this Airflow</strong>, in waves you can observe, roll back, and retry.
             </Text>
 
             <Box>
@@ -108,12 +108,12 @@ function GettingStarted() {
               </Text>
               <VStack align="stretch" spacing={1} fontSize="xs" color="gray.700">
                 <Text>
-                  <Badge colorScheme="brand">Incremental</Badge> — a targeted batch selected by fnmatch patterns
-                  (e.g. <Code fontSize="2xs">etl_*</Code>). Almost always the right choice for a real migration.
+                  <Badge colorScheme="brand">Incremental</Badge> — a targeted batch selected by fnmatch patterns (e.g.{' '}
+                  <Code fontSize="2xs">etl_*</Code>). Almost always the right choice for a real migration.
                 </Text>
                 <Text>
-                  <Badge colorScheme="amethyst">Big-bang</Badge> — everything at once. Use for small environments
-                  or the final wave of a phased migration.
+                  <Badge colorScheme="amethyst">Big-bang</Badge> — everything at once. Use for small environments or the
+                  final wave of a phased migration.
                 </Text>
               </VStack>
             </Box>
@@ -235,8 +235,8 @@ function LaunchForm({ sourceConnId = '', onLaunched = null }) {
               Launch a wave
             </Heading>
             <Text fontSize="xs" color="gray.600">
-              Pick a strategy, list the DAGs, then hit <strong>Launch wave</strong>. You&apos;ll be taken straight
-              to the wave&apos;s status view.
+              Pick a strategy, list the DAGs, then hit <strong>Launch wave</strong>. You&apos;ll be taken straight to
+              the wave&apos;s status view.
             </Text>
           </Box>
 
@@ -388,8 +388,7 @@ function LaunchForm({ sourceConnId = '', onLaunched = null }) {
                   >
                     <Text fontSize="sm">Defer DAGs that are actively running in source, retry later</Text>
                     <Text fontSize="xs" color="gray.600">
-                      Uses <Code fontSize="2xs">retry_interval</Code> and <Code fontSize="2xs">max_retries</Code>{' '}
-                      below.
+                      Uses <Code fontSize="2xs">retry_interval</Code> and <Code fontSize="2xs">max_retries</Code> below.
                     </Text>
                   </Checkbox>
                 </VStack>
@@ -546,13 +545,7 @@ export default function CutoverPage() {
             <Code fontSize="2xs">{source.connId || 'starship_source'}</Code> into this Airflow.
           </Text>
         </Box>
-        <Button
-          as={NavLink}
-          to={`/${ROUTES.CUTOVER_HISTORY}`}
-          size="sm"
-          variant="outline"
-          colorScheme="brand"
-        >
+        <Button as={NavLink} to={`/${ROUTES.CUTOVER_HISTORY}`} size="sm" variant="outline" colorScheme="brand">
           Cutover History
         </Button>
       </Stack>

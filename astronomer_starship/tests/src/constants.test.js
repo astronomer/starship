@@ -13,6 +13,9 @@ describe('API Route Constants', () => {
       constants.DAG_RUNS_ROUTE,
       constants.TASK_INSTANCE_ROUTE,
       constants.TASK_INSTANCE_HISTORY_ROUTE,
+      constants.SOURCE_CONNECTION_ROUTE,
+      constants.CUTOVER_WAVES_ROUTE,
+      constants.CUTOVER_PURGE_ALL_ROUTE,
     ];
 
     apiRoutes.forEach((route) => {
@@ -59,6 +62,18 @@ describe('API Route Constants', () => {
   test('TASK_INSTANCE_HISTORY_ROUTE is defined', () => {
     expect(constants.TASK_INSTANCE_HISTORY_ROUTE).toBe('/api/starship/task_instance_history');
   });
+
+  test('SOURCE_CONNECTION_ROUTE is defined', () => {
+    expect(constants.SOURCE_CONNECTION_ROUTE).toBe('/api/starship/source_connection');
+  });
+
+  test('CUTOVER_WAVES_ROUTE is defined', () => {
+    expect(constants.CUTOVER_WAVES_ROUTE).toBe('/api/starship/cutover/waves');
+  });
+
+  test('CUTOVER_PURGE_ALL_ROUTE is defined', () => {
+    expect(constants.CUTOVER_PURGE_ALL_ROUTE).toBe('/api/starship/cutover/purge_all');
+  });
 });
 
 describe('Navigation Route Constants', () => {
@@ -66,9 +81,13 @@ describe('Navigation Route Constants', () => {
     expect(Object.isFrozen(ROUTES)).toBe(true);
   });
 
-  test('all navigation routes are path segments (no leading slash)', () => {
+  test('all navigation routes are kebab-case path segments (no leading slash)', () => {
+    // Lowercase letters, optionally hyphen-separated. Hyphens allow multi-word
+    // routes like `source-setup` and `cutover-history` without using
+    // underscores (unusual in URLs) or camelCase (inconsistent with existing
+    // single-word routes like `setup`, `variables`, `pools`).
     Object.values(ROUTES).forEach((route) => {
-      expect(route).toMatch(/^[a-z]+$/);
+      expect(route).toMatch(/^[a-z]+(-[a-z]+)*$/);
       expect(route).not.toMatch(/^\//);
     });
   });
@@ -99,5 +118,17 @@ describe('Navigation Route Constants', () => {
 
   test('TELESCOPE route is defined', () => {
     expect(ROUTES.TELESCOPE).toBe('telescope');
+  });
+
+  test('SOURCE_SETUP route is defined', () => {
+    expect(ROUTES.SOURCE_SETUP).toBe('source-setup');
+  });
+
+  test('CUTOVER route is defined', () => {
+    expect(ROUTES.CUTOVER).toBe('cutover');
+  });
+
+  test('CUTOVER_HISTORY route is defined', () => {
+    expect(ROUTES.CUTOVER_HISTORY).toBe('cutover-history');
   });
 });

@@ -64,4 +64,3 @@ ConfirmDialog.propTypes = {
   onConfirm: PropTypes.func.isRequired,
   onClose: PropTypes.func.isRequired,
 };
-

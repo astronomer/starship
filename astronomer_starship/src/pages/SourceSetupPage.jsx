@@ -121,10 +121,7 @@ export default function SourceSetupPage() {
     (connId) => dispatch({ type: 'set-source-conn-id', connId }),
     [dispatch],
   );
-  const handleSourceUrlChange = useCallback(
-    (sourceUrl) => dispatch({ type: 'set-source-url', sourceUrl }),
-    [dispatch],
-  );
+  const handleSourceUrlChange = useCallback((sourceUrl) => dispatch({ type: 'set-source-url', sourceUrl }), [dispatch]);
   const handleSourceCredsChange = useCallback(
     (partial) => dispatch({ type: 'set-source-creds', ...partial }),
     [dispatch],
