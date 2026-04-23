@@ -27,9 +27,6 @@ export const ROUTES = Object.freeze({
   DAGS: 'dags',
   TELESCOPE: 'telescope',
   CUTOVER: 'cutover',
-  // Wired up in PR-7 (Cutover History tab). The constant lands here so
-  // CutoverPage's "Cutover History" link/button renders a valid path even
-  // before the destination route is registered.
   CUTOVER_HISTORY: 'cutover-history',
 });
 
