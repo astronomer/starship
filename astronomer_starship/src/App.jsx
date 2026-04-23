@@ -17,6 +17,8 @@ const PoolsPage = lazy(() => import('./pages/PoolsPage'));
 const EnvVarsPage = lazy(() => import('./pages/EnvVarsPage'));
 const DAGHistoryPage = lazy(() => import('./pages/DAGHistoryPage'));
 const TelescopePage = lazy(() => import('./pages/TelescopePage'));
+const CutoverPage = lazy(() => import('./pages/CutoverPage'));
+const CutoverStatusPage = lazy(() => import('./pages/CutoverStatusPage'));
 
 // Loading fallback for lazy-loaded pages
 function PageLoader() {
@@ -69,6 +71,7 @@ const NAV_ITEMS = [
   { to: `/${ROUTES.POOLS}`, label: 'Pools', requiresSetup: true },
   { to: `/${ROUTES.ENV_VARS}`, label: 'Environment Variables', requiresSetup: true },
   { to: `/${ROUTES.DAGS}`, label: 'DAG History', requiresSetup: true },
+  { to: `/${ROUTES.CUTOVER}`, label: 'Cutover', requiresSourceSetup: true },
 ];
 
 const DISABLED_MESSAGE =
@@ -154,6 +157,8 @@ const router = createHashRouter([
       { path: ROUTES.ENV_VARS, element: <EnvVarsPage /> },
       { path: ROUTES.DAGS, element: <DAGHistoryPage /> },
       { path: ROUTES.TELESCOPE, element: <TelescopePage /> },
+      { path: ROUTES.CUTOVER, element: <CutoverPage /> },
+      { path: `${ROUTES.CUTOVER}/:migrationId`, element: <CutoverStatusPage /> },
     ],
   },
 ]);

@@ -9,6 +9,8 @@ const constants = Object.freeze({
   TASK_INSTANCE_ROUTE: '/api/starship/task_instances',
   TASK_INSTANCE_HISTORY_ROUTE: '/api/starship/task_instance_history',
   SOURCE_CONNECTION_ROUTE: '/api/starship/source_connection',
+  CUTOVER_WAVES_ROUTE: '/api/starship/cutover/waves',
+  CUTOVER_PURGE_ALL_ROUTE: '/api/starship/cutover/purge_all',
 });
 export default constants;
 
@@ -24,6 +26,11 @@ export const ROUTES = Object.freeze({
   ENV_VARS: 'env',
   DAGS: 'dags',
   TELESCOPE: 'telescope',
+  CUTOVER: 'cutover',
+  // Wired up in PR-7 (Cutover History tab). The constant lands here so
+  // CutoverPage's "Cutover History" link/button renders a valid path even
+  // before the destination route is registered.
+  CUTOVER_HISTORY: 'cutover-history',
 });
 
 /**
