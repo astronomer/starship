@@ -68,7 +68,7 @@ describe('Navigation Route Constants', () => {
 
   test('all navigation routes are path segments (no leading slash)', () => {
     Object.values(ROUTES).forEach((route) => {
-      expect(route).toMatch(/^[a-z]+$/);
+      expect(route).toMatch(/^[a-z][a-z-]*$/);
       expect(route).not.toMatch(/^\//);
     });
   });

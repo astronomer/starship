@@ -4,12 +4,13 @@ import { Box, Button, Divider, Flex, Heading, HStack, Icon, Image, Spinner, Text
 import { GoRocket } from 'react-icons/go';
 import PropTypes from 'prop-types';
 import AstronomerLogo from './astronomer-logo.svg';
-import { AppProvider, useSetupComplete } from './AppContext';
+import { AppProvider, useSetupComplete, useSourceSetupComplete } from './AppContext';
 import { ROUTES } from './constants';
 import './index.css';
 
 // Lazy load page components for better initial bundle size
 const SetupPage = lazy(() => import('./pages/SetupPage'));
+const SourceSetupPage = lazy(() => import('./pages/SourceSetupPage'));
 const VariablesPage = lazy(() => import('./pages/VariablesPage'));
 const ConnectionsPage = lazy(() => import('./pages/ConnectionsPage'));
 const PoolsPage = lazy(() => import('./pages/PoolsPage'));
@@ -61,7 +62,8 @@ NavButtonComponent.propTypes = {
 const NavButton = memo(NavButtonComponent);
 
 const NAV_ITEMS = [
-  { to: `/${ROUTES.SETUP}`, label: 'Setup', requiresSetup: false },
+  { to: `/${ROUTES.SETUP}`, label: 'Target Setup', requiresSetup: false },
+  { to: `/${ROUTES.SOURCE_SETUP}`, label: 'Source Setup', requiresSetup: false },
   { to: `/${ROUTES.VARIABLES}`, label: 'Variables', requiresSetup: true },
   { to: `/${ROUTES.CONNECTIONS}`, label: 'Connections', requiresSetup: true },
   { to: `/${ROUTES.POOLS}`, label: 'Pools', requiresSetup: true },
@@ -70,10 +72,12 @@ const NAV_ITEMS = [
 ];
 
 const DISABLED_MESSAGE =
-  'Complete the Setup tab to configure your target Airflow instance before accessing migration features';
+  'Complete the Target Setup tab to configure your target Airflow instance before accessing migration features';
+const CUTOVER_DISABLED_MESSAGE = 'Complete the Source Setup tab to enable the Cutover Tool';
 
 function AppLayout() {
   const isSetupComplete = useSetupComplete();
+  const isSourceSetupComplete = useSourceSetupComplete();
 
   return (
     <>
@@ -96,15 +100,18 @@ function AppLayout() {
           },
         }}
       >
-        {NAV_ITEMS.map(({ to, label, requiresSetup }) => (
-          <NavButton
-            key={to}
-            to={to}
-            label={label}
-            isDisabled={requiresSetup && !isSetupComplete}
-            disabledMessage={requiresSetup ? DISABLED_MESSAGE : ''}
-          />
-        ))}
+        {NAV_ITEMS.map(({ to, label, requiresSetup, requiresSourceSetup }) => {
+          let isDisabled = false;
+          let disabledMessage = '';
+          if (requiresSetup && !isSetupComplete) {
+            isDisabled = true;
+            disabledMessage = DISABLED_MESSAGE;
+          } else if (requiresSourceSetup && !isSourceSetupComplete) {
+            isDisabled = true;
+            disabledMessage = CUTOVER_DISABLED_MESSAGE;
+          }
+          return <NavButton key={to} to={to} label={label} isDisabled={isDisabled} disabledMessage={disabledMessage} />;
+        })}
       </Flex>
       <Box
         as="main"
@@ -140,6 +147,7 @@ const router = createHashRouter([
     children: [
       { index: true, element: <Navigate to={ROUTES.SETUP} replace /> },
       { path: ROUTES.SETUP, element: <SetupPage /> },
+      { path: ROUTES.SOURCE_SETUP, element: <SourceSetupPage /> },
       { path: ROUTES.VARIABLES, element: <VariablesPage /> },
       { path: ROUTES.CONNECTIONS, element: <ConnectionsPage /> },
       { path: ROUTES.POOLS, element: <PoolsPage /> },
