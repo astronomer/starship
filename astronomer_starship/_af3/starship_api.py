@@ -284,6 +284,131 @@ class StarshipApi(FastAPI):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.task_log_attrs()),
         )
 
+    @router.api_route("/cutover/waves", methods=["GET", "POST"])
+    @staticmethod
+    def cutover_waves(
+        starship_route: Annotated[StarshipRoute, Depends(starship_route)],
+    ):
+        from astronomer_starship.providers.starship import cutover as _cutover
+
+        def _get():
+            try:
+                limit = int(starship_route.args.get("limit", 25))
+            except (TypeError, ValueError):
+                limit = 25
+            return _cutover.list_migrations(limit=limit)
+
+        def _post():
+            body = starship_route.json or {}
+            strategy = body.get("strategy", "incremental")
+            patterns = body.get("patterns", [])
+            try:
+                return _cutover.start_wave(strategy=strategy, patterns=patterns, config=body.get("config"))
+            except ValueError as e:
+                raise HttpError(str(e), 400) from e
+            except RuntimeError as e:
+                raise HttpError(str(e), 400) from e
+
+        return starship_route(get=_get, post=_post)
+
+    @router.get("/cutover/waves/{migration_id}")
+    @staticmethod
+    def cutover_wave_detail(
+        migration_id: str,
+        starship_route: Annotated[StarshipRoute, Depends(starship_route)],
+    ):
+        from astronomer_starship.providers.starship import cutover as _cutover
+
+        def _get():
+            migration = _cutover.enrich_wave_for_display(migration_id)
+            if migration is None:
+                raise HttpError(f"Wave '{migration_id}' not found", 404)
+            return migration
+
+        return starship_route(get=_get)
+
+    @router.post("/cutover/waves/{migration_id}/abort")
+    @staticmethod
+    def cutover_wave_abort(
+        migration_id: str,
+        starship_route: Annotated[StarshipRoute, Depends(starship_route)],
+    ):
+        from astronomer_starship.providers.starship import cutover as _cutover
+
+        def _post():
+            _cutover.request_abort(migration_id)
+            return {"migration_id": migration_id, "status": "abort_requested"}
+
+        return starship_route(post=_post)
+
+    @router.post("/cutover/waves/{migration_id}/rollback")
+    @staticmethod
+    def cutover_wave_rollback(
+        migration_id: str,
+        starship_route: Annotated[StarshipRoute, Depends(starship_route)],
+    ):
+        from astronomer_starship.providers.starship import cutover as _cutover
+
+        def _post():
+            body = starship_route.json or {}
+            dag_id = body.get("dag_id")
+            if dag_id:
+                _cutover.rollback_dag(migration_id=migration_id, dag_id=dag_id)
+                return {"migration_id": migration_id, "dag_id": dag_id, "rolled_back": True}
+            _cutover.rollback_migration(migration_id)
+            return {"migration_id": migration_id, "rolled_back": True}
+
+        return starship_route(post=_post)
+
+    @router.post("/cutover/waves/{migration_id}/retry")
+    @staticmethod
+    def cutover_wave_retry(
+        migration_id: str,
+        starship_route: Annotated[StarshipRoute, Depends(starship_route)],
+    ):
+        from astronomer_starship.providers.starship import cutover as _cutover
+
+        def _post():
+            body = starship_route.json or {}
+            selector = body.get("selector") or body.get("dag_id") or "failed"
+            try:
+                dag_ids = _cutover.retry_dags_in_wave(migration_id, selector)
+            except ValueError as e:
+                raise HttpError(str(e), 400) from e
+            return {"migration_id": migration_id, "retry_dag_ids": dag_ids}
+
+        return starship_route(post=_post)
+
+    @router.post("/cutover/waves/{migration_id}/purge")
+    @staticmethod
+    def cutover_wave_purge(
+        migration_id: str,
+        starship_route: Annotated[StarshipRoute, Depends(starship_route)],
+    ):
+        from astronomer_starship.providers.starship import cutover as _cutover
+
+        def _post():
+            body = starship_route.json or {}
+            dag_id = body.get("dag_id")
+            if dag_id:
+                deleted = _cutover.purge_dag_metadata(dag_id=dag_id)
+                return {"migration_id": migration_id, "dag_id": dag_id, "runs_deleted": deleted}
+            return _cutover.purge_wave_metadata(migration_id)
+
+        return starship_route(post=_post)
+
+    @router.post("/cutover/purge_all")
+    @staticmethod
+    def cutover_purge_all(
+        starship_route: Annotated[StarshipRoute, Depends(starship_route)],
+    ):
+        from astronomer_starship.providers.starship import cutover as _cutover
+
+        def _post():
+            return _cutover.purge_all_instance_dag_metadata()
+
+        return starship_route(post=_post)
+
     @router.api_route("/source_connection", methods=["GET", "POST", "DELETE"])
     @staticmethod
     def source_connection(

@@ -240,6 +240,112 @@ class StarshipApi(BaseView):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.task_log_attrs()),
         )
 
+    @expose("/cutover/waves", methods=["GET", "POST"])
+    @csrf.exempt
+    def cutover_waves(self):
+        from astronomer_starship.providers.starship import cutover as _cutover
+
+        def _get():
+            limit = int(request.args.get("limit", 25))
+            return _cutover.list_migrations(limit=limit)
+
+        def _post():
+            body = request.json or {}
+            strategy = body.get("strategy", "incremental")
+            patterns = body.get("patterns", [])
+            try:
+                return _cutover.start_wave(strategy=strategy, patterns=patterns, config=body.get("config"))
+            except ValueError as e:
+                raise HttpError(str(e), 400) from e
+            except RuntimeError as e:
+                # Misconfigured source connection surfaces as RuntimeError
+                # from the auth factory. That's user-actionable, not a 500.
+                raise HttpError(str(e), 400) from e
+
+        return starship_route(get=_get, post=_post)
+
+    @expose("/cutover/waves/<migration_id>", methods=["GET"])
+    @csrf.exempt
+    def cutover_wave_detail(self, migration_id):
+        from astronomer_starship.providers.starship import cutover as _cutover
+
+        def _get():
+            migration = _cutover.enrich_wave_for_display(migration_id)
+            if migration is None:
+                raise HttpError(f"Wave '{migration_id}' not found", 404)
+            return migration
+
+        return starship_route(get=_get)
+
+    @expose("/cutover/waves/<migration_id>/abort", methods=["POST"])
+    @csrf.exempt
+    def cutover_wave_abort(self, migration_id):
+        from astronomer_starship.providers.starship import cutover as _cutover
+
+        def _post():
+            _cutover.request_abort(migration_id)
+            return {"migration_id": migration_id, "status": "abort_requested"}
+
+        return starship_route(post=_post)
+
+    @expose("/cutover/waves/<migration_id>/rollback", methods=["POST"])
+    @csrf.exempt
+    def cutover_wave_rollback(self, migration_id):
+        from astronomer_starship.providers.starship import cutover as _cutover
+
+        def _post():
+            body = request.json or {}
+            dag_id = body.get("dag_id")
+            if dag_id:
+                _cutover.rollback_dag(migration_id=migration_id, dag_id=dag_id)
+                return {"migration_id": migration_id, "dag_id": dag_id, "rolled_back": True}
+            _cutover.rollback_migration(migration_id)
+            return {"migration_id": migration_id, "rolled_back": True}
+
+        return starship_route(post=_post)
+
+    @expose("/cutover/waves/<migration_id>/retry", methods=["POST"])
+    @csrf.exempt
+    def cutover_wave_retry(self, migration_id):
+        from astronomer_starship.providers.starship import cutover as _cutover
+
+        def _post():
+            body = request.json or {}
+            # Selector is either 'failed' / 'skipped' / a specific dag_id.
+            selector = body.get("selector") or body.get("dag_id") or "failed"
+            try:
+                dag_ids = _cutover.retry_dags_in_wave(migration_id, selector)
+            except ValueError as e:
+                raise HttpError(str(e), 400) from e
+            return {"migration_id": migration_id, "retry_dag_ids": dag_ids}
+
+        return starship_route(post=_post)
+
+    @expose("/cutover/waves/<migration_id>/purge", methods=["POST"])
+    @csrf.exempt
+    def cutover_wave_purge(self, migration_id):
+        from astronomer_starship.providers.starship import cutover as _cutover
+
+        def _post():
+            body = request.json or {}
+            dag_id = body.get("dag_id")
+            if dag_id:
+                deleted = _cutover.purge_dag_metadata(dag_id=dag_id)
+                return {"migration_id": migration_id, "dag_id": dag_id, "runs_deleted": deleted}
+            return _cutover.purge_wave_metadata(migration_id)
+
+        return starship_route(post=_post)
+
+    @expose("/cutover/purge_all", methods=["POST"])
+    @csrf.exempt
+    def cutover_purge_all(self):
+        from astronomer_starship.providers.starship import cutover as _cutover
+
+        def _post():
+            return _cutover.purge_all_instance_dag_metadata()
+
+        return starship_route(post=_post)
+
     @expose("/source_connection", methods=["GET", "POST", "DELETE"])
     @csrf.exempt
     def source_connection(self):
