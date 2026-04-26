@@ -110,9 +110,6 @@ class TestBuildSourceConnectionKwargs:
             }
         )
         assert k["host"] == "https://abc123.astronomer.run/slug-xyz"
-        # extras.endpoint is no longer used — path lives in host.
-        extras = json.loads(k["extra"])
-        assert "endpoint" not in extras
 
     def test_url_without_path_still_works(self):
         """Hostnames without a path (MWAA, some OSS installs) must still

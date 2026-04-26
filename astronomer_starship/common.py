@@ -114,10 +114,10 @@ def build_source_connection_kwargs(payload: Dict[str, Any]) -> Dict[str, Any]:  
     if parsed.path and parsed.path != "/":
         base_url += parsed.path.rstrip("/")
 
-    # Dispatch on Airflow's standard ``conn_type`` rather than carrying a
-    # parallel ``starship_platform`` hint. The auth factory in
-    # ``providers/starship/auth/factory.py`` reads ``conn_type`` to pick
-    # the right ``requests.auth.AuthBase`` subclass at run time.
+    # The auth factory in ``providers/starship/auth/factory.py`` reads
+    # ``conn_type`` to pick the right ``requests.auth.AuthBase`` subclass
+    # at run time, so the platform→conn_type mapping below is the single
+    # source of truth that ties UI selection to runtime auth dispatch.
     conn_type_by_platform = {
         "astro": "http",
         "oss": "http",
