@@ -299,6 +299,20 @@ class TestMigrateDagHistory:
         )
         tgt.set_dag_is_paused.assert_any_call(dag_id="d1", is_paused=False)
 
+    def test_pre_checks_reject_missing_target_dag(self):
+        from astronomer_starship.providers.starship.operators.starship import migrate_dag_history
+
+        src, tgt = _mk_hook(), _mk_hook()
+        tgt.get_dag.return_value = None
+        with pytest.raises(RuntimeError, match="not found in target"):
+            migrate_dag_history(
+                source_hook=src,
+                target_hook=tgt,
+                target_dag_id="d1",
+                pause_dag_in_source=False,
+                pre_checks=True,
+            )
+
     def test_pre_checks_reject_unpaused_target(self):
         from astronomer_starship.providers.starship.operators.starship import migrate_dag_history
 

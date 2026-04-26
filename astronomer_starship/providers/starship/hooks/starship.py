@@ -2,10 +2,8 @@
 Hooks for interacting with Starship migrations
 """
 
-import json
-import logging
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Optional
 
 from airflow.providers.http.hooks.http import HttpHook
 
@@ -75,12 +73,16 @@ class StarshipHook(ABC):
         pass
 
     @abstractmethod
-    def get_dags(self):
+    def get_dags(self, dag_id: Optional[str] = None) -> list:
+        """Get all DAGs, or a single-element list when ``dag_id`` is provided."""
         pass
 
-    @abstractmethod
-    def get_dag(self, dag_id: str) -> dict:
-        pass
+    def get_dag(self, dag_id: str) -> Optional[dict]:
+        """Get a single DAG by ID, or ``None`` if it doesn't exist.
+        a thin filter on top of ``get_dags(dag_id=...)``.
+        """
+        dags = self.get_dags(dag_id=dag_id)
+        return dags[0] if dags else None
 
     @abstractmethod
     def set_dag_is_paused(self, dag_id: str, is_paused: bool):
@@ -142,11 +144,13 @@ class StarshipLocalHook(BaseHook, StarshipHook):
     def set_connection(self, **kwargs):
         raise RuntimeError("Setting local data is not supported")
 
-    def get_dags(self) -> dict:
+    def get_dags(self, dag_id: Optional[str] = None) -> list:
+        """Get all DAGs from the local Airflow instance, or a single one.
+
+        When ``dag_id`` is provided the compat layer issues a targeted query
+        instead of paying the full N+1 cost of the unfiltered fetch.
         """
-        Get all DAGs from the local Airflow instance.
-        """
-        return StarshipCompatabilityLayer().get_dags()
+        return StarshipCompatabilityLayer().get_dags(dag_id=dag_id)
 
     def set_dag_is_paused(self, dag_id: str, is_paused: bool):
         """
@@ -173,35 +177,6 @@ class StarshipLocalHook(BaseHook, StarshipHook):
     def set_task_instances(self, task_instances: list):
         """Write task instances to the local Airflow database."""
         return StarshipCompatabilityLayer().set_task_instances(task_instances)
-
-    def get_dag(self, dag_id: str) -> dict:
-        """Get a single DAG's metadata from the local Airflow instance."""
-        from airflow.models import DagModel
-
-        compat = StarshipCompatabilityLayer()
-        try:
-            fields = [
-                getattr(DagModel, attr_desc["attr"])
-                for attr_desc in compat.dag_attrs().values()
-                if attr_desc["attr"] is not None
-            ]
-            dag_result = compat.session.query(*fields).filter(DagModel.dag_id == dag_id).one()
-            record = {
-                attr: (
-                    compat._get_tags(dag_result.dag_id)
-                    if attr == "tags"
-                    else (
-                        compat._get_dag_run_count(dag_result.dag_id)
-                        if attr == "dag_run_count"
-                        else getattr(dag_result, attr_desc["attr"], None)
-                    )
-                )
-                for attr, attr_desc in compat.dag_attrs().items()
-            }
-            return json.loads(json.dumps(record, default=str))
-        except Exception:
-            logging.exception("get_dag() failed for DAG %s", dag_id)
-            raise
 
     def get_task_instance_history(self, dag_id: str, offset: int = 0, limit: int = 10) -> dict:
         """Get task instance history from the local Airflow instance."""
@@ -306,15 +281,23 @@ class StarshipHttpHook(HttpHook, StarshipHook):
         res.raise_for_status()
         return res.json()
 
-    def get_dags(self) -> dict:
+    def get_dags(self, dag_id: Optional[str] = None) -> list:
+        """Get all DAGs from the Target Starship instance, or a single one.
+
+        The remote ``/api/starship/dags`` endpoint doesn't accept a server-side
+        filter today, so we fetch the full list once (cached on the hook
+        instance) and filter client-side. Repeated single-DAG lookups during
+        a wave still cost just one HTTP roundtrip.
         """
-        Get all DAGs from the Target Starship instance.
-        """
-        conn = self.get_conn()
-        url = self.url_from_endpoint(DAGS_ROUTE)
-        res = conn.get(url)
-        res.raise_for_status()
-        return res.json()
+        if not hasattr(self, "_all_dags_cache"):
+            conn = self.get_conn()
+            url = self.url_from_endpoint(DAGS_ROUTE)
+            res = conn.get(url)
+            res.raise_for_status()
+            self._all_dags_cache = res.json()
+        if dag_id is None:
+            return self._all_dags_cache
+        return [d for d in self._all_dags_cache if d["dag_id"] == dag_id]
 
     def set_dag_is_paused(self, dag_id: str, is_paused: bool):
         """
@@ -365,14 +348,6 @@ class StarshipHttpHook(HttpHook, StarshipHook):
         res = conn.post(url, json={"task_instances": task_instances})
         res.raise_for_status()
         return res.json()
-
-    def get_dag(self, dag_id: str) -> dict:
-        """Get a single DAG by ID from the Target Starship instance."""
-        if not hasattr(self, "_dag_cache"):
-            self._dag_cache = {d["dag_id"]: d for d in self.get_dags()}
-        if dag_id not in self._dag_cache:
-            raise ValueError(f"DAG '{dag_id}' not found in remote.")
-        return self._dag_cache[dag_id]
 
     def get_task_instance_history(self, dag_id: str, offset: int = 0, limit: int = 10) -> dict:
         """Get task instance history from the Target Starship instance."""
