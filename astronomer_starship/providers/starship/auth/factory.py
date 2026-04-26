@@ -14,11 +14,12 @@ Dispatch keys off Airflow's standard ``conn_type``:
 
 import json
 from enum import Enum
-from typing import Optional, Type
+from typing import TYPE_CHECKING, Optional, Type
 
 import requests
 
-from astronomer_starship.providers.starship.hooks.starship import StarshipHttpHook
+if TYPE_CHECKING:
+    from astronomer_starship.providers.starship.hooks.starship import StarshipHttpHook
 
 
 class SourceConnType(str, Enum):
@@ -133,7 +134,7 @@ def resolve_source_auth(conn_id: str) -> Optional[Type[requests.auth.AuthBase]]:
     raise RuntimeError(f"Unhandled SourceConnType '{conn_type}'.")
 
 
-def resolve_source_hook(conn_id: str) -> StarshipHttpHook:
+def resolve_source_hook(conn_id: str) -> "StarshipHttpHook":
     """Construct a :class:`StarshipHttpHook` bound to ``conn_id``.
 
     The source_connection endpoint stores the full base URL (including
@@ -141,6 +142,8 @@ def resolve_source_hook(conn_id: str) -> StarshipHttpHook:
     the correct ``base_url`` automatically via Airflow's native
     ``HttpHook`` behaviour — no endpoint-prefix juggling needed here.
     """
+    from astronomer_starship.providers.starship.hooks.starship import StarshipHttpHook
+
     auth_type = resolve_source_auth(conn_id)
     kwargs = {"http_conn_id": conn_id}
     if auth_type is not None:
