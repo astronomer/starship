@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from sqlalchemy.orm import Session
@@ -589,6 +590,128 @@ class BaseStarshipAirflow:
             "has_password": bool(conn.password),
             "extras": extras_dict,
         }
+
+    # ------------------------------------------------------------------
+    # Cutover-engine support: state Variable + DagModel single-column reads
+    # + bounded/unbounded DAG metadata deletion. Lives here (rather than in
+    # the per-version compat classes) because the underlying DagModel /
+    # DagRun / TaskInstance / Variable APIs do not differ across the
+    # AF2 / AF3 versions we support.
+    # ------------------------------------------------------------------
+
+    def get_cutover_state(self, key: str) -> Dict[str, Any]:
+        """Read the wave-state Variable. Returns the empty default if the
+        Variable is missing or its JSON payload is corrupt (so a single bad
+        write can't permanently brick the engine)."""
+        from airflow.models import Variable
+
+        raw = Variable.get(key, default_var=None)
+        if raw is None:
+            return {"migrations": []}
+        try:
+            return json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            logger.warning("Corrupt cutover state Variable %s -- resetting.", key)
+            return {"migrations": []}
+
+    def save_cutover_state(self, key: str, state: Dict[str, Any]) -> None:
+        from airflow.models import Variable
+
+        Variable.set(key, json.dumps(state, default=str))
+
+    def get_dag_next_dagrun(self, dag_id: str) -> Optional[datetime]:
+        from airflow.models import DagModel
+
+        return self.session.query(DagModel.next_dagrun).filter(DagModel.dag_id == dag_id).scalar()
+
+    def get_dag_schedule_interval(self, dag_id: str) -> Any:
+        from airflow.models import DagModel
+
+        return self.session.query(DagModel.schedule_interval).filter(DagModel.dag_id == dag_id).scalar()
+
+    def _delete_dag_runs_with_ids(self, dag_id: str, run_ids: List[str]) -> int:
+        from airflow.models import DagRun, TaskInstance
+
+        chunk_size = 500
+        for i in range(0, len(run_ids), chunk_size):
+            chunk = run_ids[i : i + chunk_size]
+            self.session.query(TaskInstance).filter(
+                TaskInstance.dag_id == dag_id,
+                TaskInstance.run_id.in_(chunk),
+            ).delete(synchronize_session=False)
+
+        # TaskInstanceHistory is AF 2.10+; older versions don't carry retry history.
+        try:
+            from airflow.models import TaskInstanceHistory
+
+            for i in range(0, len(run_ids), chunk_size):
+                chunk = run_ids[i : i + chunk_size]
+                self.session.query(TaskInstanceHistory).filter(
+                    TaskInstanceHistory.dag_id == dag_id,
+                    TaskInstanceHistory.run_id.in_(chunk),
+                ).delete(synchronize_session=False)
+        except ImportError:
+            pass
+
+        deleted = (
+            self.session.query(DagRun)
+            .filter(DagRun.dag_id == dag_id, DagRun.run_id.in_(run_ids))
+            .delete(synchronize_session=False)
+        )
+        self.session.commit()
+        return deleted
+
+    def delete_dag_data_before(self, dag_id: str, before: datetime) -> int:
+        """Delete dag_runs (+ TIs + TI history) for ``dag_id`` whose
+        ``data_interval_end`` is at or before ``before``. Returns the
+        number of dag_runs deleted."""
+        from airflow.models import DagRun
+
+        run_ids = [
+            r[0]
+            for r in self.session.query(DagRun.run_id)
+            .filter(DagRun.dag_id == dag_id, DagRun.data_interval_end <= before)
+            .all()
+        ]
+        if not run_ids:
+            return 0
+        deleted = self._delete_dag_runs_with_ids(dag_id, run_ids)
+        logger.info("Rolled back %d dag_runs for %s (+ TIs).", deleted, dag_id)
+        return deleted
+
+    def purge_dag_metadata(self, dag_id: str) -> int:
+        """Delete ALL dag_runs (+ TIs + TI history) for ``dag_id``. No date
+        filter -- force-cleanup escape hatch."""
+        from airflow.models import DagRun
+
+        run_ids = [r[0] for r in self.session.query(DagRun.run_id).filter(DagRun.dag_id == dag_id).all()]
+        if not run_ids:
+            return 0
+        deleted = self._delete_dag_runs_with_ids(dag_id, run_ids)
+        logger.info("Purged ALL metadata for %s: %d dag_runs (+ TIs).", dag_id, deleted)
+        return deleted
+
+    def purge_all_dag_metadata(self) -> Dict[str, int]:
+        """Purge every DAG that has at least one DagRun in the local DB.
+
+        The per-DAG except is intentionally broad: this is a bulk
+        force-cleanup endpoint and one failing DAG must not abort the
+        rest. Errors are counted and logged so the caller can surface
+        them; per-DAG details land in the Airflow logs.
+        """
+        from airflow.models import DagRun
+
+        dag_ids = [r[0] for r in self.session.query(DagRun.dag_id).distinct().all()]
+        purged = 0
+        errors = 0
+        for dag_id in dag_ids:
+            try:
+                self.purge_dag_metadata(dag_id)
+                purged += 1
+            except Exception:
+                logger.exception("Purge failed for DAG %s.", dag_id)
+                errors += 1
+        return {"purged": purged, "errors": errors}
 
     @classmethod
     def dag_attrs(cls) -> "Dict[str, AttrDesc]":

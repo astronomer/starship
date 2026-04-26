@@ -23,7 +23,6 @@ The engine is consumed by two surfaces:
 """
 
 import fnmatch
-import json
 import logging
 import os
 import threading
@@ -32,12 +31,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
-from airflow.models import DagModel, DagRun, TaskInstance, Variable
-from airflow.utils.session import NEW_SESSION, provide_session
-from sqlalchemy import select
-from sqlalchemy.orm.session import Session
-
-from astronomer_starship.providers.starship.auth import resolve_source_hook
+from astronomer_starship.providers.starship.auth.factory import resolve_source_hook
 from astronomer_starship.providers.starship.hooks.starship import (
     StarshipHttpHook,
     StarshipLocalHook,
@@ -62,6 +56,21 @@ RUNNING_STATES = {"running", "queued", "up_for_retry", "up_for_reschedule"}
 _DEFAULT_SOURCE_CONN_ID = "starship_source"
 
 
+def _compat():
+    """Per-call instance of the version-appropriate compat layer.
+
+    Lazy-imports Airflow so the cutover module stays importable in unit
+    tests that patch ``_compat`` to inject a fake.
+    """
+    from airflow import __version__ as airflow_version
+
+    if int(airflow_version.split(".", 1)[0]) >= 3:
+        from astronomer_starship._af3.starship_compatability import StarshipCompatabilityLayer
+    else:
+        from astronomer_starship._af2.starship_compatability import StarshipCompatabilityLayer
+    return StarshipCompatabilityLayer()
+
+
 # ---------------------------------------------------------------------------
 # State management (Airflow Variable-backed)
 # ---------------------------------------------------------------------------
@@ -78,18 +87,11 @@ def _now_iso() -> str:
 
 def get_state() -> dict:
     """Read and parse the wave state from the Airflow Variable."""
-    try:
-        raw = Variable.get(VARIABLE_KEY, default_var=None)
-        if raw is None:
-            return {"migrations": []}
-        return json.loads(raw)
-    except (json.JSONDecodeError, TypeError):
-        logger.warning("Corrupt cutover state variable -- resetting.")
-        return {"migrations": []}
+    return _compat().get_cutover_state(VARIABLE_KEY)
 
 
 def save_state(state: dict) -> None:
-    Variable.set(VARIABLE_KEY, json.dumps(state, default=str))
+    _compat().save_cutover_state(VARIABLE_KEY, state)
 
 
 def create_migration(
@@ -322,16 +324,6 @@ def _dag_has_active_runs(source_hook: StarshipHttpHook, dag_id: str) -> bool:
     return False
 
 
-@provide_session
-def _get_next_dagrun(dag_id: str, session: Session = NEW_SESSION):
-    return session.scalar(select(DagModel.next_dagrun).where(DagModel.dag_id == dag_id))
-
-
-@provide_session
-def _get_schedule_interval(dag_id: str, session: Session = NEW_SESSION):
-    return session.scalar(select(DagModel.schedule_interval).where(DagModel.dag_id == dag_id))
-
-
 def _wait_for_scheduler_sync(dag_id: str, latest_data_interval_end: str, timeout: int = 60) -> None:
     """Wait until the scheduler has advanced next_dagrun past the migrated runs.
 
@@ -345,12 +337,13 @@ def _wait_for_scheduler_sync(dag_id: str, latest_data_interval_end: str, timeout
     if target_dt.tzinfo is None:
         target_dt = target_dt.replace(tzinfo=timezone.utc)
 
-    if _get_schedule_interval(dag_id) is None:
+    compat = _compat()
+    if compat.get_dag_schedule_interval(dag_id) is None:
         return
 
     start = datetime.now(timezone.utc)
     while (datetime.now(timezone.utc) - start).total_seconds() < timeout:
-        next_dagrun = _get_next_dagrun(dag_id)
+        next_dagrun = compat.get_dag_next_dagrun(dag_id)
         if next_dagrun is None or next_dagrun >= target_dt:
             return
         time.sleep(5)
@@ -363,107 +356,23 @@ def _wait_for_scheduler_sync(dag_id: str, latest_data_interval_end: str, timeout
 # ---------------------------------------------------------------------------
 
 
-@provide_session
-def delete_migrated_dag_data(
-    dag_id: str,
-    latest_data_interval_end: str,
-    session: Session = NEW_SESSION,
-) -> int:
-    """Delete dag_runs, task_instances, and TI history migrated for a DAG."""
+def delete_migrated_dag_data(dag_id: str, latest_data_interval_end: str) -> int:
+    """Delete dag_runs / TIs / TI history migrated for ``dag_id`` up to
+    ``latest_data_interval_end``. No-op when the cutoff is empty."""
     if not latest_data_interval_end:
         return 0
-
     target_dt = datetime.fromisoformat(str(latest_data_interval_end))
-
-    run_ids = [
-        r[0]
-        for r in session.query(DagRun.run_id)
-        .filter(DagRun.dag_id == dag_id, DagRun.data_interval_end <= target_dt)
-        .all()
-    ]
-    if not run_ids:
-        return 0
-
-    chunk_size = 500
-    for i in range(0, len(run_ids), chunk_size):
-        chunk = run_ids[i : i + chunk_size]
-        session.query(TaskInstance).filter(
-            TaskInstance.dag_id == dag_id,
-            TaskInstance.run_id.in_(chunk),
-        ).delete(synchronize_session=False)
-
-    try:
-        from airflow.models import TaskInstanceHistory
-
-        for i in range(0, len(run_ids), chunk_size):
-            chunk = run_ids[i : i + chunk_size]
-            session.query(TaskInstanceHistory).filter(
-                TaskInstanceHistory.dag_id == dag_id,
-                TaskInstanceHistory.run_id.in_(chunk),
-            ).delete(synchronize_session=False)
-    except ImportError:
-        pass
-
-    deleted = (
-        session.query(DagRun)
-        .filter(DagRun.dag_id == dag_id, DagRun.data_interval_end <= target_dt)
-        .delete(synchronize_session=False)
-    )
-    session.commit()
-    logger.info("Rolled back %d dag_runs for %s (+ TIs).", deleted, dag_id)
-    return deleted
+    return _compat().delete_dag_data_before(dag_id=dag_id, before=target_dt)
 
 
-@provide_session
-def purge_dag_metadata(dag_id: str, session: Session = NEW_SESSION) -> int:
-    """Delete ALL dag_runs, task_instances, and TI history for a DAG.
-
-    No date filter — force-cleanup escape hatch.
-    """
-    run_ids = [r[0] for r in session.query(DagRun.run_id).filter(DagRun.dag_id == dag_id).all()]
-    if not run_ids:
-        return 0
-
-    chunk_size = 500
-    for i in range(0, len(run_ids), chunk_size):
-        chunk = run_ids[i : i + chunk_size]
-        session.query(TaskInstance).filter(
-            TaskInstance.dag_id == dag_id,
-            TaskInstance.run_id.in_(chunk),
-        ).delete(synchronize_session=False)
-
-    try:
-        from airflow.models import TaskInstanceHistory
-
-        for i in range(0, len(run_ids), chunk_size):
-            chunk = run_ids[i : i + chunk_size]
-            session.query(TaskInstanceHistory).filter(
-                TaskInstanceHistory.dag_id == dag_id,
-                TaskInstanceHistory.run_id.in_(chunk),
-            ).delete(synchronize_session=False)
-    except ImportError:
-        pass
-
-    deleted = session.query(DagRun).filter(DagRun.dag_id == dag_id).delete(synchronize_session=False)
-    session.commit()
-    logger.info("Purged ALL metadata for %s: %d dag_runs (+ TIs).", dag_id, deleted)
-    return deleted
+def purge_dag_metadata(dag_id: str) -> int:
+    """Delete ALL dag_runs / TIs / TI history for ``dag_id`` (no date filter)."""
+    return _compat().purge_dag_metadata(dag_id=dag_id)
 
 
-@provide_session
-def purge_all_instance_dag_metadata(session: Session = NEW_SESSION) -> dict:
-    """Purge ALL dag_runs, task_instances, and TI history for every DAG in the instance."""
-    dag_ids = [r[0] for r in session.query(DagRun.dag_id).distinct().all()]
-    purged = 0
-    errors = 0
-    for dag_id in dag_ids:
-        try:
-            purge_dag_metadata(dag_id)
-            purged += 1
-        except Exception:
-            logger.exception("Purge failed for DAG %s.", dag_id)
-            errors += 1
-    return {"purged": purged, "errors": errors}
+def purge_all_instance_dag_metadata() -> Dict[str, int]:
+    """Purge metadata for every DAG with at least one DagRun in the instance."""
+    return _compat().purge_all_dag_metadata()
 
 
 def rollback_dag(  # noqa: C901

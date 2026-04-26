@@ -1,8 +1,8 @@
 """Unit tests for the cutover wave engine.
 
 State management, abort, DAG-pattern resolution, retry/purge/enrich
-helpers, and the high-level ``start_wave`` validation. The ``Variable``
-backing store is replaced with an in-memory fake so these tests do not
+helpers, and the high-level ``start_wave`` validation. The compat-layer
+state methods are replaced with an in-memory fake so these tests do not
 hit a real Airflow DB.
 """
 
@@ -12,31 +12,31 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 
-class FakeVariable:
-    """Minimal stand-in for airflow.models.Variable that keeps state in a dict."""
+class FakeCompat:
+    """Minimal stand-in for StarshipCompatabilityLayer that keeps cutover state in a dict."""
 
     def __init__(self):
         self.store: dict = {}
 
-    def get(self, key, default_var=None):
-        return self.store.get(key, default_var)
+    def get_cutover_state(self, key):
+        return self.store.get(key, {"migrations": []})
 
-    def set(self, key, value):
-        self.store[key] = value
+    def save_cutover_state(self, key, state):
+        self.store[key] = state
 
 
 @pytest.fixture
 def fake_variable():
-    """Patch ``Variable`` inside the cutover module with an in-memory impl."""
+    """Patch ``_compat`` inside the cutover module with an in-memory fake."""
     from astronomer_starship.providers.starship import cutover as _cutover
 
-    fv = FakeVariable()
-    with patch.object(_cutover, "Variable", new=fv):
+    fc = FakeCompat()
+    with patch.object(_cutover, "_compat", return_value=fc):
         # Also reset the in-memory caches so tests don't leak state.
         _cutover._abort_events.clear()
         _cutover._abort_check_cache.clear()
         _cutover._step_labels.clear()
-        yield fv
+        yield fc
 
 
 class TestStateManagement:
@@ -77,12 +77,6 @@ class TestStateManagement:
         m = _cutover.get_migration(mid)
         assert m["status"] == "completed"
         assert m["completed_at"] is not None
-
-    def test_corrupt_state_resets_gracefully(self, fake_variable):
-        from astronomer_starship.providers.starship import cutover as _cutover
-
-        fake_variable.store[_cutover.VARIABLE_KEY] = "{not-json"
-        assert _cutover.get_state() == {"migrations": []}
 
     def test_step_labels_are_in_memory(self, fake_variable):
         from astronomer_starship.providers.starship import cutover as _cutover
