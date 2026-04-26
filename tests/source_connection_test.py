@@ -8,12 +8,14 @@ required, OSS basic-vs-bearer, etc.).
 """
 
 import json
+from unittest.mock import MagicMock
 
 import pytest
 
 from astronomer_starship.common import (
     STARSHIP_SOURCE_CONN_ID,
     SUPPORTED_SOURCE_PLATFORMS,
+    BaseStarshipAirflow,
     HttpError,
     build_source_connection_kwargs,
 )
@@ -151,3 +153,68 @@ class TestBuildSourceConnectionKwargs:
     def test_supported_platforms_constant(self):
         # Guardrail: UI constants must stay aligned with the Python side.
         assert set(SUPPORTED_SOURCE_PLATFORMS) == {"astro", "mwaa", "gcc", "oss"}
+
+
+def _stub_compat_with_conn(conn):
+    """Build a compat-layer instance whose session returns ``conn`` from a
+    Connection lookup. Bypasses ``__init__`` to avoid touching the real
+    Airflow stack — we only exercise the read-path query shape."""
+    compat = BaseStarshipAirflow.__new__(BaseStarshipAirflow)
+    session = MagicMock()
+    session.query.return_value.filter.return_value.one_or_none.return_value = conn
+    compat._session = session
+    return compat
+
+
+class TestGetSourceConnection:
+    def test_returns_none_when_missing(self):
+        compat = _stub_compat_with_conn(None)
+        assert compat.get_source_connection("starship_source") is None
+
+    def test_gcc_round_trip_exposes_google_cloud_platform_conn_type(self):
+        kwargs = build_source_connection_kwargs(
+            {
+                "platform": "gcc",
+                "url": "https://composer.example.com/",
+                "impersonation_chain": ["a@x.iam"],
+            }
+        )
+        conn = MagicMock(
+            conn_id=kwargs["conn_id"],
+            conn_type=kwargs["conn_type"],
+            host=kwargs["host"],
+            schema=kwargs["schema"],
+            port=None,
+            login=None,
+            password=None,
+            extra=kwargs["extra"],
+        )
+        result = _stub_compat_with_conn(conn).get_source_connection(kwargs["conn_id"])
+        assert result["conn_type"] == "google_cloud_platform"
+        assert result["extras"]["impersonation_chain"] == ["a@x.iam"]
+        assert result["has_password"] is False
+        assert "password" not in result
+
+    def test_mwaa_round_trip_exposes_aws_conn_type(self):
+        kwargs = build_source_connection_kwargs(
+            {
+                "platform": "mwaa",
+                "url": "https://mwaa.example.com/",
+                "region": "us-west-2",
+                "environment_name": "my-env",
+            }
+        )
+        conn = MagicMock(
+            conn_id=kwargs["conn_id"],
+            conn_type=kwargs["conn_type"],
+            host=kwargs["host"],
+            schema=kwargs["schema"],
+            port=None,
+            login=None,
+            password=None,
+            extra=kwargs["extra"],
+        )
+        result = _stub_compat_with_conn(conn).get_source_connection(kwargs["conn_id"])
+        assert result["conn_type"] == "aws"
+        assert result["extras"]["region_name"] == "us-west-2"
+        assert result["extras"]["environment_name"] == "my-env"

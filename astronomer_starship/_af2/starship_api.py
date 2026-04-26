@@ -15,11 +15,10 @@ from astronomer_starship._af2.starship_compatability import (
 from astronomer_starship.common import (
     STARSHIP_SOURCE_CONN_ID,
     HttpError,
-    _normalize_source_conn_id,
+    NotFoundError,
     build_source_connection_kwargs,
     get_kwargs_fn,
-    read_source_connection,
-    source_connection_exists,
+    normalize_source_conn_id,
     telescope,
 )
 
@@ -256,26 +255,23 @@ class StarshipApi(BaseView):
         def _resolve_conn_id(sources):
             for src in sources:
                 if src:
-                    return _normalize_source_conn_id(src)
+                    return normalize_source_conn_id(src)
             return STARSHIP_SOURCE_CONN_ID
 
         def _get():
             conn_id = _resolve_conn_id([request.args.get("conn_id")])
-            return read_source_connection(starship_compat.session, conn_id=conn_id)
+            conn = starship_compat.get_source_connection(conn_id=conn_id)
+            if conn is None:
+                raise NotFoundError(f"No source connection configured for conn_id={conn_id!r}")
+            return conn
 
         def _post():
             payload = request.json or {}
             kwargs = build_source_connection_kwargs(payload)
             conn_id = kwargs["conn_id"]
-            existed = source_connection_exists(starship_compat.session, conn_id)
-            # Delete-if-exists: we intentionally swallow any exception because
-            # any failure here (e.g. not-found, transient DB hiccup) should
-            # still let the subsequent set_connection attempt the upsert;
-            # real DB errors will surface from set_connection itself.
-            try:
+            existed = starship_compat.source_connection_exists(conn_id)
+            if existed:
                 starship_compat.delete_connection(conn_id=conn_id)
-            except Exception:  # nosec B110
-                pass
             created = starship_compat.set_connection(**kwargs)
             return {
                 **created,
