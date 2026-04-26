@@ -3,7 +3,7 @@
 import json
 import logging
 import os
-from typing import TYPE_CHECKING, Any, Dict, List, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from sqlalchemy.orm import Session
 
@@ -36,7 +36,7 @@ STARSHIP_SOURCE_CONN_ID = "starship_source"
 SUPPORTED_SOURCE_PLATFORMS = ("astro", "mwaa", "gcc", "oss")
 
 
-def _normalize_source_conn_id(value) -> str:
+def normalize_source_conn_id(value: Optional[str]) -> str:
     """Validate + normalize a user-supplied connection id.
 
     Falls back to ``STARSHIP_SOURCE_CONN_ID`` when blank. Rejects anything
@@ -61,7 +61,7 @@ def _normalize_source_conn_id(value) -> str:
     return candidate
 
 
-def build_source_connection_kwargs(payload: dict) -> dict:  # noqa: C901
+def build_source_connection_kwargs(payload: Dict[str, Any]) -> Dict[str, Any]:  # noqa: C901
     """Map a source-setup payload to Airflow Connection kwargs.
 
     The resulting Connection (``conn_id=starship_source``) is consumed at
@@ -100,7 +100,6 @@ def build_source_connection_kwargs(payload: dict) -> dict:  # noqa: C901
         raise HttpError(f"Invalid url: {url}", 400)
 
     extras = dict(payload.get("extras") or {})
-    extras.setdefault("starship_platform", platform)
 
     # Save the full base URL (scheme + host + port + path) in ``host``.
     # Airflow's HttpHook treats a ``host`` that already contains ``://`` as
@@ -115,9 +114,19 @@ def build_source_connection_kwargs(payload: dict) -> dict:  # noqa: C901
     if parsed.path and parsed.path != "/":
         base_url += parsed.path.rstrip("/")
 
+    # The auth factory in ``providers/starship/auth/factory.py`` reads
+    # ``conn_type`` to pick the right ``requests.auth.AuthBase`` subclass
+    # at run time, so the platform→conn_type mapping below is the single
+    # source of truth that ties UI selection to runtime auth dispatch.
+    conn_type_by_platform = {
+        "astro": "http",
+        "oss": "http",
+        "gcc": "google_cloud_platform",
+        "mwaa": "aws",
+    }
     kwargs = {
-        "conn_id": _normalize_source_conn_id(payload.get("conn_id")),
-        "conn_type": "http",
+        "conn_id": normalize_source_conn_id(payload.get("conn_id")),
+        "conn_type": conn_type_by_platform[platform],
         "host": base_url,
         # schema/port retained for display in the Airflow Connections UI;
         # HttpHook ignores them when host contains ``://``.
@@ -159,41 +168,6 @@ def build_source_connection_kwargs(payload: dict) -> dict:  # noqa: C901
 
     kwargs["extra"] = json.dumps(extras)
     return kwargs
-
-
-def source_connection_exists(session: Session, conn_id: str) -> bool:
-    """Return True iff an Airflow Connection with ``conn_id`` already exists."""
-    from airflow.models import Connection
-
-    return session.query(Connection).filter(Connection.conn_id == conn_id).count() > 0
-
-
-def read_source_connection(session: Session, conn_id: str = STARSHIP_SOURCE_CONN_ID) -> dict:
-    """Return the named source connection as a safe-for-UI dict.
-
-    Raises ``NotFoundError`` if not configured. Never returns the password.
-    """
-    from airflow.models import Connection
-
-    conn = session.query(Connection).filter(Connection.conn_id == conn_id).one_or_none()
-    if not conn:
-        raise NotFoundError(f"No source connection configured for conn_id={conn_id!r}")
-
-    try:
-        extras_dict = json.loads(conn.extra) if conn.extra else {}
-    except (TypeError, ValueError):
-        extras_dict = {}
-
-    return {
-        "conn_id": conn.conn_id,
-        "host": conn.host,
-        "schema": conn.schema,
-        "port": conn.port,
-        "login": conn.login,
-        "has_password": bool(conn.password),
-        "platform": extras_dict.get("starship_platform"),
-        "extras": extras_dict,
-    }
 
 
 class NotFoundError(HttpError):
@@ -585,6 +559,36 @@ class BaseStarshipAirflow:
     def delete_connection(self, **kwargs):
         attrs = {self.connection_attrs()[k]["attr"]: v for k, v in kwargs.items()}
         return generic_delete(self.session, "airflow.models.Connection", **attrs)
+
+    def source_connection_exists(self, conn_id: str) -> bool:
+        """Return True if an Airflow Connection with ``conn_id`` already exists."""
+        from airflow.models import Connection
+
+        return self.session.query(Connection).filter(Connection.conn_id == conn_id).count() > 0
+
+    def get_source_connection(self, conn_id: str = STARSHIP_SOURCE_CONN_ID) -> Optional[Dict[str, Any]]:
+        """Return the named source connection as a safe-for-UI dict, or ``None``.
+
+        Never returns the password. Callers translate ``None`` to whatever
+        their layer needs (HTTP 404, fallback default, etc.).
+        """
+        from airflow.models import Connection
+
+        conn = self.session.query(Connection).filter(Connection.conn_id == conn_id).one_or_none()
+        if not conn:
+            return None
+
+        extras_dict = json.loads(conn.extra) if conn.extra else {}
+        return {
+            "conn_id": conn.conn_id,
+            "conn_type": conn.conn_type,
+            "host": conn.host,
+            "schema": conn.schema,
+            "port": conn.port,
+            "login": conn.login,
+            "has_password": bool(conn.password),
+            "extras": extras_dict,
+        }
 
     @classmethod
     def dag_attrs(cls) -> "Dict[str, AttrDesc]":
