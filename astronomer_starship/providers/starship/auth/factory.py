@@ -1,16 +1,54 @@
 """Factory that resolves a source Airflow connection to an auth class + hook.
 
-The source connection is created by the Setup page (``POST
-/api/starship/source_connection``) which stores a ``starship_platform`` hint
-in the connection's ``extra`` JSON. This module reads that hint and picks
-the appropriate auth factory from the sibling modules.
+Dispatch keys off Airflow's standard ``conn_type``:
+
+- ``http`` → bearer-in-password (Astro, OSS bearer) or HTTP Basic when both
+  ``login`` and ``password`` are set. HTTP Basic is handled natively by
+  ``HttpHook`` (we return ``None``).
+- ``google_cloud_platform`` → GCP Application Default Credentials, with
+  optional ``impersonation_chain`` in extras (same convention as
+  ``GoogleBaseHook``).
+- ``aws`` → MWAA web-login token via boto3, reading ``region_name`` and
+  ``environment_name`` from extras (same convention as ``AwsBaseHook``).
 """
 
 import json
+from enum import Enum
+from typing import Optional, Type
 
-from astronomer_starship.providers.starship.auth.astro import AstroBearerAuth
-from astronomer_starship.providers.starship.auth.oss import resolve_oss_auth
+import requests
+
 from astronomer_starship.providers.starship.hooks.starship import StarshipHttpHook
+
+
+class SourceConnType(str, Enum):
+    """Airflow ``conn_type`` values supported as Starship sources."""
+
+    HTTP = "http"
+    GCP = "google_cloud_platform"
+    AWS = "aws"
+
+
+class BearerTokenAuth(requests.auth.AuthBase):
+    """Static bearer-token auth for ``conn_type=http`` sources.
+
+    Used for any HTTP source where the token is stored in the connection's
+    ``password`` field — e.g. Astro Organization / Workspace / Personal /
+    Deployment access tokens, or any OSS Airflow behind a bearer proxy.
+
+    The ``login`` parameter is accepted but ignored: Airflow's ``HttpHook``
+    instantiates the auth class as ``auth_type(conn.login, conn.password)``,
+    so the signature has to accommodate both.
+    """
+
+    def __init__(self, login: Optional[str] = None, password: Optional[str] = None) -> None:
+        self.token = password
+
+    def __call__(self, r: requests.PreparedRequest) -> requests.PreparedRequest:
+        if not self.token:
+            raise RuntimeError("HTTP source connection has no token configured.")
+        r.headers["Authorization"] = f"Bearer {self.token}"
+        return r
 
 
 def _load_extras(conn) -> dict:
@@ -23,65 +61,59 @@ def _load_extras(conn) -> dict:
         return {}
 
 
-def _assert_required_fields(conn_id: str, platform: str, conn, extras: dict) -> None:
+def _assert_required_fields(conn_id: str, conn_type: SourceConnType, conn, extras: dict) -> None:
     """Fail fast with a clear, user-actionable message if the saved Connection
-    is missing fields this platform needs. Runs before we open an HTTP session,
+    is missing fields this conn_type needs. Runs before we open an HTTP session,
     so the caller gets a proper error instead of a cryptic auth-time exception.
     """
-    if platform == "astro":
-        if not conn.password:
+    if conn_type is SourceConnType.HTTP:
+        if not conn.password and not conn.login:
             raise RuntimeError(
-                f"Airflow Connection '{conn_id}' is configured as an Astro source but has no password set. "
-                f"Re-open the Starship Source Setup page and save the connection with a Deployment API token."
+                f"Airflow Connection '{conn_id}' has neither a password (token) nor a "
+                f"login+password set. Provide credentials via the Connections UI."
             )
-    elif platform == "oss":
-        if not conn.password:
-            raise RuntimeError(
-                f"Airflow Connection '{conn_id}' is configured as an OSS source but has no password set. "
-                f"Provide either a bearer token or a login + password via the Starship Source Setup page."
-            )
-    elif platform == "mwaa":
+    elif conn_type is SourceConnType.AWS:
         if not extras.get("region_name"):
             raise RuntimeError(
-                f"Airflow Connection '{conn_id}' is configured as an MWAA source but has no `region_name` "
-                f"in its extras. Re-save via the Starship Source Setup page with an AWS region."
+                f"Airflow Connection '{conn_id}' (MWAA) has no `region_name` in its "
+                f"extras. Add it via the Connections UI."
             )
         if not extras.get("environment_name"):
             raise RuntimeError(
-                f"Airflow Connection '{conn_id}' is configured as an MWAA source but has no `environment_name` "
-                f"in its extras. Re-save via the Starship Source Setup page with the MWAA environment name."
+                f"Airflow Connection '{conn_id}' (MWAA) has no `environment_name` in "
+                f"its extras. Add it via the Connections UI."
             )
-    # gcc uses ADC — nothing to check at setup time; failures surface on first token refresh.
+    # GCP uses ADC — nothing to check at setup time; failures surface on
+    # first token refresh.
 
 
-def resolve_source_auth(conn_id: str):
+def resolve_source_auth(conn_id: str) -> Optional[Type[requests.auth.AuthBase]]:
     """Return the ``requests.auth.AuthBase`` subclass to use for a source conn.
 
-    Returns ``None`` for the OSS-Basic case, where Airflow's ``HttpHook``
+    Returns ``None`` for the HTTP Basic case, where Airflow's ``HttpHook``
     handles authentication natively from the connection's login/password.
     """
     from airflow.hooks.base import BaseHook
 
     conn = BaseHook.get_connection(conn_id)
     extras = _load_extras(conn)
-    platform = extras.get("starship_platform")
 
-    # Back-compat fallback when the platform hint isn't set: look at what
-    # fields are populated and infer the closest match.
-    if not platform:
-        if conn.password and not conn.login:
-            return AstroBearerAuth
-        return resolve_oss_auth(conn.login, conn.password)
+    try:
+        conn_type = SourceConnType((conn.conn_type or "").lower())
+    except ValueError as err:
+        supported = ", ".join(t.value for t in SourceConnType)
+        raise RuntimeError(
+            f"Unsupported conn_type '{conn.conn_type}' on connection '{conn_id}'. Expected one of: {supported}."
+        ) from err
 
-    _assert_required_fields(conn_id, platform, conn, extras)
+    _assert_required_fields(conn_id, conn_type, conn, extras)
 
-    if platform == "astro":
-        return AstroBearerAuth
+    if conn_type is SourceConnType.HTTP:
+        if conn.login and conn.password:
+            return None  # HttpHook does HTTP Basic natively.
+        return BearerTokenAuth
 
-    if platform == "oss":
-        return resolve_oss_auth(conn.login, conn.password)
-
-    if platform == "gcc":
+    if conn_type is SourceConnType.GCP:
         from astronomer_starship.providers.starship.auth.gcc import (
             ComposerV2BearerAuth,
             make_impersonated_auth,
@@ -92,7 +124,7 @@ def resolve_source_auth(conn_id: str):
             return make_impersonated_auth(chain)
         return ComposerV2BearerAuth
 
-    if platform == "mwaa":
+    if conn_type is SourceConnType.AWS:
         from astronomer_starship.providers.starship.auth.mwaa import make_mwaa_auth
 
         return make_mwaa_auth(
@@ -101,7 +133,8 @@ def resolve_source_auth(conn_id: str):
             role_arn=extras.get("role_arn"),
         )
 
-    raise RuntimeError(f"Unsupported starship_platform '{platform}' on connection '{conn_id}'.")
+    # Unreachable — SourceConnType(...) above has already validated the value.
+    raise RuntimeError(f"Unhandled SourceConnType '{conn_type}'.")
 
 
 def resolve_source_hook(conn_id: str) -> StarshipHttpHook:

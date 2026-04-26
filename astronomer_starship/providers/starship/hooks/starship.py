@@ -29,7 +29,7 @@ TASK_INSTANCE_HISTORY_ROUTE = "/api/starship/task_instance_history"
 
 # Headers that Airflow's HttpHook legitimately forwards from connection extras.
 # Anything else in `extra` (e.g. auth-factory hints like `impersonation_chain`
-# or `starship_platform`) must not leak onto the HTTP session as a header.
+# or `region_name`) must not leak onto the HTTP session as a header.
 _STANDARD_HTTP_HEADERS = frozenset(
     [
         "accept",
@@ -218,8 +218,8 @@ class StarshipHttpHook(HttpHook, StarshipHook):
 
         Airflow's ``HttpHook`` copies the entire ``extra`` JSON onto the
         session as headers. Starship uses ``extra`` to stash auth-factory
-        hints (e.g. ``impersonation_chain``, ``starship_platform``,
-        ``region_name``), and those must not be sent as HTTP headers.
+        hints (e.g. ``impersonation_chain``, ``region_name``,
+        ``environment_name``), and those must not be sent as HTTP headers.
 
         Also rebinds ``session.auth`` for bearer-token-in-password
         connections (Astro, OSS-bearer) because Airflow's ``HttpHook``
