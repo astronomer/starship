@@ -10,7 +10,7 @@ boto3 is a lazy import — non-AWS installs don't need it.
 
 import threading
 import time
-from typing import Optional
+from typing import Optional, Type
 
 import requests
 
@@ -36,7 +36,12 @@ def _build_boto3_session(region: str, role_arn: Optional[str]):
     )
 
 
-def make_mwaa_auth(*, region: str, environment_name: str, role_arn: Optional[str] = None):
+def make_mwaa_auth(
+    *,
+    region: str,
+    environment_name: str,
+    role_arn: Optional[str] = None,
+) -> Type[requests.auth.AuthBase]:
     """Return an auth class that mints MWAA web-login tokens via boto3."""
     if not environment_name:
         raise RuntimeError("MWAA auth requires `environment_name` in the connection extras.")
@@ -48,7 +53,7 @@ def make_mwaa_auth(*, region: str, environment_name: str, role_arn: Optional[str
         _token: Optional[str] = None
         _expires_at: float = 0.0
 
-        def __init__(self, login=None, password=None):
+        def __init__(self) -> None:
             self._session = _build_boto3_session(region, role_arn)
 
         def _mint_token(self) -> str:
@@ -57,7 +62,7 @@ def make_mwaa_auth(*, region: str, environment_name: str, role_arn: Optional[str
             # MWAA returns a token valid for ~60 seconds.
             return resp["WebToken"]
 
-        def __call__(self, r):
+        def __call__(self, r: requests.PreparedRequest) -> requests.PreparedRequest:
             with MwaaWebTokenAuth._lock:
                 now = time.time()
                 if not MwaaWebTokenAuth._token or now >= MwaaWebTokenAuth._expires_at:

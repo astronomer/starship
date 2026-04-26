@@ -42,13 +42,6 @@ class TestAuthClasses:
         with pytest.raises(RuntimeError):
             auth(req)
 
-    def test_bearer_ignores_login(self):
-        # `login` is accepted only to satisfy HttpHook's two-arg call signature.
-        req = requests.Request(method="GET", url="https://x").prepare()
-        auth = BearerTokenAuth(login="ignored", password="tok")
-        auth(req)
-        assert req.headers["Authorization"] == "Bearer tok"
-
     def test_mwaa_factory_requires_region_and_env(self):
         with pytest.raises(RuntimeError):
             make_mwaa_auth(region="", environment_name="env")

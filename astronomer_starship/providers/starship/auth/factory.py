@@ -35,13 +35,9 @@ class BearerTokenAuth(requests.auth.AuthBase):
     Used for any HTTP source where the token is stored in the connection's
     ``password`` field — e.g. Astro Organization / Workspace / Personal /
     Deployment access tokens, or any OSS Airflow behind a bearer proxy.
-
-    The ``login`` parameter is accepted but ignored: Airflow's ``HttpHook``
-    instantiates the auth class as ``auth_type(conn.login, conn.password)``,
-    so the signature has to accommodate both.
     """
 
-    def __init__(self, login: Optional[str] = None, password: Optional[str] = None) -> None:
+    def __init__(self, password: Optional[str] = None) -> None:
         self.token = password
 
     def __call__(self, r: requests.PreparedRequest) -> requests.PreparedRequest:

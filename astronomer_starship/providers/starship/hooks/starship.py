@@ -239,9 +239,9 @@ class StarshipHttpHook(HttpHook, StarshipHook):
                 return session
             # Upstream HttpHook only passes creds when conn.login is set;
             # for token-in-password connections that means our auth class
-            # is called with no args. Rebind explicitly with both fields.
+            # is called with no args. Rebind explicitly with the token.
             if not conn.login and conn.password:
-                session.auth = self._auth_type(conn.login, conn.password)
+                session.auth = self._auth_type(password=conn.password)
 
         return session
 
