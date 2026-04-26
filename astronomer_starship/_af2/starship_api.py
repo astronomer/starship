@@ -13,7 +13,6 @@ from astronomer_starship._af2.starship_compatability import (
     StarshipCompatabilityLayer,
 )
 from astronomer_starship.common import (
-    STARSHIP_SOURCE_CONN_ID,
     HttpError,
     NotFoundError,
     build_source_connection_kwargs,
@@ -252,14 +251,8 @@ class StarshipApi(BaseView):
         """
         starship_compat = StarshipCompatabilityLayer()
 
-        def _resolve_conn_id(sources):
-            for src in sources:
-                if src:
-                    return normalize_source_conn_id(src)
-            return STARSHIP_SOURCE_CONN_ID
-
         def _get():
-            conn_id = _resolve_conn_id([request.args.get("conn_id")])
+            conn_id = normalize_source_conn_id(request.args.get("conn_id"))
             conn = starship_compat.get_source_connection(conn_id=conn_id)
             if conn is None:
                 raise NotFoundError(f"No source connection configured for conn_id={conn_id!r}")
@@ -280,7 +273,7 @@ class StarshipApi(BaseView):
             }
 
         def _delete():
-            conn_id = _resolve_conn_id([request.args.get("conn_id")])
+            conn_id = normalize_source_conn_id(request.args.get("conn_id"))
             return starship_compat.delete_connection(conn_id=conn_id)
 
         return starship_route(get=_get, post=_post, delete=_delete)
