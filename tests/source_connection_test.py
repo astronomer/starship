@@ -31,8 +31,6 @@ class TestBuildSourceConnectionKwargs:
         assert k["host"] == "https://foo.astronomer.run/bar"
         assert k["schema"] == "https"
         assert k["password"] == "tok"  # pragma: allowlist secret
-        extras = json.loads(k["extra"])
-        assert extras["starship_platform"] == "astro"
 
     def test_gcc_impersonation_chain_lands_in_extras(self):
         k = build_source_connection_kwargs(
@@ -42,9 +40,9 @@ class TestBuildSourceConnectionKwargs:
                 "impersonation_chain": ["a@x.iam", "b@x.iam"],
             }
         )
+        assert k["conn_type"] == "google_cloud_platform"
         extras = json.loads(k["extra"])
         assert extras["impersonation_chain"] == ["a@x.iam", "b@x.iam"]
-        assert extras["starship_platform"] == "gcc"
         assert "password" not in k
 
     def test_gcc_rejects_non_list_impersonation_chain(self):
@@ -74,6 +72,7 @@ class TestBuildSourceConnectionKwargs:
                 "role_arn": "arn:aws:iam::1:role/StarshipSource",
             }
         )
+        assert k["conn_type"] == "aws"
         extras = json.loads(k["extra"])
         assert extras["region_name"] == "us-west-2"
         assert extras["environment_name"] == "my-env"
@@ -88,6 +87,7 @@ class TestBuildSourceConnectionKwargs:
                 "password": "p",
             }
         )
+        assert k["conn_type"] == "http"
         assert k["login"] == "u"
         assert k["password"] == "p"
         assert k["port"] == 8080
@@ -122,6 +122,7 @@ class TestBuildSourceConnectionKwargs:
 
     def test_oss_bearer_only(self):
         k = build_source_connection_kwargs({"platform": "oss", "url": "https://airflow.example.com/", "token": "tok"})
+        assert k["conn_type"] == "http"
         assert k["password"] == "tok"  # pragma: allowlist secret
         assert "login" not in k
 

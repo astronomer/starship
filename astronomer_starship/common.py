@@ -100,7 +100,6 @@ def build_source_connection_kwargs(payload: dict) -> dict:  # noqa: C901
         raise HttpError(f"Invalid url: {url}", 400)
 
     extras = dict(payload.get("extras") or {})
-    extras.setdefault("starship_platform", platform)
 
     # Save the full base URL (scheme + host + port + path) in ``host``.
     # Airflow's HttpHook treats a ``host`` that already contains ``://`` as
@@ -115,9 +114,19 @@ def build_source_connection_kwargs(payload: dict) -> dict:  # noqa: C901
     if parsed.path and parsed.path != "/":
         base_url += parsed.path.rstrip("/")
 
+    # Dispatch on Airflow's standard ``conn_type`` rather than carrying a
+    # parallel ``starship_platform`` hint. The auth factory in
+    # ``providers/starship/auth/factory.py`` reads ``conn_type`` to pick
+    # the right ``requests.auth.AuthBase`` subclass at run time.
+    conn_type_by_platform = {
+        "astro": "http",
+        "oss": "http",
+        "gcc": "google_cloud_platform",
+        "mwaa": "aws",
+    }
     kwargs = {
         "conn_id": _normalize_source_conn_id(payload.get("conn_id")),
-        "conn_type": "http",
+        "conn_type": conn_type_by_platform[platform],
         "host": base_url,
         # schema/port retained for display in the Airflow Connections UI;
         # HttpHook ignores them when host contains ``://``.
@@ -186,12 +195,12 @@ def read_source_connection(session: Session, conn_id: str = STARSHIP_SOURCE_CONN
 
     return {
         "conn_id": conn.conn_id,
+        "conn_type": conn.conn_type,
         "host": conn.host,
         "schema": conn.schema,
         "port": conn.port,
         "login": conn.login,
         "has_password": bool(conn.password),
-        "platform": extras_dict.get("starship_platform"),
         "extras": extras_dict,
     }
 
