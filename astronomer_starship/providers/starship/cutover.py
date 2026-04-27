@@ -230,11 +230,7 @@ def _is_aborted(migration_id: str) -> bool:
         return False
 
     _abort_check_cache[migration_id] = now
-    try:
-        m = get_migration(migration_id)
-    except Exception:
-        logger.debug("Failed to read abort state for %s", migration_id, exc_info=True)
-        return False
+    m = get_migration(migration_id)
     if m and m.get("abort_requested"):
         if event is not None:
             event.set()

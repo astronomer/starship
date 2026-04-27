@@ -178,16 +178,16 @@ class TestNormalizeConfig:
 
 class TestStartWaveValidation:
     def test_unknown_strategy_rejected(self, fake_variable):
-        from astronomer_starship.providers.starship.cutover import start_wave
+        from astronomer_starship.providers.starship import cutover as _cutover
 
         with pytest.raises(ValueError):
-            start_wave(strategy="bogus", patterns=[])
+            _cutover.start_wave(strategy="bogus", patterns=[])
 
     def test_incremental_requires_patterns(self, fake_variable):
-        from astronomer_starship.providers.starship.cutover import start_wave
+        from astronomer_starship.providers.starship import cutover as _cutover
 
         with pytest.raises(ValueError, match="at least one"):
-            start_wave(strategy="incremental", patterns=[])
+            _cutover.start_wave(strategy="incremental", patterns=[])
 
 
 class TestRetryDagsInWave:
