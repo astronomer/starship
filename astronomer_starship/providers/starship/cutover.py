@@ -45,6 +45,30 @@ from astronomer_starship.providers.starship.operators.starship import (
 logger = logging.getLogger(__name__)
 
 
+__all__ = [
+    "WaveEngineError",
+    "WaveNotFoundError",
+    "DagNotInWaveError",
+    "InvalidWaveConfigError",
+]
+
+
+class WaveEngineError(Exception):
+    """Base for all wave-engine domain errors."""
+
+
+class WaveNotFoundError(WaveEngineError):
+    """The named wave does not exist."""
+
+
+class DagNotInWaveError(WaveEngineError):
+    """The named DAG is not part of this wave."""
+
+
+class InvalidWaveConfigError(WaveEngineError):
+    """Wave input is malformed or in a state incompatible with the requested action."""
+
+
 SYSTEM_DAGS_TO_EXCLUDE = {"airflow_monitoring"}
 MIGRATION_DAG_PREFIXES = ("starship_airflow_migration_dag",)
 
@@ -380,13 +404,13 @@ def rollback_dag(  # noqa: C901
     """Roll back a single DAG within a wave: delete migrated data, reverse pause/unpause."""
     migration = get_migration(migration_id)
     if not migration:
-        raise ValueError(f"Wave '{migration_id}' not found.")
+        raise WaveNotFoundError(f"Wave '{migration_id}' not found.")
 
     dag_state = migration["dags"].get(dag_id)
     if not dag_state:
-        raise ValueError(f"DAG '{dag_id}' not in wave '{migration_id}'.")
+        raise DagNotInWaveError(f"DAG '{dag_id}' not in wave '{migration_id}'.")
     if dag_state["status"] == "rolled_back":
-        raise ValueError(f"DAG '{dag_id}' is already rolled back.")
+        raise InvalidWaveConfigError(f"DAG '{dag_id}' is already rolled back.")
 
     config = migration["config"]
     if source_hook is None:
@@ -421,7 +445,7 @@ def rollback_migration(migration_id: str) -> None:
     """Roll back a whole wave — all completed/failed DAGs."""
     migration = get_migration(migration_id)
     if not migration:
-        raise ValueError(f"Wave '{migration_id}' not found.")
+        raise WaveNotFoundError(f"Wave '{migration_id}' not found.")
 
     config = migration["config"]
     source_hook = resolve_source_hook(config.get("source_conn_id", _DEFAULT_SOURCE_CONN_ID))
@@ -734,12 +758,12 @@ def start_wave(strategy: str, patterns: List[str], config: Optional[dict] = None
     Returns the created wave dict.
     """
     if strategy not in ("bigbang", "incremental"):
-        raise ValueError(f"Unsupported strategy: {strategy!r}")
+        raise InvalidWaveConfigError(f"Unsupported strategy: {strategy!r}")
 
     patterns = [p.strip() for p in (patterns or []) if p and p.strip()]
     # Validate before touching the source so bad input fails fast.
     if strategy == "incremental" and not patterns:
-        raise ValueError("Incremental waves require at least one DAG pattern.")
+        raise InvalidWaveConfigError("Incremental waves require at least one DAG pattern.")
 
     normalized_config = _normalize_config(config)
     source_hook = resolve_source_hook(normalized_config["source_conn_id"])
@@ -758,7 +782,7 @@ def start_wave(strategy: str, patterns: List[str], config: Optional[dict] = None
             dag_ids = [d for d in dag_ids if d not in excluded]
 
     if not dag_ids:
-        raise ValueError("No DAGs matched — verify the source connection and patterns.")
+        raise InvalidWaveConfigError("No DAGs matched — verify the source connection and patterns.")
 
     migration_id = create_migration(strategy, normalized_config, dag_ids)
     start_migration_thread(migration_id, dag_ids, normalized_config)
@@ -836,7 +860,7 @@ def start_retry(migration_id: str, dag_ids: List[str]) -> None:
     """Roll back partial data, reset DAG state, and kick off a background retry thread."""
     migration = get_migration(migration_id)
     if not migration:
-        raise ValueError(f"Wave '{migration_id}' not found.")
+        raise WaveNotFoundError(f"Wave '{migration_id}' not found.")
 
     _reset_dags_for_retry(migration_id, dag_ids)
     update_migration_status(migration_id, "running")
@@ -859,7 +883,7 @@ def retry_dags_in_wave(migration_id: str, selector: str) -> List[str]:
     """
     migration = get_migration(migration_id)
     if not migration:
-        raise ValueError(f"Wave '{migration_id}' not found.")
+        raise WaveNotFoundError(f"Wave '{migration_id}' not found.")
 
     if selector == "failed":
         dag_ids = [d for d, s in migration["dags"].items() if s["status"] == "failed"]
@@ -868,9 +892,9 @@ def retry_dags_in_wave(migration_id: str, selector: str) -> List[str]:
     else:
         dag_state = migration["dags"].get(selector)
         if not dag_state:
-            raise ValueError(f"DAG '{selector}' is not in wave '{migration_id}'.")
+            raise DagNotInWaveError(f"DAG '{selector}' is not in wave '{migration_id}'.")
         if dag_state["status"] not in ("failed", "skipped"):
-            raise ValueError(f"DAG '{selector}' is not in a failed/skipped state.")
+            raise InvalidWaveConfigError(f"DAG '{selector}' is not in a failed/skipped state.")
         dag_ids = [selector]
 
     if not dag_ids:
@@ -884,7 +908,7 @@ def purge_wave_metadata(migration_id: str) -> dict:
     """Purge destination metadata for every DAG in a wave (except running/rolled-back)."""
     migration = get_migration(migration_id)
     if not migration:
-        raise ValueError(f"Wave '{migration_id}' not found.")
+        raise WaveNotFoundError(f"Wave '{migration_id}' not found.")
 
     purged = 0
     errors = 0

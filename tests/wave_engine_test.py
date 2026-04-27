@@ -180,13 +180,13 @@ class TestStartWaveValidation:
     def test_unknown_strategy_rejected(self, fake_variable):
         from astronomer_starship.providers.starship import cutover as _cutover
 
-        with pytest.raises(ValueError):
+        with pytest.raises(_cutover.InvalidWaveConfigError):
             _cutover.start_wave(strategy="bogus", patterns=[])
 
     def test_incremental_requires_patterns(self, fake_variable):
         from astronomer_starship.providers.starship import cutover as _cutover
 
-        with pytest.raises(ValueError, match="at least one"):
+        with pytest.raises(_cutover.InvalidWaveConfigError, match="at least one"):
             _cutover.start_wave(strategy="incremental", patterns=[])
 
 
@@ -219,20 +219,20 @@ class TestRetryDagsInWave:
 
         mid = _cutover.create_migration("incremental", {}, ["d1"])
         _cutover.update_dag_status(mid, "d1", "completed")
-        with pytest.raises(ValueError, match="not in a failed/skipped"):
+        with pytest.raises(_cutover.InvalidWaveConfigError, match="not in a failed/skipped"):
             _cutover.retry_dags_in_wave(mid, "d1")
 
     def test_retry_unknown_dag_rejected(self, fake_variable):
         from astronomer_starship.providers.starship import cutover as _cutover
 
         mid = _cutover.create_migration("incremental", {}, ["d1"])
-        with pytest.raises(ValueError, match="not in wave"):
+        with pytest.raises(_cutover.DagNotInWaveError, match="not in wave"):
             _cutover.retry_dags_in_wave(mid, "nope")
 
     def test_retry_nonexistent_wave_rejected(self, fake_variable):
         from astronomer_starship.providers.starship import cutover as _cutover
 
-        with pytest.raises(ValueError, match="not found"):
+        with pytest.raises(_cutover.WaveNotFoundError, match="not found"):
             _cutover.retry_dags_in_wave("no-such-wave", "failed")
 
 

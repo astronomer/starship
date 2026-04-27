@@ -253,7 +253,9 @@ class StarshipApi(BaseView):
             patterns = body.get("patterns", [])
             try:
                 return _cutover.start_wave(strategy=strategy, patterns=patterns, config=body.get("config"))
-            except ValueError as e:
+            except (_cutover.WaveNotFoundError, _cutover.DagNotInWaveError) as e:
+                raise HttpError(str(e), 404) from e
+            except _cutover.InvalidWaveConfigError as e:
                 raise HttpError(str(e), 400) from e
             except RuntimeError as e:
                 # Misconfigured source connection surfaces as RuntimeError
@@ -294,11 +296,16 @@ class StarshipApi(BaseView):
         def _post():
             body = request.json or {}
             dag_id = body.get("dag_id")
-            if dag_id:
-                _cutover.rollback_dag(migration_id=migration_id, dag_id=dag_id)
-                return {"migration_id": migration_id, "dag_id": dag_id, "rolled_back": True}
-            _cutover.rollback_migration(migration_id)
-            return {"migration_id": migration_id, "rolled_back": True}
+            try:
+                if dag_id:
+                    _cutover.rollback_dag(migration_id=migration_id, dag_id=dag_id)
+                    return {"migration_id": migration_id, "dag_id": dag_id, "rolled_back": True}
+                _cutover.rollback_migration(migration_id)
+                return {"migration_id": migration_id, "rolled_back": True}
+            except (_cutover.WaveNotFoundError, _cutover.DagNotInWaveError) as e:
+                raise HttpError(str(e), 404) from e
+            except _cutover.InvalidWaveConfigError as e:
+                raise HttpError(str(e), 400) from e
 
         return starship_route(post=_post)
 
@@ -313,7 +320,9 @@ class StarshipApi(BaseView):
             selector = body.get("selector") or body.get("dag_id") or "failed"
             try:
                 dag_ids = _cutover.retry_dags_in_wave(migration_id, selector)
-            except ValueError as e:
+            except (_cutover.WaveNotFoundError, _cutover.DagNotInWaveError) as e:
+                raise HttpError(str(e), 404) from e
+            except _cutover.InvalidWaveConfigError as e:
                 raise HttpError(str(e), 400) from e
             return {"migration_id": migration_id, "retry_dag_ids": dag_ids}
 
@@ -330,7 +339,10 @@ class StarshipApi(BaseView):
             if dag_id:
                 deleted = _cutover.purge_dag_metadata(dag_id=dag_id)
                 return {"migration_id": migration_id, "dag_id": dag_id, "runs_deleted": deleted}
-            return _cutover.purge_wave_metadata(migration_id)
+            try:
+                return _cutover.purge_wave_metadata(migration_id)
+            except _cutover.WaveNotFoundError as e:
+                raise HttpError(str(e), 404) from e
 
         return starship_route(post=_post)
 
