@@ -87,7 +87,7 @@ export default function SourceCredentialsForm({
 
   // Normalize on input: strip trailing slashes and a trailing /home so users
   // can paste straight from the Airflow browser address bar without breaking
-  // the /api/starship/info check.
+  // the /api/starship/dags connectivity check.
   const handleUrlChange = (value) => {
     let cleaned = (value || '').trim();
     cleaned = cleaned.replace(/\/+$/, '');
@@ -167,7 +167,7 @@ export default function SourceCredentialsForm({
           <HStack mb={1}>
             <FormLabel mb={0}>Access Token</FormLabel>
             <Tooltip
-              label="Organization, Workspace, or Personal access token. Deployment API Tokens do NOT work for the Starship API on Astro — Astro's edge proxy rejects them on plugin endpoints."
+              label="Use an Organization, Workspace, or Personal access token from the source Astro deployment."
               placement="top"
               hasArrow
             >
@@ -184,8 +184,7 @@ export default function SourceCredentialsForm({
           />
           <FormHelperText fontSize="xs">
             Use an <strong>Organization</strong>, <strong>Workspace</strong>, or <strong>Personal</strong> access token
-            from the source Astro. <strong>Deployment API Tokens do not work</strong> — Astro&apos;s edge proxy (Istio)
-            rejects them on the Starship plugin endpoints.
+            from the source Astro deployment.
           </FormHelperText>
           <FormErrorMessage>Token is required for Astro sources.</FormErrorMessage>
         </FormControl>
