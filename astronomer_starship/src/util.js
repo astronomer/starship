@@ -230,6 +230,16 @@ export async function fetchData(localRouteUrl, remoteRouteUrl, token, loadingDis
   }
 }
 
+/**
+ * Pulls the most useful error string out of an axios error.
+ * Prefer the traceback whenpresent, then the short label, then the JS error message.
+ */
+export function extractAxiosError(err) {
+  const data = err?.response?.data || {};
+  const raw = data.error_message || data.error || err?.message || 'Unknown error';
+  return typeof raw === 'string' ? raw : JSON.stringify(raw);
+}
+
 export function objectWithoutKey(object, key) {
   const { [key]: _, ...otherKeys } = object;
   return otherKeys;

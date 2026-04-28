@@ -13,13 +13,11 @@ from astronomer_starship._af2.starship_compatability import (
     StarshipCompatabilityLayer,
 )
 from astronomer_starship.common import (
-    STARSHIP_SOURCE_CONN_ID,
     HttpError,
-    _normalize_source_conn_id,
+    NotFoundError,
     build_source_connection_kwargs,
     get_kwargs_fn,
-    read_source_connection,
-    source_connection_exists,
+    normalize_source_conn_id,
     telescope,
 )
 
@@ -255,7 +253,9 @@ class StarshipApi(BaseView):
             patterns = body.get("patterns", [])
             try:
                 return _cutover.start_wave(strategy=strategy, patterns=patterns, config=body.get("config"))
-            except ValueError as e:
+            except (_cutover.WaveNotFoundError, _cutover.DagNotInWaveError) as e:
+                raise HttpError(str(e), 404) from e
+            except _cutover.InvalidWaveConfigError as e:
                 raise HttpError(str(e), 400) from e
             except RuntimeError as e:
                 # Misconfigured source connection surfaces as RuntimeError
@@ -296,11 +296,16 @@ class StarshipApi(BaseView):
         def _post():
             body = request.json or {}
             dag_id = body.get("dag_id")
-            if dag_id:
-                _cutover.rollback_dag(migration_id=migration_id, dag_id=dag_id)
-                return {"migration_id": migration_id, "dag_id": dag_id, "rolled_back": True}
-            _cutover.rollback_migration(migration_id)
-            return {"migration_id": migration_id, "rolled_back": True}
+            try:
+                if dag_id:
+                    _cutover.rollback_dag(migration_id=migration_id, dag_id=dag_id)
+                    return {"migration_id": migration_id, "dag_id": dag_id, "rolled_back": True}
+                _cutover.rollback_migration(migration_id)
+                return {"migration_id": migration_id, "rolled_back": True}
+            except (_cutover.WaveNotFoundError, _cutover.DagNotInWaveError) as e:
+                raise HttpError(str(e), 404) from e
+            except _cutover.InvalidWaveConfigError as e:
+                raise HttpError(str(e), 400) from e
 
         return starship_route(post=_post)
 
@@ -315,7 +320,9 @@ class StarshipApi(BaseView):
             selector = body.get("selector") or body.get("dag_id") or "failed"
             try:
                 dag_ids = _cutover.retry_dags_in_wave(migration_id, selector)
-            except ValueError as e:
+            except (_cutover.WaveNotFoundError, _cutover.DagNotInWaveError) as e:
+                raise HttpError(str(e), 404) from e
+            except _cutover.InvalidWaveConfigError as e:
                 raise HttpError(str(e), 400) from e
             return {"migration_id": migration_id, "retry_dag_ids": dag_ids}
 
@@ -332,7 +339,10 @@ class StarshipApi(BaseView):
             if dag_id:
                 deleted = _cutover.purge_dag_metadata(dag_id=dag_id)
                 return {"migration_id": migration_id, "dag_id": dag_id, "runs_deleted": deleted}
-            return _cutover.purge_wave_metadata(migration_id)
+            try:
+                return _cutover.purge_wave_metadata(migration_id)
+            except _cutover.WaveNotFoundError as e:
+                raise HttpError(str(e), 404) from e
 
         return starship_route(post=_post)
 
@@ -359,29 +369,20 @@ class StarshipApi(BaseView):
         """
         starship_compat = StarshipCompatabilityLayer()
 
-        def _resolve_conn_id(sources):
-            for src in sources:
-                if src:
-                    return _normalize_source_conn_id(src)
-            return STARSHIP_SOURCE_CONN_ID
-
         def _get():
-            conn_id = _resolve_conn_id([request.args.get("conn_id")])
-            return read_source_connection(starship_compat.session, conn_id=conn_id)
+            conn_id = normalize_source_conn_id(request.args.get("conn_id"))
+            conn = starship_compat.get_source_connection(conn_id=conn_id)
+            if conn is None:
+                raise NotFoundError(f"No source connection configured for conn_id={conn_id!r}")
+            return conn
 
         def _post():
             payload = request.json or {}
             kwargs = build_source_connection_kwargs(payload)
             conn_id = kwargs["conn_id"]
-            existed = source_connection_exists(starship_compat.session, conn_id)
-            # Delete-if-exists: we intentionally swallow any exception because
-            # any failure here (e.g. not-found, transient DB hiccup) should
-            # still let the subsequent set_connection attempt the upsert;
-            # real DB errors will surface from set_connection itself.
-            try:
+            existed = starship_compat.source_connection_exists(conn_id)
+            if existed:
                 starship_compat.delete_connection(conn_id=conn_id)
-            except Exception:  # nosec B110
-                pass
             created = starship_compat.set_connection(**kwargs)
             return {
                 **created,
@@ -390,7 +391,7 @@ class StarshipApi(BaseView):
             }
 
         def _delete():
-            conn_id = _resolve_conn_id([request.args.get("conn_id")])
+            conn_id = normalize_source_conn_id(request.args.get("conn_id"))
             return starship_compat.delete_connection(conn_id=conn_id)
 
         return starship_route(get=_get, post=_post, delete=_delete)

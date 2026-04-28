@@ -17,7 +17,7 @@ import {
   VStack,
 } from '@chakra-ui/react';
 import { RepeatIcon } from '@chakra-ui/icons';
-import { useAppState, useAppDispatch } from '../AppContext';
+import { useAppState, useAppDispatch, useSourceHasCreds } from '../AppContext';
 import SetupStep from '../component/SetupStep';
 import SourcePlatformPicker from '../component/SourcePlatformPicker';
 import SourceCredentialsForm from '../component/SourceCredentialsForm';
@@ -45,21 +45,7 @@ export default function SourceSetupPage() {
   const [showStep1Check, setShowStep1Check] = useState(false);
   const [showStep2Check, setShowStep2Check] = useState(false);
 
-  // Source creds present for the selected platform
-  const sourceHasCreds = (() => {
-    switch (state.sourcePlatform) {
-      case 'astro':
-        return !!state.sourceToken;
-      case 'oss':
-        return !!state.sourceToken || !!(state.sourceLogin && state.sourcePassword);
-      case 'gcc':
-        return true;
-      case 'mwaa':
-        return !!state.sourceRegion;
-      default:
-        return false;
-    }
-  })();
+  const sourceHasCreds = useSourceHasCreds();
 
   const isStep1Complete = !!state.sourcePlatform && state.sourceIsValidUrl && sourceHasCreds;
   const isStep2Complete = state.isSourceSetupComplete;

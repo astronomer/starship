@@ -40,7 +40,7 @@ import axios from 'axios';
 import PropTypes from 'prop-types';
 import { NavLink, useParams } from 'react-router-dom';
 import constants, { ROUTES } from '../constants';
-import { localRoute } from '../util';
+import { extractAxiosError, localRoute } from '../util';
 import ConfirmDialog from '../component/ConfirmDialog';
 import useConfirm from '../hooks/useConfirm';
 
@@ -88,16 +88,8 @@ const WAVE_SHAPE = PropTypes.shape({
 
 function formatTimestamp(iso) {
   if (!iso) return '—';
-  try {
-    return new Date(iso).toLocaleString();
-  } catch {
-    return iso;
-  }
-}
-
-function extractError(err) {
-  const raw = err.response?.data?.error || err.message || 'Unknown error';
-  return typeof raw === 'string' ? raw : JSON.stringify(raw);
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
 }
 
 function ProgressBar({ summary = null }) {
@@ -343,7 +335,7 @@ export default function CutoverStatusPage() {
           setError(null);
         }
       } catch (err) {
-        const msg = extractError(err);
+        const msg = extractAxiosError(err);
         if (!abortRef.current) setError(msg);
         if (showLoader) {
           toast({
@@ -400,7 +392,7 @@ export default function CutoverStatusPage() {
       } catch (err) {
         toast({
           title: 'Action failed',
-          description: extractError(err),
+          description: extractAxiosError(err),
           status: 'error',
           duration: 8000,
           isClosable: true,

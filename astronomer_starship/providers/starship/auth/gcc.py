@@ -5,6 +5,7 @@ imports are deferred so non-GCC installs don't need ``google-auth``.
 """
 
 import threading
+from typing import List, Type
 
 import requests
 
@@ -29,7 +30,7 @@ def _get_default_credentials():
     return _default_creds
 
 
-def _refresh_and_authorize(creds, request):
+def _refresh_and_authorize(creds, request: requests.PreparedRequest) -> requests.PreparedRequest:
     """Refresh the GCP credentials if needed and set the Authorization header."""
     from google.auth import _helpers
     from google.auth.transport.requests import Request
@@ -43,14 +44,14 @@ def _refresh_and_authorize(creds, request):
 class ComposerV2BearerAuth(requests.auth.AuthBase):
     """Bearer-token auth using GCP Application Default Credentials."""
 
-    def __init__(self, login=None, password=None):
+    def __init__(self) -> None:
         self._creds = _get_default_credentials()
 
-    def __call__(self, r):
+    def __call__(self, r: requests.PreparedRequest) -> requests.PreparedRequest:
         return _refresh_and_authorize(self._creds, r)
 
 
-def make_impersonated_auth(impersonation_chain):
+def make_impersonated_auth(impersonation_chain: List[str]) -> Type[requests.auth.AuthBase]:
     """Return an auth class that mints tokens via GCP impersonated credentials.
 
     The last entry in ``impersonation_chain`` is the target principal. Any
@@ -60,7 +61,7 @@ def make_impersonated_auth(impersonation_chain):
     delegates = impersonation_chain[:-1] if len(impersonation_chain) > 1 else []
 
     class ImpersonatedComposerAuth(requests.auth.AuthBase):
-        def __init__(self, login=None, password=None):
+        def __init__(self) -> None:
             from google.auth import impersonated_credentials
 
             self._creds = impersonated_credentials.Credentials(
@@ -70,7 +71,7 @@ def make_impersonated_auth(impersonation_chain):
                 delegates=delegates,
             )
 
-        def __call__(self, r):
+        def __call__(self, r: requests.PreparedRequest) -> requests.PreparedRequest:
             return _refresh_and_authorize(self._creds, r)
 
     return ImpersonatedComposerAuth
