@@ -9,6 +9,7 @@ from airflow.exceptions import AirflowSkipException
 from packaging.version import Version
 
 from astronomer_starship.compat import AIRFLOW_V_2, AIRFLOW_V_3
+from astronomer_starship.providers.starship.auth.factory import resolve_source_hook
 from astronomer_starship.providers.starship.hooks.starship import (
     StarshipHook,
     StarshipHttpHook,
@@ -384,11 +385,7 @@ class StarshipCutoverMigrationOperator(BaseOperator):
         self.pre_checks = pre_checks
         self.migrate_ti_history = migrate_ti_history
 
-    def execute(self, context):
-        # Deferred import keeps the operator usable when the auth factory's
-        # cloud-SDK branches aren't installed (the factory itself is lazy).
-        from astronomer_starship.providers.starship.auth import resolve_source_hook
-
+    def execute(self, context) -> Any:
         source_hook = resolve_source_hook(self.source_conn_id)
         target_hook = StarshipLocalHook()
         return migrate_dag_history(

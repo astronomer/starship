@@ -7,20 +7,19 @@ Airflow handles parallelism, per-DAG retries, and failure isolation natively.
 The source Airflow credential is taken from the Airflow Connection named
 ``SOURCE_CONN_ID`` below — by default this is ``starship_source``, the
 connection written by the Starship Setup page. If you prefer to drive the
-wave entirely from Airflow (no UI), create that Connection manually:
+wave entirely from Airflow (no UI), create that Connection manually. The
+auth factory dispatches on Airflow's standard ``conn_type``:
 
-- ``Conn Type``: HTTP
-- ``Host``: the source Airflow's hostname (e.g. ``composer-xyz.airflow.example``)
-- ``Schema``: ``https``
-- ``Password``: bearer token (Astro) — leave empty for GCC / MWAA
-- ``Extra`` JSON, one of:
-
-  - Astro: ``{"starship_platform": "astro"}``
-  - GCC: ``{"starship_platform": "gcc", "impersonation_chain": ["sa@..."]}``
-  - MWAA: ``{"starship_platform": "mwaa", "region_name": "us-west-2",
-    "environment_name": "my-env"}``
-  - OSS bearer: ``{"starship_platform": "oss"}``
-  - OSS basic: ``{"starship_platform": "oss"}`` plus ``login`` + ``password``
+- Astro / OSS bearer — ``Conn Type``: HTTP, ``Host``: source base URL
+  (e.g. ``https://<hash>.astronomer.run/<deployment-slug>``),
+  ``Password``: bearer token.
+- OSS HTTP Basic — ``Conn Type``: HTTP, ``Host`` as above, ``Login`` +
+  ``Password`` set (no token).
+- GCC (Cloud Composer) — ``Conn Type``: Google Cloud, ``Host``: Composer
+  Airflow URL. Uses Application Default Credentials. Optional
+  ``Extra``: ``{"impersonation_chain": ["sa@..."]}``.
+- MWAA — ``Conn Type``: Amazon Web Services, ``Host``: MWAA web URL.
+  ``Extra``: ``{"region_name": "us-west-2", "environment_name": "my-env"}``.
 """
 
 from datetime import datetime
@@ -35,7 +34,7 @@ elif AIRFLOW_V_2:
 else:
     raise RuntimeError("Unsupported Airflow version")
 
-from astronomer_starship.providers.starship.auth import resolve_source_hook
+from astronomer_starship.providers.starship.auth.factory import resolve_source_hook
 from astronomer_starship.providers.starship.cutover import resolve_dag_patterns
 from astronomer_starship.providers.starship.hooks.starship import StarshipLocalHook
 from astronomer_starship.providers.starship.operators.starship import (
