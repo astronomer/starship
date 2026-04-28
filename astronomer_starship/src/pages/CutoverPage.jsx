@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   Alert,
   AlertIcon,
@@ -33,13 +33,15 @@ import {
   useToast,
   VStack,
 } from '@chakra-ui/react';
-import { ChevronDownIcon, ChevronUpIcon, InfoIcon } from '@chakra-ui/icons';
+import { ChevronDownIcon, ChevronUpIcon, InfoIcon, WarningTwoIcon } from '@chakra-ui/icons';
 import axios from 'axios';
 import PropTypes from 'prop-types';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useSourceConfig, useSourceSetupComplete } from '../AppContext';
 import constants, { ROUTES } from '../constants';
 import { extractAxiosError, localRoute } from '../util';
+import ConfirmDialog from '../component/ConfirmDialog';
+import useConfirm from '../hooks/useConfirm';
 
 const STRATEGIES = [
   {
@@ -127,13 +129,6 @@ function GettingStarted() {
                 <Text>• Pause on source + unpause on target can be coordinated atomically per DAG.</Text>
                 <Text>• Rollback removes migrated rows and reverses pause/unpause — per DAG or per wave.</Text>
                 <Text>• Abort stops a running wave; in-flight writes finish cleanly.</Text>
-                <Text>
-                  • Use{' '}
-                  <Link as={NavLink} to={`/${ROUTES.CUTOVER_HISTORY}`} color="brand.500" fontWeight="semibold">
-                    Cutover History
-                  </Link>{' '}
-                  to revisit any past wave — nothing is lost between visits.
-                </Text>
               </VStack>
             </Box>
           </VStack>
@@ -487,10 +482,134 @@ NumberField.propTypes = {
 // Page shell
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Danger zone — instance-wide escape hatches. Intentionally ugly so it feels
+// consequential. Collapsed by default.
+// ---------------------------------------------------------------------------
+
+function DangerZone({ onPurgeAll }) {
+  const disclosure = useDisclosure({ defaultIsOpen: false });
+  return (
+    <Card variant="outline" borderColor="error.200" bg="error.50">
+      <CardBody py={3}>
+        <HStack
+          justify="space-between"
+          cursor="pointer"
+          onClick={disclosure.onToggle}
+          _hover={{ bg: 'error.100' }}
+          borderRadius="md"
+          px={2}
+          py={1}
+          mx={-2}
+        >
+          <HStack>
+            <WarningTwoIcon color="error.500" />
+            <Heading size="sm" color="error.700">
+              Danger zone
+            </Heading>
+          </HStack>
+          <IconButton
+            size="xs"
+            variant="ghost"
+            aria-label={disclosure.isOpen ? 'Collapse' : 'Expand'}
+            icon={disclosure.isOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
+          />
+        </HStack>
+        <Collapse in={disclosure.isOpen} animateOpacity>
+          <VStack align="stretch" spacing={3} mt={3}>
+            <Text fontSize="xs" color="error.700">
+              Instance-wide escape hatches. These actions are not scoped to a single wave and cannot be undone. Use them
+              only when rollback or per-wave purge aren&apos;t enough.
+            </Text>
+            <HStack
+              justify="space-between"
+              borderWidth="1px"
+              borderColor="error.200"
+              bg="white"
+              p={3}
+              borderRadius="md"
+            >
+              <Box>
+                <Text fontSize="sm" fontWeight="semibold">
+                  Purge ALL destination DAG metadata
+                </Text>
+                <Text fontSize="xs" color="gray.700">
+                  Deletes every <Code fontSize="2xs">dag_run</Code>, <Code fontSize="2xs">task_instance</Code>, and TI
+                  history row on this Airflow — for every DAG, regardless of which wave (if any) migrated them. Use this
+                  to start from a blank slate.
+                </Text>
+              </Box>
+              <Button size="sm" colorScheme="red" onClick={onPurgeAll}>
+                Purge all
+              </Button>
+            </HStack>
+          </VStack>
+        </Collapse>
+      </CardBody>
+    </Card>
+  );
+}
+
+DangerZone.propTypes = {
+  onPurgeAll: PropTypes.func.isRequired,
+};
+
+// ---------------------------------------------------------------------------
+// Page shell
+// ---------------------------------------------------------------------------
+
 export default function CutoverPage() {
   const source = useSourceConfig();
   const isSourceReady = useSourceSetupComplete();
   const navigate = useNavigate();
+  const toast = useToast();
+  const [confirmProps, ask] = useConfirm();
+
+  const handleLaunched = (newWave) => {
+    if (newWave?.id) {
+      navigate(`/${ROUTES.CUTOVER}/${encodeURIComponent(newWave.id)}`);
+    }
+  };
+
+  const handlePurgeAll = useCallback(() => {
+    ask({
+      title: 'Purge ALL destination DAG metadata?',
+      body: (
+        <>
+          This deletes every <Code>dag_run</Code>, <Code>task_instance</Code>, and TI history row on this Airflow — for
+          every DAG, including ones that were never part of a cutover wave. <strong>It cannot be undone.</strong> Make
+          sure you have a fresh database backup.
+        </>
+      ),
+      confirmLabel: 'Purge everything',
+      colorScheme: 'red',
+      onConfirm: async () => {
+        try {
+          const res = await axios.post(localRoute(constants.CUTOVER_PURGE_ALL_ROUTE));
+          const purged = res.data?.purged ?? 0;
+          const errors = res.data?.errors ?? 0;
+          toast({
+            title: 'Purge complete',
+            description: errors ? `Purged ${purged} DAGs, ${errors} errors.` : `Purged ${purged} DAGs.`,
+            status: errors ? 'warning' : 'success',
+            duration: 6000,
+            isClosable: true,
+            variant: 'outline',
+          });
+        } catch (err) {
+          toast({
+            title: 'Purge failed',
+            description: extractAxiosError(err),
+            status: 'error',
+            duration: 8000,
+            isClosable: true,
+            variant: 'outline',
+          });
+          throw err;
+        }
+      },
+    });
+  }, [ask, toast]);
 
   if (!isSourceReady) {
     return (
@@ -514,41 +633,24 @@ export default function CutoverPage() {
     );
   }
 
-  // Auto-navigate to the newly-launched wave's status view — that's almost
-  // always what the user wants after hitting Launch. Cutover History stays
-  // one click away in the nav if they want the full list.
-  const handleLaunched = (newWave) => {
-    if (newWave?.id) {
-      navigate(`/${ROUTES.CUTOVER}/${encodeURIComponent(newWave.id)}`);
-    }
-  };
-
   return (
     <Box>
-      <Stack
-        direction={{ base: 'column', md: 'row' }}
-        justify="space-between"
-        align={{ base: 'flex-start', md: 'center' }}
-        mb={3}
-      >
-        <Box>
-          <Heading size="md" mb={0.5}>
-            Cutover
-          </Heading>
-          <Text fontSize="xs" color="gray.600">
-            Migrating from <strong>{source.url}</strong> ({source.platform}) via Airflow Connection{' '}
-            <Code fontSize="2xs">{source.connId || 'starship_source'}</Code> into this Airflow.
-          </Text>
-        </Box>
-        <Button as={NavLink} to={`/${ROUTES.CUTOVER_HISTORY}`} size="sm" variant="outline" colorScheme="brand">
-          Cutover History
-        </Button>
-      </Stack>
+      <Box mb={3}>
+        <Heading size="md" mb={0.5}>
+          Cutover
+        </Heading>
+        <Text fontSize="xs" color="gray.600">
+          Migrating from <strong>{source.url}</strong> ({source.platform}) via Airflow Connection{' '}
+          <Code fontSize="2xs">{source.connId || 'starship_source'}</Code> into this Airflow.
+        </Text>
+      </Box>
 
       <VStack align="stretch" spacing={4}>
         <GettingStarted />
         <LaunchForm sourceConnId={source.connId} onLaunched={handleLaunched} />
+        <DangerZone onPurgeAll={handlePurgeAll} />
       </VStack>
+      <ConfirmDialog {...confirmProps} />
     </Box>
   );
 }
