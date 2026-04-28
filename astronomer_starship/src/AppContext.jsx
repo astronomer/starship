@@ -407,6 +407,18 @@ export function useSourceHasCreds() {
   return hasSourceCreds(state);
 }
 
+export function useSourceConfig() {
+  const state = useAppState();
+  return useMemo(
+    () => ({
+      url: state.sourceUrl,
+      platform: state.sourcePlatform,
+      connId: state.sourceConnId,
+    }),
+    [state.sourceUrl, state.sourcePlatform, state.sourceConnId],
+  );
+}
+
 export function useTargetConfig() {
   const state = useAppState();
   return useMemo(

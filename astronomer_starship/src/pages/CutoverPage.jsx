@@ -39,7 +39,7 @@ import PropTypes from 'prop-types';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useSourceConfig, useSourceSetupComplete } from '../AppContext';
 import constants, { ROUTES } from '../constants';
-import { localRoute } from '../util';
+import { extractAxiosError, localRoute } from '../util';
 
 const STRATEGIES = [
   {
@@ -208,14 +208,9 @@ function LaunchForm({ sourceConnId = '', onLaunched = null }) {
       setPatternsRaw('');
       onLaunched?.(res.data);
     } catch (err) {
-      // starship_route wraps uncaught exceptions as { error, error_message }
-      // where `error` is a short label and `error_message` is the Python
-      // traceback. Prefer the traceback when present.
-      const data = err.response?.data || {};
-      const description = data.error_message || data.error || err.message || 'Unknown error';
       toast({
         title: 'Failed to launch wave',
-        description: typeof description === 'string' ? description : JSON.stringify(description),
+        description: extractAxiosError(err),
         status: 'error',
         duration: 12000,
         isClosable: true,
