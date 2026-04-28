@@ -23,6 +23,7 @@ auth factory dispatches on Airflow's standard ``conn_type``:
 """
 
 from datetime import datetime
+from typing import List
 
 from astronomer_starship.compat import AIRFLOW_V_2, AIRFLOW_V_3
 
@@ -50,7 +51,7 @@ SOURCE_CONN_ID = "starship_source"
 
 #: fnmatch patterns of DAGs to include. Empty list = all DAGs present on both
 #: source and local (big-bang mode).
-INCLUDE_PATTERNS: list = []
+INCLUDE_PATTERNS: List[str] = []
 
 #: Maximum DAG runs to fetch per DAG. Task instances scale with this.
 DAG_RUN_LIMIT = 500
@@ -73,7 +74,7 @@ with DAG(
 ) as dag:
 
     @task
-    def resolve_targets() -> list:
+    def resolve_targets() -> List[str]:
         """Cross-reference INCLUDE_PATTERNS against source + local DAGs."""
         source_hook = resolve_source_hook(SOURCE_CONN_ID)
         local_hook = StarshipLocalHook()
