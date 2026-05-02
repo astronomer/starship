@@ -36,7 +36,7 @@ import axios from 'axios';
 import PropTypes from 'prop-types';
 import { NavLink } from 'react-router-dom';
 import constants, { ROUTES } from '../constants';
-import { localRoute } from '../util';
+import { extractAxiosError, localRoute } from '../util';
 import { useSourceSetupComplete } from '../AppContext';
 import ConfirmDialog from '../component/ConfirmDialog';
 import useConfirm from '../hooks/useConfirm';
@@ -52,11 +52,8 @@ const STATUS_COLORS = {
 
 function formatTimestamp(iso) {
   if (!iso) return '—';
-  try {
-    return new Date(iso).toLocaleString();
-  } catch {
-    return iso;
-  }
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
 }
 
 function buildSummary(dagDict) {
@@ -300,10 +297,9 @@ export default function CutoverHistoryPage() {
         setWaves(res.data?.migrations || []);
       } catch (err) {
         if (showLoader) {
-          const raw = err.response?.data?.error || err.message || 'Unknown error';
           toast({
             title: 'Could not load waves',
-            description: typeof raw === 'string' ? raw : JSON.stringify(raw),
+            description: extractAxiosError(err),
             status: 'error',
             duration: 5000,
             isClosable: true,
@@ -343,20 +339,21 @@ export default function CutoverHistoryPage() {
       onConfirm: async () => {
         try {
           const res = await axios.post(localRoute(constants.CUTOVER_PURGE_ALL_ROUTE));
+          const purged = res.data?.purged ?? 0;
+          const errors = res.data?.errors ?? 0;
           toast({
             title: 'Purge complete',
-            description: `Purged ${res.data?.purged ?? 0} DAGs${res.data?.errors ? `, ${res.data.errors} errors` : ''}.`,
-            status: 'success',
+            description: errors ? `Purged ${purged} DAGs, ${errors} errors.` : `Purged ${purged} DAGs.`,
+            status: errors ? 'warning' : 'success',
             duration: 6000,
             isClosable: true,
             variant: 'outline',
           });
           fetchWaves(false);
         } catch (err) {
-          const raw = err.response?.data?.error || err.message || 'Unknown error';
           toast({
             title: 'Purge failed',
-            description: typeof raw === 'string' ? raw : JSON.stringify(raw),
+            description: extractAxiosError(err),
             status: 'error',
             duration: 8000,
             isClosable: true,
