@@ -129,6 +129,13 @@ function GettingStarted() {
                 <Text>• Pause on source + unpause on target can be coordinated atomically per DAG.</Text>
                 <Text>• Rollback removes migrated rows and reverses pause/unpause — per DAG or per wave.</Text>
                 <Text>• Abort stops a running wave; in-flight writes finish cleanly.</Text>
+                <Text>
+                  • Use{' '}
+                  <Link as={NavLink} to={`/${ROUTES.CUTOVER_HISTORY}`} color="brand.500" fontWeight="semibold">
+                    Cutover History
+                  </Link>{' '}
+                  to revisit any past wave — nothing is lost between visits.
+                </Text>
               </VStack>
             </Box>
           </VStack>
@@ -635,15 +642,25 @@ export default function CutoverPage() {
 
   return (
     <Box>
-      <Box mb={3}>
-        <Heading size="md" mb={0.5}>
-          Cutover
-        </Heading>
-        <Text fontSize="xs" color="gray.600">
-          Migrating from <strong>{source.url}</strong> ({source.platform}) via Airflow Connection{' '}
-          <Code fontSize="2xs">{source.connId || 'starship_source'}</Code> into this Airflow.
-        </Text>
-      </Box>
+      <Stack
+        direction={{ base: 'column', md: 'row' }}
+        justify="space-between"
+        align={{ base: 'flex-start', md: 'center' }}
+        mb={3}
+      >
+        <Box>
+          <Heading size="md" mb={0.5}>
+            Cutover
+          </Heading>
+          <Text fontSize="xs" color="gray.600">
+            Migrating from <strong>{source.url}</strong> ({source.platform}) via Airflow Connection{' '}
+            <Code fontSize="2xs">{source.connId || 'starship_source'}</Code> into this Airflow.
+          </Text>
+        </Box>
+        <Button as={NavLink} to={`/${ROUTES.CUTOVER_HISTORY}`} size="sm" variant="outline" colorScheme="brand">
+          Cutover History
+        </Button>
+      </Stack>
 
       <VStack align="stretch" spacing={4}>
         <GettingStarted />
