@@ -98,11 +98,6 @@ def _no_cache_starship_assets(response):
     URLs don't change between releases; without this header a stale bundle
     can stick around in the browser cache and silently break the UI after
     an upgrade. Mirrors the AF3 FastAPI handler's behaviour.
-
-    NOTE: do NOT cache-bust by appending a query string in the template,
-    because the ES `import` statements in the built JS fetch chunks WITHOUT
-    a query string. Mismatched URLs cause the browser to evaluate the
-    module graph twice (two Reacts, two Chakras → infinite re-renders).
     """
     if request.path.startswith("/starship/static/assets/"):
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"

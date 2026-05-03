@@ -49,8 +49,6 @@ export default defineConfig(({ mode }) => ({
         entryFileNames: 'assets/[name].js',
         chunkFileNames: 'assets/[name].js',
         assetFileNames: 'assets/[name].[ext]',
-        // Granular manual chunks for better caching and tree-shaking.
-        //
         // React lives in the same chunk as Chakra on purpose: several of
         // Chakra's transitive deps are CJS and do `require('react')` /
         // `require('react-dom')` during module evaluation. When React ends
@@ -58,9 +56,9 @@ export default defineConfig(({ mode }) => ({
         // importing chunk an `undefined` namespace before the React chunk
         // finishes loading, and you get `Cannot read properties of undefined
         // (reading 'useLayoutEffect')` during Chakra initialisation. The
-        // race is timing-sensitive and hits harder on slow cold starts
-        // (e.g. Astro behind a CDN). Co-locating React + Chakra eliminates
-        // the cross-chunk CJS resolution entirely.
+        // race is timing-sensitive and hits harder on slow cold starts.
+        // Co-locating React + Chakra eliminates the cross-chunk CJS
+        // resolution entirely.
         manualChunks(id) {
           if (!id.includes('node_modules')) return undefined;
           if (
@@ -71,7 +69,6 @@ export default defineConfig(({ mode }) => ({
             id.includes('@popperjs') ||
             id.includes('react-remove-scroll') ||
             id.includes('react-style-singleton') ||
-            id.includes('@internationalized') ||
             id.includes('aria-hidden') ||
             id.includes('focus-lock') ||
             id.includes('react-focus-lock') ||
