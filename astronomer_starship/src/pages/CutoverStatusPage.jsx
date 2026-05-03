@@ -39,21 +39,10 @@ import { ArrowBackIcon, ChevronDownIcon, RepeatIcon } from '@chakra-ui/icons';
 import axios from 'axios';
 import PropTypes from 'prop-types';
 import { NavLink, useParams } from 'react-router-dom';
-import constants, { ROUTES } from '../constants';
-import { localRoute } from '../util';
+import constants, { CUTOVER_STATUS_COLORS, ROUTES } from '../constants';
+import { extractAxiosError, localRoute } from '../util';
 import ConfirmDialog from '../component/ConfirmDialog';
 import useConfirm from '../hooks/useConfirm';
-
-const STATUS_COLORS = {
-  running: 'info',
-  completed: 'success',
-  failed: 'error',
-  aborted: 'warning',
-  rolled_back: 'warning',
-  deferred: 'amethyst',
-  skipped: 'gray',
-  pending: 'gray',
-};
 
 // DAG statuses that allow each action. Kept in one place so the action bar
 // and the per-DAG menu stay consistent.
@@ -88,16 +77,8 @@ const WAVE_SHAPE = PropTypes.shape({
 
 function formatTimestamp(iso) {
   if (!iso) return '—';
-  try {
-    return new Date(iso).toLocaleString();
-  } catch {
-    return iso;
-  }
-}
-
-function extractError(err) {
-  const raw = err.response?.data?.error || err.message || 'Unknown error';
-  return typeof raw === 'string' ? raw : JSON.stringify(raw);
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString();
 }
 
 function ProgressBar({ summary = null }) {
@@ -266,7 +247,7 @@ function DagTable({ dags = null, isWaveRunning, onDagAction }) {
                   {r.dagId}
                 </Td>
                 <Td>
-                  <Badge colorScheme={STATUS_COLORS[r.status] || 'gray'}>{r.status}</Badge>
+                  <Badge colorScheme={CUTOVER_STATUS_COLORS[r.status] || 'gray'}>{r.status}</Badge>
                 </Td>
                 <Td fontSize="xs">{r.step || '—'}</Td>
                 <Td isNumeric fontSize="xs">
@@ -343,7 +324,7 @@ export default function CutoverStatusPage() {
           setError(null);
         }
       } catch (err) {
-        const msg = extractError(err);
+        const msg = extractAxiosError(err);
         if (!abortRef.current) setError(msg);
         if (showLoader) {
           toast({
@@ -400,7 +381,7 @@ export default function CutoverStatusPage() {
       } catch (err) {
         toast({
           title: 'Action failed',
-          description: extractError(err),
+          description: extractAxiosError(err),
           status: 'error',
           duration: 8000,
           isClosable: true,
@@ -601,7 +582,7 @@ export default function CutoverStatusPage() {
                   <Badge colorScheme={wave.type === 'bigbang' ? 'amethyst' : 'brand'} fontSize="sm">
                     {wave.type}
                   </Badge>
-                  <Badge colorScheme={STATUS_COLORS[wave.status] || 'gray'} fontSize="sm">
+                  <Badge colorScheme={CUTOVER_STATUS_COLORS[wave.status] || 'gray'} fontSize="sm">
                     {wave.status}
                   </Badge>
                   {wave.abort_requested && <Badge colorScheme="warning">abort requested</Badge>}

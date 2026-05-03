@@ -176,7 +176,7 @@ function reducer(state, action) {
     case 'set-local-airflow-version':
       return { ...state, localAirflowVersion: action.version };
     case 'set-source-conn-id': {
-      // Changing the target conn_id invalidates "is this connection saved?"
+      // Changing the source conn_id invalidates "is this connection saved?"
       // since the saved record might live under the old id.
       const next = {
         ...state,
@@ -313,8 +313,6 @@ function reducer(state, action) {
         sourceConnectionSaved: false,
         isSourceSetupComplete: false,
       };
-    case 'reset':
-      return initialState;
     case 'invalidate-token':
       return {
         ...state,
@@ -404,45 +402,20 @@ export function useSourceSetupComplete() {
   return isSourceSetupComplete;
 }
 
+export function useSourceHasCreds() {
+  const state = useAppState();
+  return hasSourceCreds(state);
+}
+
 export function useSourceConfig() {
   const state = useAppState();
   return useMemo(
     () => ({
+      url: state.sourceUrl,
       platform: state.sourcePlatform,
       connId: state.sourceConnId,
-      url: state.sourceUrl,
-      token: state.sourceToken,
-      login: state.sourceLogin,
-      password: state.sourcePassword,
-      impersonationChain: state.sourceImpersonationChain,
-      region: state.sourceRegion,
-      roleArn: state.sourceRoleArn,
-      environmentName: state.sourceEnvironmentName,
-      isTouched: state.sourceIsTouched,
-      credsTouched: state.sourceCredsTouched,
-      isValidUrl: state.sourceIsValidUrl,
-      isAirflow: state.sourceIsAirflow,
-      isStarship: state.sourceIsStarship,
-      connectionSaved: state.sourceConnectionSaved,
     }),
-    [
-      state.sourcePlatform,
-      state.sourceConnId,
-      state.sourceUrl,
-      state.sourceToken,
-      state.sourceLogin,
-      state.sourcePassword,
-      state.sourceImpersonationChain,
-      state.sourceRegion,
-      state.sourceRoleArn,
-      state.sourceEnvironmentName,
-      state.sourceIsTouched,
-      state.sourceCredsTouched,
-      state.sourceIsValidUrl,
-      state.sourceIsAirflow,
-      state.sourceIsStarship,
-      state.sourceConnectionSaved,
-    ],
+    [state.sourceUrl, state.sourcePlatform, state.sourceConnId],
   );
 }
 

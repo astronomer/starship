@@ -21,9 +21,8 @@ import requests
 # after ``import airflow.hooks.base``.
 from airflow.hooks.base import BaseHook  # noqa: E402  isort:skip
 
-from astronomer_starship.providers.starship.auth.astro import AstroBearerAuth
+from astronomer_starship.providers.starship.auth.factory import BearerTokenAuth
 from astronomer_starship.providers.starship.auth.mwaa import make_mwaa_auth
-from astronomer_starship.providers.starship.auth.oss import OssBearerAuth, resolve_oss_auth
 
 # ---------------------------------------------------------------------------
 # Auth classes
@@ -31,34 +30,17 @@ from astronomer_starship.providers.starship.auth.oss import OssBearerAuth, resol
 
 
 class TestAuthClasses:
-    def test_astro_bearer_sets_authorization_header(self):
+    def test_bearer_sets_authorization_header(self):
         req = requests.Request(method="GET", url="https://x").prepare()
-        auth = AstroBearerAuth(password="mytoken")
+        auth = BearerTokenAuth(password="mytoken")
         auth(req)
         assert req.headers["Authorization"] == "Bearer mytoken"
 
-    def test_astro_bearer_without_token_raises(self):
+    def test_bearer_without_token_raises(self):
         req = requests.Request(method="GET", url="https://x").prepare()
-        auth = AstroBearerAuth(password=None)
+        auth = BearerTokenAuth(password=None)
         with pytest.raises(RuntimeError):
             auth(req)
-
-    def test_oss_bearer_sets_authorization_header(self):
-        req = requests.Request(method="GET", url="https://x").prepare()
-        auth = OssBearerAuth(password="tok")
-        auth(req)
-        assert req.headers["Authorization"] == "Bearer tok"
-
-    def test_resolve_oss_auth_returns_none_for_basic(self):
-        # None means "HttpHook does Basic itself".
-        assert resolve_oss_auth("user", "pw") is None
-
-    def test_resolve_oss_auth_returns_bearer_class_for_token_only(self):
-        assert resolve_oss_auth(None, "tok") is OssBearerAuth
-
-    def test_resolve_oss_auth_requires_something(self):
-        with pytest.raises(RuntimeError):
-            resolve_oss_auth(None, None)
 
     def test_mwaa_factory_requires_region_and_env(self):
         with pytest.raises(RuntimeError):
@@ -76,8 +58,9 @@ class TestAuthClasses:
 # ---------------------------------------------------------------------------
 
 
-def _fake_conn(password=None, login=None, extra=None):
+def _fake_conn(conn_type="http", password=None, login=None, extra=None):
     c = MagicMock()
+    c.conn_type = conn_type
     c.password = password
     c.login = login
     c.extra = json.dumps(extra) if extra is not None else None
@@ -92,35 +75,34 @@ class TestResolveSourceAuth:
         # (Airflow's deprecation shims drop the attribute after import).
         return patch.object(BaseHook, "get_connection", return_value=conn)
 
-    def test_astro_dispatch(self):
+    def test_http_bearer_dispatch(self):
         from astronomer_starship.providers.starship.auth import factory
 
         with self._get_connection_patch(
-            _fake_conn(password="tok", extra={"starship_platform": "astro"})  # pragma: allowlist secret
+            _fake_conn(conn_type="http", password="tok")  # pragma: allowlist secret
         ):
-            assert factory.resolve_source_auth("starship_source") is AstroBearerAuth
+            assert factory.resolve_source_auth("starship_source") is BearerTokenAuth
 
-    def test_oss_bearer_dispatch(self):
+    def test_http_basic_dispatch_returns_none(self):
         from astronomer_starship.providers.starship.auth import factory
 
         with self._get_connection_patch(
-            _fake_conn(password="tok", extra={"starship_platform": "oss"})  # pragma: allowlist secret
-        ):
-            assert factory.resolve_source_auth("starship_source") is OssBearerAuth
-
-    def test_oss_basic_dispatch_returns_none(self):
-        from astronomer_starship.providers.starship.auth import factory
-
-        with self._get_connection_patch(
-            _fake_conn(login="user", password="pw", extra={"starship_platform": "oss"})  # pragma: allowlist secret
+            _fake_conn(conn_type="http", login="user", password="pw")  # pragma: allowlist secret
         ):
             # None = HttpHook does Basic natively.
             assert factory.resolve_source_auth("starship_source") is None
 
+    def test_http_without_credentials_rejected(self):
+        from astronomer_starship.providers.starship.auth import factory
+
+        with self._get_connection_patch(_fake_conn(conn_type="http")):
+            with pytest.raises(RuntimeError):
+                factory.resolve_source_auth("starship_source")
+
     def test_gcc_without_impersonation_picks_default(self):
         from astronomer_starship.providers.starship.auth import factory
 
-        with self._get_connection_patch(_fake_conn(extra={"starship_platform": "gcc"})):
+        with self._get_connection_patch(_fake_conn(conn_type="google_cloud_platform")):
             cls = factory.resolve_source_auth("starship_source")
             assert cls.__name__ == "ComposerV2BearerAuth"
 
@@ -128,7 +110,7 @@ class TestResolveSourceAuth:
         from astronomer_starship.providers.starship.auth import factory
 
         with self._get_connection_patch(
-            _fake_conn(extra={"starship_platform": "gcc", "impersonation_chain": ["sa@x.iam"]})
+            _fake_conn(conn_type="google_cloud_platform", extra={"impersonation_chain": ["sa@x.iam"]})
         ):
             cls = factory.resolve_source_auth("starship_source")
             assert cls.__name__ == "ImpersonatedComposerAuth"
@@ -138,30 +120,29 @@ class TestResolveSourceAuth:
 
         with self._get_connection_patch(
             _fake_conn(
+                conn_type="aws",
                 extra={
-                    "starship_platform": "mwaa",
                     "region_name": "us-west-2",
                     "environment_name": "env1",
-                }
+                },
             )
         ):
             cls = factory.resolve_source_auth("starship_source")
             assert issubclass(cls, requests.auth.AuthBase)
 
-    def test_unknown_platform_rejected(self):
+    def test_aws_missing_region_rejected(self):
         from astronomer_starship.providers.starship.auth import factory
 
-        with self._get_connection_patch(_fake_conn(extra={"starship_platform": "bogus"})):
-            with pytest.raises(RuntimeError):
+        with self._get_connection_patch(_fake_conn(conn_type="aws", extra={"environment_name": "env1"})):
+            with pytest.raises(RuntimeError, match="region_name"):
                 factory.resolve_source_auth("starship_source")
 
-    def test_backward_compat_no_hint_bearer_password_only(self):
-        """Connections created before this refactor have no starship_platform hint.
-        Fall back to AstroBearerAuth when only password is set."""
+    def test_unknown_conn_type_rejected(self):
         from astronomer_starship.providers.starship.auth import factory
 
-        with self._get_connection_patch(_fake_conn(password="tok")):  # pragma: allowlist secret
-            assert factory.resolve_source_auth("starship_source") is AstroBearerAuth
+        with self._get_connection_patch(_fake_conn(conn_type="bogus")):
+            with pytest.raises(RuntimeError):
+                factory.resolve_source_auth("starship_source")
 
 
 # ---------------------------------------------------------------------------
@@ -182,14 +163,14 @@ class TestHttpHookHeaderStrip:
             {
                 "Accept": "application/json",
                 "impersonation_chain": "leaked-value",
-                "starship_platform": "gcc",
+                "region_name": "us-west-2",
                 "Authorization": "Bearer legit",
             }
         )
         with patch("airflow.providers.http.hooks.http.HttpHook.get_conn", return_value=fake_session):
             session = hook.get_conn()
         assert "impersonation_chain" not in session.headers
-        assert "starship_platform" not in session.headers
+        assert "region_name" not in session.headers
         # Legit HTTP headers are preserved.
         assert session.headers["Accept"] == "application/json"
         assert session.headers["Authorization"] == "Bearer legit"
@@ -199,16 +180,16 @@ class TestHttpHookBearerRebind:
     def test_bearer_token_conn_rebinds_auth_with_password(self):
         """Airflow 2.10 HttpHook calls ``auth_type()`` with zero args when
         ``conn.login`` is empty. For bearer-token-in-password connections
-        (Astro, OSS-bearer) that strips the token. StarshipHttpHook must
-        re-instantiate auth with both (login, password) so the token lands."""
-        from astronomer_starship.providers.starship.auth.astro import AstroBearerAuth
+        that strips the token. StarshipHttpHook must re-instantiate auth
+        with both (login, password) so the token lands."""
+        from astronomer_starship.providers.starship.auth.factory import BearerTokenAuth
         from astronomer_starship.providers.starship.hooks.starship import StarshipHttpHook
 
-        hook = StarshipHttpHook(http_conn_id="dummy", auth_type=AstroBearerAuth)
+        hook = StarshipHttpHook(http_conn_id="dummy", auth_type=BearerTokenAuth)
         fake_session = requests.Session()
         # Simulate what HttpHook's zero-arg branch does: session.auth set to
-        # an AstroBearerAuth with no token.
-        fake_session.auth = AstroBearerAuth()
+        # a BearerTokenAuth with no token.
+        fake_session.auth = BearerTokenAuth()
         fake_conn = MagicMock(login=None, password="my-token")
 
         with patch("airflow.providers.http.hooks.http.HttpHook.get_conn", return_value=fake_session), patch.object(
@@ -216,17 +197,17 @@ class TestHttpHookBearerRebind:
         ):
             session = hook.get_conn()
 
-        # Rebound: a fresh AstroBearerAuth carrying the real token.
-        assert isinstance(session.auth, AstroBearerAuth)
+        # Rebound: a fresh BearerTokenAuth carrying the real token.
+        assert isinstance(session.auth, BearerTokenAuth)
         assert session.auth.token == "my-token"
 
     def test_rebind_is_skipped_when_login_is_set(self):
         """HTTP Basic (login + password) already works via super(); don't
         overwrite the correctly-bound auth."""
-        from astronomer_starship.providers.starship.auth.oss import OssBearerAuth
+        from astronomer_starship.providers.starship.auth.factory import BearerTokenAuth
         from astronomer_starship.providers.starship.hooks.starship import StarshipHttpHook
 
-        hook = StarshipHttpHook(http_conn_id="dummy", auth_type=OssBearerAuth)
+        hook = StarshipHttpHook(http_conn_id="dummy", auth_type=BearerTokenAuth)
         sentinel_auth = object()
         fake_session = requests.Session()
         fake_session.auth = sentinel_auth  # pretend super() bound it correctly
@@ -317,6 +298,20 @@ class TestMigrateDagHistory:
             unpause_dag_in_target=True,
         )
         tgt.set_dag_is_paused.assert_any_call(dag_id="d1", is_paused=False)
+
+    def test_pre_checks_reject_missing_target_dag(self):
+        from astronomer_starship.providers.starship.operators.starship import migrate_dag_history
+
+        src, tgt = _mk_hook(), _mk_hook()
+        tgt.get_dag.return_value = None
+        with pytest.raises(RuntimeError, match="not found in target"):
+            migrate_dag_history(
+                source_hook=src,
+                target_hook=tgt,
+                target_dag_id="d1",
+                pause_dag_in_source=False,
+                pre_checks=True,
+            )
 
     def test_pre_checks_reject_unpaused_target(self):
         from astronomer_starship.providers.starship.operators.starship import migrate_dag_history
