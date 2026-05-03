@@ -31,6 +31,23 @@ export const ROUTES = Object.freeze({
 });
 
 /**
+ * Chakra colorScheme for each cutover status. Used for both wave-level
+ * statuses (Cutover History) and per-DAG row statuses (Cutover Status),
+ * so the per-DAG-only values (`deferred`, `skipped`) live here too.
+ * Callers fall back to 'gray' for unknown statuses.
+ */
+export const CUTOVER_STATUS_COLORS = Object.freeze({
+  running: 'info',
+  completed: 'success',
+  failed: 'error',
+  aborted: 'warning',
+  rolled_back: 'warning',
+  deferred: 'amethyst',
+  skipped: 'gray',
+  pending: 'gray',
+});
+
+/**
  * Source platforms supported by the Cutover Tool.
  * Must stay in sync with SUPPORTED_SOURCE_PLATFORMS in astronomer_starship/common.py.
  */

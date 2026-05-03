@@ -35,20 +35,11 @@ import { ChevronDownIcon, ChevronUpIcon, RepeatIcon, TimeIcon, WarningTwoIcon } 
 import axios from 'axios';
 import PropTypes from 'prop-types';
 import { NavLink } from 'react-router-dom';
-import constants, { ROUTES } from '../constants';
+import constants, { CUTOVER_STATUS_COLORS, ROUTES } from '../constants';
 import { extractAxiosError, localRoute } from '../util';
 import { useSourceSetupComplete } from '../AppContext';
 import ConfirmDialog from '../component/ConfirmDialog';
 import useConfirm from '../hooks/useConfirm';
-
-const STATUS_COLORS = {
-  running: 'info',
-  completed: 'success',
-  failed: 'error',
-  aborted: 'warning',
-  rolled_back: 'warning',
-  pending: 'gray',
-};
 
 function formatTimestamp(iso) {
   if (!iso) return '—';
@@ -175,7 +166,7 @@ function WavesTable({ waves, isLoading, onRefresh }) {
                         <Badge colorScheme={w.type === 'bigbang' ? 'amethyst' : 'brand'}>{w.type}</Badge>
                       </Td>
                       <Td>
-                        <Badge colorScheme={STATUS_COLORS[w.status] || 'gray'}>{w.status}</Badge>
+                        <Badge colorScheme={CUTOVER_STATUS_COLORS[w.status] || 'gray'}>{w.status}</Badge>
                       </Td>
                       <Td>
                         <Text fontSize="xs">
