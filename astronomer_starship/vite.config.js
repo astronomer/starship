@@ -49,42 +49,20 @@ export default defineConfig(({ mode }) => ({
         entryFileNames: 'assets/[name].js',
         chunkFileNames: 'assets/[name].js',
         assetFileNames: 'assets/[name].[ext]',
-        // React lives in the same chunk as Chakra on purpose: several of
-        // Chakra's transitive deps are CJS and do `require('react')` /
-        // `require('react-dom')` during module evaluation. When React ends
-        // up in a different chunk, Vite's CJS→ESM interop can hand the
-        // importing chunk an `undefined` namespace before the React chunk
-        // finishes loading, and you get `Cannot read properties of undefined
-        // (reading 'useLayoutEffect')` during Chakra initialisation. The
-        // race is timing-sensitive and hits harder on slow cold starts.
-        // Co-locating React + Chakra eliminates the cross-chunk CJS
-        // resolution entirely.
-        manualChunks(id) {
-          if (!id.includes('node_modules')) return undefined;
-          if (
-            id.includes('@chakra-ui') ||
-            id.includes('@emotion') ||
-            id.includes('framer-motion') ||
-            id.includes('@zag-js') ||
-            id.includes('@popperjs') ||
-            id.includes('react-remove-scroll') ||
-            id.includes('react-style-singleton') ||
-            id.includes('aria-hidden') ||
-            id.includes('focus-lock') ||
-            id.includes('react-focus-lock') ||
-            id.includes('use-callback-ref') ||
-            id.includes('use-sidecar') ||
-            id.includes('/react-dom/') ||
-            id.includes('/react/') ||
-            id.includes('scheduler')
-          ) {
-            return 'chakra';
-          }
-          if (id.includes('react-router')) return 'router';
-          if (id.includes('@tanstack/react-table')) return 'table';
-          if (id.includes('react-icons')) return 'icons';
-          if (id.includes('axios')) return 'http';
-          return undefined;
+        // Granular manual chunks for better caching and tree-shaking
+        manualChunks: {
+          // Core React - smallest, most stable
+          'react-core': ['react', 'react-dom'],
+          // Router - separate chunk
+          router: ['react-router-dom', 'react-router'],
+          // Chakra UI and its dependencies - large, infrequently updated
+          chakra: ['@chakra-ui/react', '@chakra-ui/icons', '@emotion/react', '@emotion/styled', 'framer-motion'],
+          // Data table - only needed on data pages
+          table: ['@tanstack/react-table'],
+          // HTTP client
+          http: ['axios'],
+          // Icons - can be large
+          icons: ['react-icons'],
         },
       },
     },
