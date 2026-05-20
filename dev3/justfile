@@ -54,3 +54,9 @@ start *ARGS: _build-frontend _build-image-local
 # run `astro dev stop`
 stop:
     @astro dev stop
+
+# make authenticated curl request to dev server with path and additional curl args
+curl path *ARGS:
+    #!/bin/bash
+    TOKEN=$(curl -s -X POST http://dev3.localhost:6563/auth/token -H "Content-Type: application/json" -d '{"username": "admin", "password": "admin"}' | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")  # pragma: allowlist secret
+    curl http://dev3.localhost:6563/{{path}} -H "Authorization: Bearer $TOKEN" {{ARGS}}
