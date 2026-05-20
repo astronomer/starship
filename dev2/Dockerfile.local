@@ -1,4 +1,4 @@
-ARG RUNTIME_VERSION=13.4.0
+ARG RUNTIME_VERSION=13.7.0
 FROM astrocrpublic.azurecr.io/astronomer/astro-runtime:${RUNTIME_VERSION}-base
 
 WORKDIR /usr/local/airflow
