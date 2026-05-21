@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 
 # restrict access to users with access to the Airflow configuration, which is more or less equivalent to admin access.
-REQUIRES_ADMIN = auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
+requires_config_read = auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
 
 
 def starship_route(  # noqa: C901
@@ -109,7 +109,7 @@ class StarshipApi(BaseView):
     route_base = "/api/starship"
     default_view = "health"
 
-    @REQUIRES_ADMIN
+    @requires_config_read
     @expose("/health", methods=["GET"])
     @csrf.exempt
     def health(self) -> str:
@@ -118,7 +118,7 @@ class StarshipApi(BaseView):
 
         return starship_route(get=ok)
 
-    @REQUIRES_ADMIN
+    @requires_config_read
     @expose("/telescope", methods=["GET"])
     @csrf.exempt
     def telescope(self):
@@ -127,28 +127,28 @@ class StarshipApi(BaseView):
             presigned_url=request.args.get("presigned_url", None),
         )
 
-    @REQUIRES_ADMIN
+    @requires_config_read
     @expose("/airflow_version", methods=["GET"])
     @csrf.exempt
     def airflow_version(self) -> str:
         starship_compat = StarshipCompatabilityLayer()
         return starship_route(get=starship_compat.get_airflow_version)
 
-    @REQUIRES_ADMIN
+    @requires_config_read
     @expose("/info", methods=["GET"])
     @csrf.exempt
     def info(self) -> str:
         starship_compat = StarshipCompatabilityLayer()
         return starship_route(get=starship_compat.get_info)
 
-    @REQUIRES_ADMIN
+    @requires_config_read
     @expose("/env_vars", methods=["GET"])
     @csrf.exempt
     def env_vars(self):
         starship_compat = StarshipCompatabilityLayer()
         return starship_route(get=starship_compat.get_env_vars)
 
-    @REQUIRES_ADMIN
+    @requires_config_read
     @expose("/pools", methods=["GET", "POST", "DELETE"])
     @csrf.exempt
     def pools(self):
@@ -160,7 +160,7 @@ class StarshipApi(BaseView):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.pool_attrs()),
         )
 
-    @REQUIRES_ADMIN
+    @requires_config_read
     @expose("/variables", methods=["GET", "POST", "DELETE"])
     @csrf.exempt
     def variables(self):
@@ -172,7 +172,7 @@ class StarshipApi(BaseView):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.variable_attrs()),
         )
 
-    @REQUIRES_ADMIN
+    @requires_config_read
     @expose("/connections", methods=["GET", "POST", "DELETE"])
     @csrf.exempt
     def connections(self):
@@ -184,7 +184,7 @@ class StarshipApi(BaseView):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.connection_attrs()),
         )
 
-    @REQUIRES_ADMIN
+    @requires_config_read
     @expose("/dags", methods=["GET", "PATCH"])
     @csrf.exempt
     def dags(self):
@@ -195,7 +195,7 @@ class StarshipApi(BaseView):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.dag_attrs()),
         )
 
-    @REQUIRES_ADMIN
+    @requires_config_read
     @expose("/dag_runs", methods=["GET", "POST", "DELETE"])
     @csrf.exempt
     def dag_runs(self):
@@ -207,7 +207,7 @@ class StarshipApi(BaseView):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.dag_runs_attrs()),
         )
 
-    @REQUIRES_ADMIN
+    @requires_config_read
     @expose("/task_instances", methods=["GET", "POST"])
     @csrf.exempt
     def task_instances(self):
@@ -218,7 +218,7 @@ class StarshipApi(BaseView):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.task_instances_attrs()),
         )
 
-    @REQUIRES_ADMIN
+    @requires_config_read
     @expose("/task_instance_history", methods=["GET", "POST"])
     @csrf.exempt
     def task_instance_history(self):
@@ -229,7 +229,7 @@ class StarshipApi(BaseView):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.task_instance_history_attrs()),
         )
 
-    @REQUIRES_ADMIN
+    @requires_config_read
     @expose("/task_log", methods=["GET", "POST", "DELETE"])
     @csrf.exempt
     def task_logs(self):
@@ -241,7 +241,7 @@ class StarshipApi(BaseView):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.task_log_attrs()),
         )
 
-    @REQUIRES_ADMIN
+    @requires_config_read
     @expose("/xcom", methods=["GET", "POST", "DELETE"])
     @csrf.exempt
     def xcom(self):
