@@ -4,6 +4,7 @@ from functools import partial
 from typing import TYPE_CHECKING, Annotated
 
 from airflow.api_fastapi.common.router import AirflowRouter
+from airflow.api_fastapi.core_api.security import requires_access_configuration
 from airflow.plugins_manager import AirflowPlugin
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -127,7 +128,11 @@ async def starship_compat() -> StarshipAirflow:
     return StarshipCompatabilityLayer()
 
 
-router = AirflowRouter(tags=["Starship"])
+router = AirflowRouter(
+    tags=["Starship"],
+    # restrict access to users with access to the Airflow configuration, which is more or less equivalent to admin access.
+    dependencies=[Depends(requires_access_configuration("GET"))],
+)
 
 
 class StarshipApi(FastAPI):

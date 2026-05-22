@@ -1,4 +1,4 @@
-ARG RUNTIME_VERSION=3.1-12
+ARG RUNTIME_VERSION=3.1-15
 FROM astrocrpublic.azurecr.io/runtime:${RUNTIME_VERSION}-base
 
 WORKDIR /usr/local/airflow
