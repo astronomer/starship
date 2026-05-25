@@ -41,18 +41,17 @@ the Starship API Routes
 3. Push up to GitHub (running pre-commit)
 4. Create a PR, get approval
 5. Merge the PR to `main`
-6. On `main`: Create a tag
+6. Do any manual or integration testing
+7. A release manager (with push permissions) runs:
 
     ```shell
-    VERSION="v$(python -c 'import astronomer_starship; print(astronomer_starship.__version__)')"; git tag -d $VERSION; git tag $VERSION
+    just release PATCH   # or MINOR or MAJOR
     ```
 
-7. Do any manual or integration testing
-8. Push the tag to GitHub `git push origin --tag`, which will create
-   a `Draft` [release](https://github.com/astronomer/astronomer-starship/releases) and upload
-   to [test.pypi.org](https://test.pypi.org/project/astronomer-starship/) via CICD
-9. Approve the [release](https://github.com/astronomer/astronomer-starship/releases) on GitHub, which
-   will upload to [pypi.org](https://pypi.org/project/astronomer-starship/) via CICD
+    This uses [commitizen](https://commitizen-tools.github.io/commitizen/) to bump the version in
+    `astronomer_starship/__init__.py`, create a bump commit, tag it as `v<version>`, and push both
+    to GitHub. CI will then build and publish the package directly to [pypi.org](https://pypi.org/project/astronomer-starship/).
+    The recipe enforces that you are on `main` and up-to-date with `origin/main`.
 
 ### Versioning
 

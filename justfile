@@ -103,6 +103,20 @@ clean: clean-backend-build clean-frontend-build clean-frontend-install
 
 # Bump the version, create a release commit and tag, and push (TYPE: MAJOR, MINOR, PATCH)
 release TYPE:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    current_branch=$(git rev-parse --abbrev-ref HEAD)
+    if [ "$current_branch" != "main" ]; then
+        echo "Error: releases must be made from the 'main' branch (currently on '$current_branch')"
+        exit 1
+    fi
+    git fetch origin main
+    local_sha=$(git rev-parse HEAD)
+    remote_sha=$(git rev-parse origin/main)
+    if [ "$local_sha" != "$remote_sha" ]; then
+        echo "Error: local 'main' is not up-to-date with 'origin/main'"
+        exit 1
+    fi
     cz bump --increment {{TYPE}}
     git push && git push --tags
 
