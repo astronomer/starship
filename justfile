@@ -2,7 +2,6 @@
 set dotenv-load := true
 SRC_DIR := "astronomer_starship"
 DOCS_DIR := "docs"
-VERSION := `echo $(python -c 'from astronomer_starship import __version__; print(__version__)')`
 
 default:
     @just --choose
@@ -102,19 +101,10 @@ clean-frontend-install:
 # Clean everything
 clean: clean-backend-build clean-frontend-build clean-frontend-install
 
-# Tag as v$(<src>.__version__) and push to GH
-tag:
-    # Delete tag if it already exists
-    git tag -d v{{VERSION}} || true
-    # Tag and push
-    git tag v{{VERSION}}
-
-# Deploy the project
-deploy-tag: tag
-    git push origin v{{VERSION}}
-
-# Deploy the project
-deploy: deploy-tag
+# Bump the version, create a release commit and tag, and push (TYPE: MAJOR, MINOR, PATCH)
+release TYPE:
+    cz bump --increment {{TYPE}}
+    git push && git push --tags
 
 # Upload to TestPyPi for testing (note: you can only use each version once)
 upload-testpypi: clean install build
