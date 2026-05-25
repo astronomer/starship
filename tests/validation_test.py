@@ -148,4 +148,3 @@ def test_docker_pytest(has_docker, docker_client, project_root, local_version):
             test: Future
             if test.exception():
                 raise test.exception()
-
