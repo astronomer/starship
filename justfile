@@ -199,14 +199,6 @@ update-secrets:
 serve-docs:
     mkdocs serve -w {{DOCS_DIR}} -w {{SRC_DIR}}
 
-# Build documentation locally (likely unnecessary)
-build-docs: clean
-    mkdocs build
-
-# Deploy the documentation to GitHub Pages
-deploy-docs UPSTREAM="origin": clean
-    mkdocs gh-deploy -r {{UPSTREAM}}
-
 # run just commands from the dev2 project for running the local version of Starship in Airflow 2
 dev2 *ARGS:
     @just dev2/{{ARGS}}

@@ -79,6 +79,10 @@ dev = [
     "docker>=6",
 
     # docs
+    "astronomer-starship[docs]",
+]
+
+docs = [
     "mkdocs",
     "mkdocs-material",
     "mkdocstrings[python]",
