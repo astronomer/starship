@@ -2,7 +2,6 @@
 set dotenv-load := true
 SRC_DIR := "astronomer_starship"
 DOCS_DIR := "docs"
-VERSION := `echo $(python -c 'from astronomer_starship import __version__; print(__version__)')`
 
 default:
     @just --choose
@@ -102,19 +101,24 @@ clean-frontend-install:
 # Clean everything
 clean: clean-backend-build clean-frontend-build clean-frontend-install
 
-# Tag as v$(<src>.__version__) and push to GH
-tag:
-    # Delete tag if it already exists
-    git tag -d v{{VERSION}} || true
-    # Tag and push
-    git tag v{{VERSION}}
-
-# Deploy the project
-deploy-tag: tag
-    git push origin v{{VERSION}}
-
-# Deploy the project
-deploy: deploy-tag
+# Bump the version, create a release commit and tag, and push (TYPE: MAJOR, MINOR, PATCH)
+release TYPE:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    current_branch=$(git rev-parse --abbrev-ref HEAD)
+    if [ "$current_branch" != "main" ]; then
+        echo "Error: releases must be made from the 'main' branch (currently on '$current_branch')"
+        exit 1
+    fi
+    git fetch origin main
+    local_sha=$(git rev-parse HEAD)
+    remote_sha=$(git rev-parse origin/main)
+    if [ "$local_sha" != "$remote_sha" ]; then
+        echo "Error: local 'main' is not up-to-date with 'origin/main'"
+        exit 1
+    fi
+    cz bump --increment {{TYPE}}
+    git push && git push --tags
 
 # Upload to TestPyPi for testing (note: you can only use each version once)
 upload-testpypi: clean install build

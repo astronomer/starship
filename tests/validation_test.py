@@ -148,15 +148,3 @@ def test_docker_pytest(has_docker, docker_client, project_root, local_version):
             test: Future
             if test.exception():
                 raise test.exception()
-
-
-def test_version(local_version):
-    import requests
-
-    package = "astronomer-starship"
-
-    releases = requests.get(f"https://pypi.org/pypi/{package}/json").json()["releases"]
-    shipped_versions = []
-    [shipped_versions.append(version) for version, details in releases.items()]
-
-    assert local_version not in shipped_versions

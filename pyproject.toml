@@ -68,6 +68,7 @@ dev = [
     # package
     "twine",
     "build",
+    "commitizen",
 
     # test
     "apache-airflow<3.2", # Starship only supports Airflow version up to 3.1 at the moment
@@ -140,3 +141,9 @@ addopts = [
     "--doctest-modules",
     "--doctest-continue-on-failure",
 ]
+
+[tool.commitizen]
+version = "2.8.6"
+version_files = ["astronomer_starship/__init__.py:__version__"]
+tag_format = "v$version"
+update_changelog_on_bump = false
