@@ -155,8 +155,12 @@ class StarshipAirflow(BaseStarshipAirflow):
             },
         }
 
-    def get_dags(self):
-        """Get all DAGs"""
+    def get_dags(self, dag_id=None):
+        """Get all DAGs, or a single DAG when ``dag_id`` is provided.
+
+        The targeted-fetch path keeps a single-DAG lookup at O(1) DB rows
+        instead of paying the full N+1 cost of the unfiltered query.
+        """
         from airflow.models import DagModel
 
         try:
@@ -165,6 +169,9 @@ class StarshipAirflow(BaseStarshipAirflow):
                 for attr_desc in self.dag_attrs().values()
                 if attr_desc["attr"] is not None
             ]
+            query = self.session.query(*fields)
+            if dag_id is not None:
+                query = query.filter(DagModel.dag_id == dag_id)
             # py36/sqlalchemy1.3 doesn't like label?
             # noinspection PyUnresolvedReferences
             return json.loads(
@@ -183,7 +190,7 @@ class StarshipAirflow(BaseStarshipAirflow):
                             )
                             for attr, attr_desc in self.dag_attrs().items()
                         }
-                        for result in self.session.query(*fields).all()
+                        for result in query.all()
                     ],
                     default=str,
                 )
