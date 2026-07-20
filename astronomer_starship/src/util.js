@@ -72,10 +72,12 @@ export function getTargetUrlFromParts(urlOrgPart, urlDeploymentPart, isAstro) {
 
 /**
  * Parses an Airflow webserver URL and extracts the relevant parts.
- * Supports both Astro and Software URL formats.
+ * Recognizes Astro and Software URL formats specifically; any other Airflow URL
+ * (self-hosted/OSS, or anything else) is still accepted as a valid, generic target.
  *
  * Astro format: https://{org}.astronomer.run/{deployment}[/home]
  * Software format: https://deployments.{basedomain}/{release-name}/airflow[/home]
+ * Anything else: accepted as-is (trailing /home and trailing slash stripped)
  *
  * @param {string} url - The full Airflow webserver URL
  * @returns {{ targetUrl: string, urlOrgPart: string, urlDeploymentPart: string,
@@ -142,6 +144,16 @@ export function parseAirflowUrl(url) {
         result.targetUrl = `https://deployments.${result.urlOrgPart}/${result.urlDeploymentPart}/airflow`;
         result.isValid = true;
       }
+    } else {
+      // Any other Airflow URL (self-hosted/OSS, or anything else) — accepted as-is, no shape
+      // check. `isAstro` is left at its existing default; env var migration / Houston lookup
+      // behavior for non-Astro/Software targets is unchanged.
+      let cleanPath = pathname.replace(/\/+$/, '');
+      if (cleanPath.endsWith('/home')) {
+        cleanPath = cleanPath.slice(0, -'/home'.length);
+      }
+      result.targetUrl = `${parsed.protocol}//${parsed.host}${cleanPath}`;
+      result.isValid = true;
     }
   } catch {
     // Invalid URL

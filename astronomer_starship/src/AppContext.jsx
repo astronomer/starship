@@ -50,7 +50,7 @@ function calculateIsSetupComplete(state, overrides = {}) {
 function reducer(state, action) {
   switch (action.type) {
     case 'set-url': {
-      const isValidUrl = !!(action.urlOrgPart && action.urlDeploymentPart);
+      const isValidUrl = !!action.isValid;
       return {
         ...state,
         isTouched: true,

@@ -44,6 +44,7 @@ export default function UrlTokenForm({
       targetUrl: parsed.isValid ? parsed.targetUrl : e.target.value,
       urlOrgPart: parsed.urlOrgPart,
       urlDeploymentPart: parsed.urlDeploymentPart,
+      isValid: parsed.isValid,
     });
   };
 
