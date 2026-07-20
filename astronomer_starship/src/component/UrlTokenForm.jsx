@@ -1,5 +1,7 @@
 import PropTypes from 'prop-types';
 import {
+  Box,
+  Code,
   Divider,
   FormControl,
   FormErrorMessage,
@@ -10,7 +12,9 @@ import {
   InputGroup,
   InputRightElement,
   Link,
+  Text,
   Tooltip,
+  VStack,
 } from '@chakra-ui/react';
 import { CheckIcon, ExternalLinkIcon, InfoIcon } from '@chakra-ui/icons';
 import { parseAirflowUrl, tokenUrlFromAirflowUrl } from '../util';
@@ -63,6 +67,31 @@ export default function UrlTokenForm({
         <FormHelperText fontSize="xs">Paste the full webserver URL of your target Airflow deployment</FormHelperText>
         <FormErrorMessage>Please enter a valid Airflow URL</FormErrorMessage>
       </FormControl>
+
+      {/* URL Format Guidance */}
+      <Box mt={3} p={3} bg="gray.50" borderRadius="md" borderWidth="1px" borderColor="gray.200">
+        <Text fontSize="xs" fontWeight="semibold" color="gray.600" mb={2}>
+          Supported URL Formats
+        </Text>
+        <VStack align="stretch" spacing={2}>
+          <Box>
+            <Text fontSize="2xs" color="gray.500" mb={0.5}>
+              Astro (Cloud)
+            </Text>
+            <Code fontSize="2xs" px={2} py={1} borderRadius="sm" display="block">
+              https://claaabbbcccddd.astronomer.run/aabbccdd
+            </Code>
+          </Box>
+          <Box>
+            <Text fontSize="2xs" color="gray.500" mb={0.5}>
+              Astro Private Cloud (Software)
+            </Text>
+            <Code fontSize="2xs" px={2} py={1} borderRadius="sm" display="block">
+              https://deployments.basedomain.com/release-name-1234/airflow
+            </Code>
+          </Box>
+        </VStack>
+      </Box>
 
       <Divider my={3} />
 
