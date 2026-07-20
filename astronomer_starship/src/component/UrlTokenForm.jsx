@@ -44,6 +44,7 @@ export default function UrlTokenForm({
       targetUrl: parsed.isValid ? parsed.targetUrl : e.target.value,
       urlOrgPart: parsed.urlOrgPart,
       urlDeploymentPart: parsed.urlDeploymentPart,
+      isValid: parsed.isValid,
     });
   };
 
@@ -70,7 +71,7 @@ export default function UrlTokenForm({
       {/* URL Format Guidance */}
       <Box mt={3} p={3} bg="gray.50" borderRadius="md" borderWidth="1px" borderColor="gray.200">
         <Text fontSize="xs" fontWeight="semibold" color="gray.600" mb={2}>
-          Supported URL Formats
+          Example URL Formats
         </Text>
         <VStack align="stretch" spacing={2}>
           <Box>
@@ -78,15 +79,45 @@ export default function UrlTokenForm({
               Astro (Cloud)
             </Text>
             <Code fontSize="2xs" px={2} py={1} borderRadius="sm" display="block">
-              https://claaabbbcccddd.astronomer.run/aabbccdd
+              https://cxxxxxxxxxxxxxxxxxxxxxxxx.xx.astronomer.run/dxxxxxxx
             </Code>
           </Box>
           <Box>
             <Text fontSize="2xs" color="gray.500" mb={0.5}>
-              Astro Private Cloud (Software)
+              Astro Private Cloud
             </Text>
             <Code fontSize="2xs" px={2} py={1} borderRadius="sm" display="block">
               https://deployments.basedomain.com/release-name-1234/airflow
+            </Code>
+          </Box>
+          <Box>
+            <Text fontSize="2xs" color="gray.500" mb={0.5}>
+              AWS MWAA (Amazon Managed Workflows for Apache Airflow)
+            </Text>
+            <Code fontSize="2xs" px={2} py={1} borderRadius="sm" display="block">
+              https://c1a2b3c4-d5e6-7f8g-9h0i-1j2k3l4m5n6o.c10.us-east-1.airflow.amazonaws.com
+            </Code>
+            <Code fontSize="2xs" px={2} py={1} borderRadius="sm" display="block">
+              https://c1a2b3c4-d5e6-7f8g-9h0i-1j2k3l4m5n6o-vpce.c10.us-east-1.airflow.amazonaws.com
+            </Code>
+          </Box>
+          <Box>
+            <Text fontSize="2xs" color="gray.500" mb={0.5}>
+              GCP Managed Service for Apache Airflow
+            </Text>
+            <Code fontSize="2xs" px={2} py={1} borderRadius="sm" display="block">
+              https://example-dot-us-central1.composer.googleusercontent.com
+            </Code>
+            <Code fontSize="2xs" px={2} py={1} borderRadius="sm" display="block">
+              https://example-tp.appspot.com
+            </Code>
+          </Box>
+          <Box>
+            <Text fontSize="2xs" color="gray.500" mb={0.5}>
+              Self-managed Apache Airflow
+            </Text>
+            <Code fontSize="2xs" px={2} py={1} borderRadius="sm" display="block">
+              https://airflow.internal.mycompany.com
             </Code>
           </Box>
         </VStack>

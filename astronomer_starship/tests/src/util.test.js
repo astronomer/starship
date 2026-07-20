@@ -108,14 +108,32 @@ describe('parseAirflowUrl', () => {
       expect(result.isValid).toBe(false);
     });
 
-    test('returns invalid for malformed URL', () => {
+    test('accepts a bare hostname with no shape check', () => {
+      // After protocol-prepending this parses as `https://not-a-valid-url`, a syntactically
+      // valid (if unusual) URL — there's no Astro/Software shape requirement to reject it.
       const result = parseAirflowUrl('not-a-valid-url');
-      expect(result.isValid).toBe(false);
+      expect(result.isValid).toBe(true);
+      expect(result.targetUrl).toBe('https://not-a-valid-url');
+    });
+  });
+
+  describe('Generic / OSS Airflow URLs', () => {
+    test('accepts a plain self-hosted domain', () => {
+      const result = parseAirflowUrl('https://random-domain.com/some/path');
+      expect(result.isValid).toBe(true);
+      expect(result.targetUrl).toBe('https://random-domain.com/some/path');
     });
 
-    test('returns invalid for unknown URL format', () => {
-      const result = parseAirflowUrl('https://random-domain.com/some/path');
-      expect(result.isValid).toBe(false);
+    test('accepts a self-hosted domain and strips a trailing /home', () => {
+      const result = parseAirflowUrl('https://airflow.mycompany.com/home');
+      expect(result.isValid).toBe(true);
+      expect(result.targetUrl).toBe('https://airflow.mycompany.com');
+    });
+
+    test('accepts a local Airflow instance (e.g. Astro CLI) with a port', () => {
+      const result = parseAirflowUrl('http://localhost:8080');
+      expect(result.isValid).toBe(true);
+      expect(result.targetUrl).toBe('http://localhost:8080');
     });
   });
 });
