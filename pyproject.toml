@@ -147,7 +147,7 @@ addopts = [
 ]
 
 [tool.commitizen]
-version = "2.8.6"
+version = "2.9.0"
 version_files = ["astronomer_starship/__init__.py:__version__"]
 tag_format = "v$version"
 update_changelog_on_bump = false
