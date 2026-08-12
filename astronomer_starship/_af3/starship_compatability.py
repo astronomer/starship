@@ -987,9 +987,14 @@ class StarshipAirflow30(StarshipAirflow):
             if "id" in item and table_name not in ["task_instance", "task_instance_history"]:
                 del item["id"]
 
-            # Strip FK fields that reference source-specific UUIDs
+            # Strip FK fields that reference source-specific metadata rows
             item.pop("dag_version_id", None)
             item.pop("created_dag_version_id", None)
+            if table_name == "dag_run":
+                item.pop("log_template_id", None)
+                item.pop("backfill_id", None)
+            if table_name == "task_instance":
+                item.pop("trigger_id", None)
 
             if "executor_config" in item:
                 # Drop executor_config, because its original type may have gotten lost
