@@ -993,6 +993,8 @@ class StarshipAirflow30(StarshipAirflow):
             if table_name == "dag_run":
                 item.pop("log_template_id", None)
                 item.pop("backfill_id", None)
+            if table_name == "task_instance":
+                item.pop("trigger_id", None)
 
             if "executor_config" in item:
                 # Drop executor_config, because its original type may have gotten lost
