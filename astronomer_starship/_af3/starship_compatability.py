@@ -29,6 +29,10 @@ class StarshipAirflow(BaseStarshipAirflow):
 class StarshipAirflow30(StarshipAirflow):
     """Airflow 3.0 compatibility layer."""
 
+    _cached_target_log_template_id = None
+    """Per-instance cache for `_get_target_log_template_id`. A migration is short-lived, so
+    the target's active `log_template` row can't change mid-run."""
+
     @classmethod
     def pool_attrs(cls) -> "Dict[str, AttrDesc]":
         return {
@@ -983,6 +987,11 @@ class StarshipAirflow30(StarshipAirflow):
         if not items:
             return []
 
+        # Resolved once per batch (and cached across batches) rather than per-row --
+        # the target's active log_template can't change mid-migration.
+        target_log_template_id = self._get_target_log_template_id() if table_name == "dag_run" else None
+
+        remapped_log_template_count = 0
         for item in items:
             if "id" in item and table_name not in ["task_instance", "task_instance_history"]:
                 del item["id"]
@@ -991,8 +1000,15 @@ class StarshipAirflow30(StarshipAirflow):
             item.pop("dag_version_id", None)
             item.pop("created_dag_version_id", None)
             if table_name == "dag_run":
-                item.pop("log_template_id", None)
                 item.pop("backfill_id", None)
+                if "log_template_id" in item:
+                    # log_template_id is a source-local FK, just like backfill_id/trigger_id --
+                    # but unlike those, Airflow has no fallback for a NULL log_template_id when
+                    # resolving a task's log path, so dropping it (as we do for backfill_id)
+                    # would silently break log retrieval for every task in this dag_run, forever.
+                    # Resolve it to the target's own active template instead.
+                    item["log_template_id"] = target_log_template_id
+                    remapped_log_template_count += 1
             if table_name == "task_instance":
                 item.pop("trigger_id", None)
 
@@ -1000,6 +1016,24 @@ class StarshipAirflow30(StarshipAirflow):
                 # Drop executor_config, because its original type may have gotten lost
                 # and pickling it will not recover it
                 item["executor_config"] = pickle.dumps({})
+
+        if remapped_log_template_count:
+            if target_log_template_id is None:
+                logger.warning(
+                    "Migrated %d dag_run row(s) with log_template_id remapped to NULL: "
+                    "the target deployment has no rows in its log_template table. "
+                    "Log retrieval will remain unavailable for these rows until Airflow "
+                    "creates one (e.g. on next scheduler start).",
+                    remapped_log_template_count,
+                )
+            else:
+                logger.warning(
+                    "Migrated %d dag_run row(s) with log_template_id remapped to the "
+                    "target's active log_template (id=%s). Source log_template ids are "
+                    "not portable across deployments.",
+                    remapped_log_template_count,
+                    target_log_template_id,
+                )
         try:
             engine = self.session.get_bind()
             metadata = MetaData(bind=engine)
@@ -1037,6 +1071,31 @@ class StarshipAirflow30(StarshipAirflow):
         except Exception as e:
             self.session.rollback()
             raise e
+
+    def _get_target_log_template_id(self):
+        """Resolve the target deployment's currently-active log_template id.
+
+        Mirrors how Airflow itself resolves log_template_id when creating a new DagRun --
+        see ``LogTemplate.latest_id()`` in ``airflow.models.log_template``, which is simply
+        the highest ``id`` in the local ``log_template`` table. Source log_template ids are
+        never portable across deployments (the id spaces are independent), so this always
+        queries the target's own table rather than trusting any value from the source.
+
+        Returns None (and lets the caller fall back to NULL) if the target's log_template
+        table has no rows, which shouldn't happen in practice -- Airflow seeds one on first
+        scheduler start -- but is handled rather than raising, so a single edge case doesn't
+        fail an entire migration batch.
+
+        Cached per-instance since a migration run is short-lived and this can't change
+        mid-run.
+        """
+        from sqlalchemy import text
+
+        if self._cached_target_log_template_id is None:
+            self._cached_target_log_template_id = self.session.execute(
+                text("SELECT id FROM log_template ORDER BY id DESC LIMIT 1")
+            ).scalar()
+        return self._cached_target_log_template_id
 
     def get_latest_dag_version_id(self, dag_id: str):
         from sqlalchemy import MetaData, desc, select
