@@ -55,3 +55,36 @@ def test_starship_airflow33_exposes_new_task_instance_columns():
     task_instance_attrs = StarshipAirflow33.task_instance_attrs()
     for col in ("retry_delay_override", "retry_reason"):
         assert col in task_instance_attrs, f"{col} missing from StarshipAirflow33.task_instance_attrs"
+
+
+def test_starship_airflow33_inherits_all_32_additions():
+    # A future 3.3-only override that forgets `super()` would silently drop 3.2's schema deltas.
+    for attrs_fn in (
+        StarshipAirflow33.pool_attrs,
+        StarshipAirflow33.variable_attrs,
+        StarshipAirflow33.connection_attrs,
+    ):
+        assert "team_name" in attrs_fn()
+
+    dag_run_attrs = StarshipAirflow33.dag_run_attrs()
+    for col in ("created_at", "partition_key", "partition_date"):
+        assert col in dag_run_attrs
+
+
+def test_dag_runs_test_value_payload_carries_new_columns():
+    # The list-endpoint payloads drive docker validation -- assert the row shape stays in sync
+    # with dag_run_attrs so a stale payload can't silently pass validation.
+    row_32 = StarshipAirflow32.dag_runs_attrs()["dag_runs"]["test_value"][0]
+    for col in ("created_at", "partition_key", "partition_date"):
+        assert col in row_32, f"{col} missing from StarshipAirflow32.dag_runs_attrs payload"
+
+    row_33 = StarshipAirflow33.task_instances_attrs()["task_instances"]["test_value"][0]
+    for col in ("retry_delay_override", "retry_reason"):
+        assert col in row_33, f"{col} missing from StarshipAirflow33.task_instances_attrs payload"
+
+
+def test_starship_airflow31_does_not_have_32_or_33_additions():
+    # Guards against a future refactor moving a 3.2/3.3 delta into the base class by accident.
+    assert "team_name" not in StarshipAirflow31.pool_attrs()
+    assert "created_at" not in StarshipAirflow31.dag_run_attrs()
+    assert "retry_delay_override" not in StarshipAirflow31.task_instance_attrs()
