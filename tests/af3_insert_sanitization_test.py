@@ -32,7 +32,7 @@ class FakeTable:
 
 
 class FakeMetaData:
-    def __init__(self, bind):
+    def __init__(self, bind=None):
         self.tables = {}
 
     def reflect(self, engine, only):

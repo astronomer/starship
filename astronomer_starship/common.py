@@ -325,6 +325,8 @@ _DATETIME_KEYS = {
     "execution_date",
     "queued_dttm",
     "scheduled_dttm",
+    "created_at",
+    "partition_date",
 }
 
 
