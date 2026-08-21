@@ -1,3 +1,5 @@
+import datetime
+
 import pytest
 
 from astronomer_starship._af3.starship_compatability import (
@@ -7,6 +9,40 @@ from astronomer_starship._af3.starship_compatability import (
     StarshipAirflow33,
     StarshipCompatabilityLayer,
 )
+
+ALL_AF3_SUBCLASSES = [
+    StarshipAirflow30,
+    StarshipAirflow31,
+    StarshipAirflow32,
+    StarshipAirflow33,
+]
+
+ATTR_METHODS = [
+    "pool_attrs",
+    "variable_attrs",
+    "connection_attrs",
+    "dag_run_attrs",
+    "task_instance_attrs",
+    "dag_runs_attrs",
+    "task_instances_attrs",
+]
+
+# (list-endpoint method, key holding the row payload, item-endpoint method).
+LIST_TO_ITEM = [
+    ("dag_runs_attrs", "dag_runs", "dag_run_attrs"),
+    ("task_instances_attrs", "task_instances", "task_instance_attrs"),
+]
+
+
+def _walk_datetimes(value):
+    if isinstance(value, datetime.datetime):
+        yield value
+    elif isinstance(value, dict):
+        for v in value.values():
+            yield from _walk_datetimes(v)
+    elif isinstance(value, (list, tuple)):
+        for v in value:
+            yield from _walk_datetimes(v)
 
 
 @pytest.mark.parametrize(
@@ -88,3 +124,67 @@ def test_starship_airflow31_does_not_have_32_or_33_additions():
     assert "team_name" not in StarshipAirflow31.pool_attrs()
     assert "created_at" not in StarshipAirflow31.dag_run_attrs()
     assert "retry_delay_override" not in StarshipAirflow31.task_instance_attrs()
+
+
+@pytest.mark.parametrize("cls", ALL_AF3_SUBCLASSES)
+@pytest.mark.parametrize("method_name", ATTR_METHODS)
+def test_attrs_method_returns_wellformed_desc(cls, method_name):
+    attrs = getattr(cls, method_name)()
+    assert isinstance(attrs, dict) and attrs, f"{cls.__name__}.{method_name} returned empty"
+
+    for key, desc in attrs.items():
+        assert {
+            "attr",
+            "methods",
+            "test_value",
+        } <= desc.keys(), f"{cls.__name__}.{method_name}[{key!r}] missing keys: got {set(desc)}"
+        assert isinstance(desc["methods"], list)
+        for entry in desc["methods"]:
+            assert isinstance(entry, tuple) and len(entry) == 2, entry
+            verb, required = entry
+            assert verb in {"GET", "POST", "PUT", "DELETE", "PATCH"}, verb
+            assert isinstance(required, bool)
+
+
+@pytest.mark.parametrize("cls", ALL_AF3_SUBCLASSES)
+@pytest.mark.parametrize("list_method,list_key,item_method", LIST_TO_ITEM)
+def test_list_payload_row_matches_item_attrs(cls, list_method, list_key, item_method):
+    # The row shipped in the list endpoint's test_value must have the same keys
+    # as the item endpoint's attrs -- otherwise docker validation silently drifts.
+    row = getattr(cls, list_method)()[list_key]["test_value"][0]
+    item_keys = set(getattr(cls, item_method)().keys())
+    assert set(row.keys()) == item_keys, (
+        f"{cls.__name__}: {list_method}[{list_key!r}] row keys diverge from {item_method}: "
+        f"symmetric diff = {set(row.keys()) ^ item_keys}"
+    )
+
+
+@pytest.mark.parametrize("cls", ALL_AF3_SUBCLASSES)
+@pytest.mark.parametrize("method_name", ATTR_METHODS)
+def test_subclass_never_shrinks_parent_attrs(cls, method_name):
+    parent = cls.__mro__[1]
+    if parent not in ALL_AF3_SUBCLASSES:
+        pytest.skip(f"{parent.__name__} is the abstract base; no parent attrs to compare")
+    dropped = set(getattr(parent, method_name)()) - set(getattr(cls, method_name)())
+    assert not dropped, f"{cls.__name__}.{method_name} dropped inherited columns: {dropped}"
+
+
+@pytest.mark.parametrize("cls", ALL_AF3_SUBCLASSES)
+@pytest.mark.parametrize("method_name", ATTR_METHODS)
+def test_datetime_test_values_are_timezone_aware(cls, method_name):
+    # Naive datetimes round-trip as naive through Airflow's UtcDateTime and mismatch
+    # tz-aware API responses -- the exact class of bug we hit on created_at / partition_date.
+    attrs = getattr(cls, method_name)()
+    naive = [dt for desc in attrs.values() for dt in _walk_datetimes(desc["test_value"]) if dt.tzinfo is None]
+    assert not naive, f"{cls.__name__}.{method_name} has naive datetimes: {naive}"
+
+
+def test_compatability_layer_defaults_to_installed_airflow_version(monkeypatch):
+    # Covers the `airflow_version is None` branch in __new__ that reads airflow.__version__.
+    import airflow
+
+    monkeypatch.setattr(airflow, "__version__", "3.2.2", raising=False)
+    assert isinstance(StarshipCompatabilityLayer(), StarshipAirflow32)
+
+    monkeypatch.setattr(airflow, "__version__", "3.3.1", raising=False)
+    assert isinstance(StarshipCompatabilityLayer(), StarshipAirflow33)
