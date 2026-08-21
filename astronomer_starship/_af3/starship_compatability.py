@@ -383,7 +383,7 @@ class StarshipAirflow30(StarshipAirflow):
 
         try:
             engine = self.session.get_bind()
-            metadata = MetaData(bind=engine)
+            metadata = MetaData()
             metadata.reflect(engine, only=["dag_run"])
             table = metadata.tables["dag_run"]
 
@@ -654,7 +654,7 @@ class StarshipAirflow30(StarshipAirflow):
 
         try:
             engine = self.session.get_bind()
-            metadata = MetaData(bind=engine)
+            metadata = MetaData()
 
             metadata.reflect(engine, only=["dag_run"])
             dag_run_table = metadata.tables["dag_run"]
@@ -1002,7 +1002,7 @@ class StarshipAirflow30(StarshipAirflow):
                 item["executor_config"] = pickle.dumps({})
         try:
             engine = self.session.get_bind()
-            metadata = MetaData(bind=engine)
+            metadata = MetaData()
             metadata.reflect(engine, only=[table_name])
             table = metadata.tables[table_name]
 
@@ -1043,7 +1043,7 @@ class StarshipAirflow30(StarshipAirflow):
 
         try:
             engine = self.session.get_bind()
-            metadata = MetaData(bind=engine)
+            metadata = MetaData()
             metadata.reflect(engine, only=["dag_version"])
             dag_version_table = metadata.tables["dag_version"]
 
@@ -1077,7 +1077,7 @@ class StarshipAirflow30(StarshipAirflow):
                     )
 
             engine = self.session.get_bind()
-            metadata = MetaData(bind=engine)
+            metadata = MetaData()
             metadata.reflect(engine, only=["dag_run", "task_instance", "task_instance_history"])
 
             dr_table = metadata.tables["dag_run"]
