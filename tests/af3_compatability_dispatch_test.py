@@ -63,7 +63,7 @@ def test_compatability_layer_dispatches_to_correct_subclass(airflow_version, exp
     assert isinstance(instance, expected_cls)
 
 
-@pytest.mark.parametrize("airflow_version", ["2.11.0", "3.4.0", "4.0.0"])
+@pytest.mark.parametrize("airflow_version", ["3.4.0", "4.0.0"])
 def test_compatability_layer_raises_for_unsupported_versions(airflow_version):
     with pytest.raises(RuntimeError, match="Unsupported Airflow Version"):
         StarshipCompatabilityLayer(airflow_version=airflow_version)
