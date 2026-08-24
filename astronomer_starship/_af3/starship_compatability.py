@@ -1122,66 +1122,58 @@ class StarshipAirflow30(StarshipAirflow):
 
 
 class StarshipAirflow31(StarshipAirflow30):
-    """Airflow 3.1 compatibility layer."""
+    """Airflow 3.1 compatibility layer.
+
+    Schema deltas:
+    - Pool/Variable/Connection: `team_id` (UUID FK to `team.id`, nullable) added.
+    """
 
     @classmethod
     def pool_attrs(cls) -> "Dict[str, AttrDesc]":
         attrs = super().pool_attrs()
-        # TODO: add support for Teams? (added in 3.1)
-        # attrs["team_id"] = {
-        #     "attr": "team_id",
-        #     "methods": [("POST", True)],
-        #     "test_value": 123,
-        # }
+        attrs["team_id"] = {"attr": "team_id", "methods": [], "test_value": None}
         return attrs
 
     @classmethod
     def variable_attrs(cls) -> "Dict[str, AttrDesc]":
         attrs = super().variable_attrs()
-        # TODO: add support for Teams? (added in 3.1)
-        # attrs["team_id"] = {
-        #     "attr": "team_id",
-        #     "methods": [("POST", True)],
-        #     "test_value": 123,
-        # }
+        attrs["team_id"] = {"attr": "team_id", "methods": [], "test_value": None}
         return attrs
 
     @classmethod
     def connection_attrs(cls) -> "Dict[str, AttrDesc]":
         attrs = super().connection_attrs()
-        # TODO: add support for Teams? (added in 3.1)
-        # attrs["team_id"] = {
-        #     "attr": "team_id",
-        #     "methods": [("POST", True)],
-        #     "test_value": 123,
-        # }
+        attrs["team_id"] = {"attr": "team_id", "methods": [], "test_value": None}
         return attrs
 
 
 class StarshipAirflow32(StarshipAirflow31):
     """Airflow 3.2 compatibility layer.
 
-    Schema deltas Starship needs to know about:
-    - Pool/Variable/Connection: `team_id` (UUID FK) renamed to `team_name` (String FK to `team.name`, nullable).
-      Exposed read-only: `team_name` is a deployment-local FK, users must pre-create matching teams on target.
+    Schema deltas:
+    - Pool/Variable/Connection: `team_id` renamed to `team_name` (String FK,
+      nullable). Read-only.
     - DagRun: `partition_key`, `partition_date`, `created_at` added (all nullable).
     """
 
     @classmethod
     def pool_attrs(cls) -> "Dict[str, AttrDesc]":
         attrs = super().pool_attrs()
+        attrs.pop("team_id", None)
         attrs["team_name"] = {"attr": "team_name", "methods": [], "test_value": None}
         return attrs
 
     @classmethod
     def variable_attrs(cls) -> "Dict[str, AttrDesc]":
         attrs = super().variable_attrs()
+        attrs.pop("team_id", None)
         attrs["team_name"] = {"attr": "team_name", "methods": [], "test_value": None}
         return attrs
 
     @classmethod
     def connection_attrs(cls) -> "Dict[str, AttrDesc]":
         attrs = super().connection_attrs()
+        attrs.pop("team_id", None)
         attrs["team_name"] = {"attr": "team_name", "methods": [], "test_value": None}
         return attrs
 
@@ -1223,9 +1215,10 @@ class StarshipAirflow32(StarshipAirflow31):
 class StarshipAirflow33(StarshipAirflow32):
     """Airflow 3.3 compatibility layer.
 
-    Schema deltas Starship needs to know about:
-    - TaskInstance: `retry_delay_override` and `retry_reason` added (both nullable, AIP-105 pluggable retry policies).
-    - dag_version: `version_data` added (nullable). Transparent to Starship, only `id`/`version_number` are read.
+    Schema deltas:
+    - TaskInstance: `retry_delay_override` (Float) and `retry_reason` (String) added
+      (both nullable, AIP-105 pluggable retry policies).
+    - dag_version: `version_data` added (nullable). Transparent to Starship.
     """
 
     @classmethod
@@ -1258,10 +1251,10 @@ class StarshipAirflow33(StarshipAirflow32):
 class StarshipCompatabilityLayer:
     """StarshipCompatabilityLayer is a factory class that returns the correct StarshipAirflow class for a version
 
-    - 3.0 https://github.com/apache/airflow/tree/3.0.0/airflow-core/src/airflow/models
-    - 3.1 https://github.com/apache/airflow/tree/3.1.0/airflow-core/src/airflow/models
-    - 3.2 https://github.com/apache/airflow/tree/3.2.0/airflow-core/src/airflow/models
-    - 3.3 https://github.com/apache/airflow/tree/3.3.0/airflow-core/src/airflow/models
+    - 3.0 https://github.com/apache/airflow/tree/3.0.6/airflow-core/src/airflow/models
+    - 3.1 https://github.com/apache/airflow/tree/3.1.8/airflow-core/src/airflow/models
+    - 3.2 https://github.com/apache/airflow/tree/3.2.2/airflow-core/src/airflow/models
+    - 3.3 https://github.com/apache/airflow/tree/3.3.1/airflow-core/src/airflow/models
     """
 
     def __new__(cls, airflow_version: "Union[str, None]" = None) -> StarshipAirflow:
