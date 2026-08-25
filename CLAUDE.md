@@ -70,10 +70,10 @@ The React app talks to the *target* Airflow via a `/proxy` endpoint on the *sour
 
 - `tests/` — pytest. `tests/conftest.py` defines a `manual_tests` skip marker gated on `MANUAL_TESTS` env var. `tests/docker_test/` and `tests/resources/` are excluded from collection (`norecursedirs`). `tests/e2e/{gcc,mwaa}/` are integration scaffolds run via their own justfiles.
 - `astronomer_starship/tests/` — vitest tests for the React frontend.
-- Both AF2 and AF3 implementations are exercised — running tests requires `apache-airflow<3.2` from the dev extra. The `--doctest-modules` flag means docstrings with `>>>` examples run as tests.
+- Both AF2 and AF3 implementations are exercised — running tests requires `apache-airflow<3.4` from the dev extra. The `--doctest-modules` flag means docstrings with `>>>` examples run as tests.
 
 ## Constraints worth knowing
 
 - `requires-python = ">=3.6"` (the package still supports the very old Pythons that older Airflow 2 deployments ran on). Ruff is pinned to `target-version = "py37"` accordingly. Don't use 3.8+ syntax (walrus, f-string `=`, etc.) in shipped code.
-- Starship only supports Airflow up to 3.1 right now (`apache-airflow<3.2` in dev extra).
+- Starship supports Airflow up to 3.3 (`apache-airflow<3.4` in dev extra).
 - Releases: a release manager runs `just release MAJOR|MINOR|PATCH` from an up-to-date `main` branch. This uses [commitizen](https://commitizen-tools.github.io/commitizen/) to bump `__version__` in `astronomer_starship/__init__.py`, create a bump commit and a `v<version>` tag, and push both to GitHub. CI then builds and publishes the package directly to PyPI.

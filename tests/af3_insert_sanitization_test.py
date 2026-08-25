@@ -1,4 +1,15 @@
-from astronomer_starship._af3.starship_compatability import StarshipAirflow31
+import pytest
+
+from astronomer_starship._af3.starship_compatability import (
+    StarshipAirflow31,
+    StarshipAirflow32,
+    StarshipAirflow33,
+)
+
+# insert_directly is defined on StarshipAirflow30 and inherited unchanged --
+# parametrize FK-stripping tests over every subclass to guard against a future override
+# silently dropping the stripping logic.
+STARSHIP_SUBCLASSES = [StarshipAirflow31, StarshipAirflow32, StarshipAirflow33]
 
 
 class FakeColumn:
@@ -21,7 +32,7 @@ class FakeTable:
 
 
 class FakeMetaData:
-    def __init__(self, bind):
+    def __init__(self, bind=None):
         self.tables = {}
 
     def reflect(self, engine, only):
@@ -61,12 +72,13 @@ class FakeSession:
         raise AssertionError("rollback should not be called")
 
 
-def test_dag_run_direct_insert_strips_source_log_template_id(monkeypatch):
+@pytest.mark.parametrize("starship_cls", STARSHIP_SUBCLASSES)
+def test_dag_run_direct_insert_strips_source_log_template_id(monkeypatch, starship_cls):
     import sqlalchemy
     import sqlalchemy.dialects.postgresql
 
     fake_session = FakeSession()
-    starship = StarshipAirflow31()
+    starship = starship_cls()
     starship._session = fake_session
 
     monkeypatch.setattr(sqlalchemy, "MetaData", FakeMetaData)
@@ -93,12 +105,13 @@ def test_dag_run_direct_insert_strips_source_log_template_id(monkeypatch):
     assert result == [{"dag_id": "example_dag", "run_id": "scheduled__2026-08-01T00:00:00+00:00"}]
 
 
-def test_dag_run_direct_insert_strips_source_backfill_id(monkeypatch):
+@pytest.mark.parametrize("starship_cls", STARSHIP_SUBCLASSES)
+def test_dag_run_direct_insert_strips_source_backfill_id(monkeypatch, starship_cls):
     import sqlalchemy
     import sqlalchemy.dialects.postgresql
 
     fake_session = FakeSession()
-    starship = StarshipAirflow31()
+    starship = starship_cls()
     starship._session = fake_session
 
     monkeypatch.setattr(sqlalchemy, "MetaData", FakeMetaData)
@@ -125,12 +138,13 @@ def test_dag_run_direct_insert_strips_source_backfill_id(monkeypatch):
     assert result == [{"dag_id": "example_dag", "run_id": "backfill__2026-08-01T00:00:00+00:00"}]
 
 
-def test_task_instance_direct_insert_strips_source_trigger_id(monkeypatch):
+@pytest.mark.parametrize("starship_cls", STARSHIP_SUBCLASSES)
+def test_task_instance_direct_insert_strips_source_trigger_id(monkeypatch, starship_cls):
     import sqlalchemy
     import sqlalchemy.dialects.postgresql
 
     fake_session = FakeSession()
-    starship = StarshipAirflow31()
+    starship = starship_cls()
     starship._session = fake_session
 
     monkeypatch.setattr(sqlalchemy, "MetaData", FakeMetaData)

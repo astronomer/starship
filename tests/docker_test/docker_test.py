@@ -44,10 +44,11 @@ def test_info(starship):
 def test_variables(starship):
     test_input = get_test_data(method="POST", attrs=starship.variable_attrs())
     actual = starship.set_variable(**test_input)
-    assert actual == test_input, actual
+    # Filter to POST-able keys so read-only compat-layer fields (e.g. `team_name` on AF3.2+) don't break equality.
+    assert {k: v for k, v in actual.items() if k in test_input} == test_input, actual
 
     actual = starship.get_variables()
-    assert test_input in actual, actual
+    assert any(test_input.items() <= a.items() for a in actual), actual
 
     test_input = get_test_data(method="DELETE", attrs=starship.variable_attrs())
     actual = starship.delete_variable(**test_input)
@@ -66,10 +67,11 @@ def test_pools(starship):
     del test_input["name"]
 
     actual = starship.set_pool(**test_input)
-    assert actual == expected, actual
+    # Filter to POST-able keys so read-only compat-layer fields (e.g. `team_name` on AF3.2+) don't break equality.
+    assert {k: v for k, v in actual.items() if k in expected} == expected, actual
 
     actual = starship.get_pools()
-    assert expected in actual, actual
+    assert any(expected.items() <= a.items() for a in actual), actual
 
     test_input = get_test_data(method="DELETE", attrs=starship.pool_attrs())
     actual = starship.delete_pool(**test_input)
@@ -80,10 +82,11 @@ def test_pools(starship):
 def test_connections(starship):
     test_input = get_test_data(method="POST", attrs=starship.connection_attrs())
     actual = starship.set_connection(**test_input)
-    assert actual == test_input, actual
+    # Filter to POST-able keys so read-only compat-layer fields (e.g. `team_name` on AF3.2+) don't break equality.
+    assert {k: v for k, v in actual.items() if k in test_input} == test_input, actual
 
     actual = starship.get_connections()
-    assert test_input in actual, actual
+    assert any(test_input.items() <= a.items() for a in actual), actual
 
     test_input = get_test_data(method="DELETE", attrs=starship.connection_attrs())
     actual = starship.delete_connection(**test_input)

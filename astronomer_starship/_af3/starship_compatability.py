@@ -383,7 +383,7 @@ class StarshipAirflow30(StarshipAirflow):
 
         try:
             engine = self.session.get_bind()
-            metadata = MetaData(bind=engine)
+            metadata = MetaData()
             metadata.reflect(engine, only=["dag_run"])
             table = metadata.tables["dag_run"]
 
@@ -654,7 +654,7 @@ class StarshipAirflow30(StarshipAirflow):
 
         try:
             engine = self.session.get_bind()
-            metadata = MetaData(bind=engine)
+            metadata = MetaData()
 
             metadata.reflect(engine, only=["dag_run"])
             dag_run_table = metadata.tables["dag_run"]
@@ -1002,7 +1002,7 @@ class StarshipAirflow30(StarshipAirflow):
                 item["executor_config"] = pickle.dumps({})
         try:
             engine = self.session.get_bind()
-            metadata = MetaData(bind=engine)
+            metadata = MetaData()
             metadata.reflect(engine, only=[table_name])
             table = metadata.tables[table_name]
 
@@ -1043,7 +1043,7 @@ class StarshipAirflow30(StarshipAirflow):
 
         try:
             engine = self.session.get_bind()
-            metadata = MetaData(bind=engine)
+            metadata = MetaData()
             metadata.reflect(engine, only=["dag_version"])
             dag_version_table = metadata.tables["dag_version"]
 
@@ -1077,7 +1077,7 @@ class StarshipAirflow30(StarshipAirflow):
                     )
 
             engine = self.session.get_bind()
-            metadata = MetaData(bind=engine)
+            metadata = MetaData()
             metadata.reflect(engine, only=["dag_run", "task_instance", "task_instance_history"])
 
             dr_table = metadata.tables["dag_run"]
@@ -1122,47 +1122,139 @@ class StarshipAirflow30(StarshipAirflow):
 
 
 class StarshipAirflow31(StarshipAirflow30):
-    """Airflow 3.1 compatibility layer."""
+    """Airflow 3.1 compatibility layer.
+
+    Schema deltas:
+    - Pool/Variable/Connection: `team_id` (UUID FK to `team.id`, nullable) added.
+    """
 
     @classmethod
     def pool_attrs(cls) -> "Dict[str, AttrDesc]":
         attrs = super().pool_attrs()
-        # TODO: add support for Teams? (added in 3.1)
-        # attrs["team_id"] = {
-        #     "attr": "team_id",
-        #     "methods": [("POST", True)],
-        #     "test_value": 123,
-        # }
+        attrs["team_id"] = {"attr": "team_id", "methods": [], "test_value": None}
         return attrs
 
     @classmethod
     def variable_attrs(cls) -> "Dict[str, AttrDesc]":
         attrs = super().variable_attrs()
-        # TODO: add support for Teams? (added in 3.1)
-        # attrs["team_id"] = {
-        #     "attr": "team_id",
-        #     "methods": [("POST", True)],
-        #     "test_value": 123,
-        # }
+        attrs["team_id"] = {"attr": "team_id", "methods": [], "test_value": None}
         return attrs
 
     @classmethod
     def connection_attrs(cls) -> "Dict[str, AttrDesc]":
         attrs = super().connection_attrs()
-        # TODO: add support for Teams? (added in 3.1)
-        # attrs["team_id"] = {
-        #     "attr": "team_id",
-        #     "methods": [("POST", True)],
-        #     "test_value": 123,
-        # }
+        attrs["team_id"] = {"attr": "team_id", "methods": [], "test_value": None}
+        return attrs
+
+
+class StarshipAirflow32(StarshipAirflow31):
+    """Airflow 3.2 compatibility layer.
+
+    Schema deltas:
+    - Pool/Variable/Connection: `team_id` renamed to `team_name` (String FK,
+      nullable). Read-only.
+    - DagRun: `partition_key`, `partition_date`, `created_at` added (all nullable).
+    """
+
+    @classmethod
+    def pool_attrs(cls) -> "Dict[str, AttrDesc]":
+        attrs = super().pool_attrs()
+        attrs.pop("team_id", None)
+        attrs["team_name"] = {"attr": "team_name", "methods": [], "test_value": None}
+        return attrs
+
+    @classmethod
+    def variable_attrs(cls) -> "Dict[str, AttrDesc]":
+        attrs = super().variable_attrs()
+        attrs.pop("team_id", None)
+        attrs["team_name"] = {"attr": "team_name", "methods": [], "test_value": None}
+        return attrs
+
+    @classmethod
+    def connection_attrs(cls) -> "Dict[str, AttrDesc]":
+        attrs = super().connection_attrs()
+        attrs.pop("team_id", None)
+        attrs["team_name"] = {"attr": "team_name", "methods": [], "test_value": None}
+        return attrs
+
+    @classmethod
+    def dag_run_attrs(cls) -> "Dict[str, AttrDesc]":
+        attrs = super().dag_run_attrs()
+        epoch = datetime.datetime(1970, 1, 1, 0, 0).replace(tzinfo=timezone.utc)
+        attrs["created_at"] = {
+            "attr": "created_at",
+            "methods": [("POST", False)],
+            "test_value": epoch,
+        }
+        attrs["partition_key"] = {
+            "attr": "partition_key",
+            "methods": [("POST", False)],
+            "test_value": "partition_key",
+        }
+        attrs["partition_date"] = {
+            "attr": "partition_date",
+            "methods": [("POST", False)],
+            "test_value": epoch,
+        }
+        return attrs
+
+    @classmethod
+    def dag_runs_attrs(cls) -> "Dict[str, AttrDesc]":
+        attrs = super().dag_runs_attrs()
+        epoch = datetime.datetime(1970, 1, 1, 0, 0).replace(tzinfo=timezone.utc)
+        attrs["dag_runs"]["test_value"][0].update(
+            {
+                "created_at": epoch,
+                "partition_key": "partition_key",
+                "partition_date": epoch,
+            }
+        )
+        return attrs
+
+
+class StarshipAirflow33(StarshipAirflow32):
+    """Airflow 3.3 compatibility layer.
+
+    Schema deltas:
+    - TaskInstance: `retry_delay_override` (Float) and `retry_reason` (String) added
+      (both nullable, AIP-105 pluggable retry policies).
+    - dag_version: `version_data` added (nullable). Transparent to Starship.
+    """
+
+    @classmethod
+    def task_instance_attrs(cls) -> "Dict[str, AttrDesc]":
+        attrs = super().task_instance_attrs()
+        attrs["retry_delay_override"] = {
+            "attr": "retry_delay_override",
+            "methods": [("POST", False)],
+            "test_value": None,
+        }
+        attrs["retry_reason"] = {
+            "attr": "retry_reason",
+            "methods": [("POST", False)],
+            "test_value": None,
+        }
+        return attrs
+
+    @classmethod
+    def task_instances_attrs(cls) -> "Dict[str, AttrDesc]":
+        attrs = super().task_instances_attrs()
+        attrs["task_instances"]["test_value"][0].update(
+            {
+                "retry_delay_override": None,
+                "retry_reason": None,
+            }
+        )
         return attrs
 
 
 class StarshipCompatabilityLayer:
     """StarshipCompatabilityLayer is a factory class that returns the correct StarshipAirflow class for a version
 
-    - 3.0 https://github.com/apache/airflow/tree/3.0.0/airflow-core/src/airflow/models
-    - 3.1 https://github.com/apache/airflow/tree/3.1.0/airflow-core/src/airflow/models
+    - 3.0 https://github.com/apache/airflow/tree/3.0.6/airflow-core/src/airflow/models
+    - 3.1 https://github.com/apache/airflow/tree/3.1.8/airflow-core/src/airflow/models
+    - 3.2 https://github.com/apache/airflow/tree/3.2.2/airflow-core/src/airflow/models
+    - 3.3 https://github.com/apache/airflow/tree/3.3.1/airflow-core/src/airflow/models
     """
 
     def __new__(cls, airflow_version: "Union[str, None]" = None) -> StarshipAirflow:
@@ -1180,5 +1272,9 @@ class StarshipCompatabilityLayer:
                 return StarshipAirflow30()
             elif minor == 1:
                 return StarshipAirflow31()
+            elif minor == 2:
+                return StarshipAirflow32()
+            elif minor == 3:
+                return StarshipAirflow33()
 
         raise RuntimeError(f"Unsupported Airflow Version: {airflow_version}")
