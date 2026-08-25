@@ -77,6 +77,8 @@ on the corresponding minimum Airflow version.
 | Task instance notes | 3.0 | ❌ |
 | HITL | 3.1 | ❌ |
 | Teams | 3.1 | ❌ |
+| Partitioned dag runs | 3.2 | ✅ |
+| Pluggable retry policies | 3.3 | ✅ |
 
 ## Security Notice
 
