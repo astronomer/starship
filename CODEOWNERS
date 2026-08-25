@@ -1,0 +1,11 @@
+# CODEOWNERS for astronomer/starship
+#
+# Owners listed here are automatically requested for review on pull requests
+# that touch matching paths and, with branch protection enabled, must approve
+# before a PR can be merged.
+#
+# Order matters: the last matching pattern for a given path takes precedence.
+# Docs: https://docs.github.com/articles/about-code-owners
+
+# Default owners for everything in the repository
+*       @astronomer/gsd-delivery-architecture @pgagnon
