@@ -8,4 +8,4 @@
 # Docs: https://docs.github.com/articles/about-code-owners
 
 # Default owners for everything in the repository
-*       @astronomer/gsd-delivery-architecture @pgagnon
+*       @BasPH @m1racoli @odaneau-astro @pgagnon
