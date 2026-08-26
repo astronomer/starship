@@ -1,0 +1,2726 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://astronomer.github.io/starship/api/">
+      
+      
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../faq/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../starship.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>API - Starship</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#api" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Starship" class="md-header__button md-logo" aria-label="Starship" data-md-component="logo">
+      
+  <img src="../starship.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Starship
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              API
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/astronomer/starship/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href=".." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  API
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../faq/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  FAQ
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../operator/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Starship Migration DAG
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../migration_source/gcc/" class="md-tabs__link">
+          
+  
+  
+  Migration source
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Starship" class="md-nav__button md-logo" aria-label="Starship" data-md-component="logo">
+      
+  <img src="../starship.svg" alt="logo">
+
+    </a>
+    Starship
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/astronomer/starship/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#error-responses" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Error Responses
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#airflow-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Airflow Version
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Airflow Version">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get-apistarshipairflow_version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/starship/airflow_version
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#starship-info" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Starship Info
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Starship Info">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get-apistarshipinfo" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/starship/info
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#health" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Health
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Health">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get-apistarshiphealth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/starship/health
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment Variables
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Environment Variables">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get-apistarshipenv_vars" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/starship/env_vars
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#variable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Variable
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Variable">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get-apistarshipvariable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/starship/variable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apistarshipvariable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/starship/variable
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete-apistarshipvariable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DELETE /api/starship/variable
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pools
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Pools">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get-apistarshippools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/starship/pools
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apistarshippools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/starship/pools
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete-apistarshippools" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DELETE /api/starship/pools
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#connections" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Connections
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Connections">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get-apistarshipconnection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/starship/connection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apistarshipconnection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/starship/connection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete-apistarshipconnections" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DELETE /api/starship/connections
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DAGs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="DAGs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get-apistarshipdags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/starship/dags
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#patch-apistarshipdags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PATCH /api/starship/dags
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dag-runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DAG Runs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="DAG Runs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get-apistarshipdag_runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/starship/dag_runs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apistarshipdag_runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/starship/dag_runs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete-apistarshipdag_runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DELETE /api/starship/dag_runs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-instances" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task Instances
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Task Instances">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get-apistarshiptask_instances" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/starship/task_instances
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apistarshiptask_instances" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/starship/task_instances
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-instance-history" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task Instance History
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Task Instance History">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get-apistarshiptask_instance_history" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/starship/task_instance_history
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apistarshiptask_instance_history" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/starship/task_instance_history
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-log" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task Log
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Task Log">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get-apistarshiptask_log" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/starship/task_log
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apistarshiptask_log" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/starship/task_log
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete-apistarshiptask_log" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DELETE /api/starship/task_log
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#xcom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        XCom
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="XCom">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get-apistarshipxcom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GET /api/starship/xcom
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#post-apistarshipxcom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        POST /api/starship/xcom
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#delete-apistarshipxcom" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DELETE /api/starship/xcom
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Starship Migration DAG
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Migration source
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Migration source
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../migration_source/gcc/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Google Cloud Composer
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../migration_source/mwaa/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    (AWS) Managed Apache Airflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/astronomer/starship/edit/main/docs/api.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="api">API<a class="headerlink" href="#api" title="Permanent link">&para;</a></h1>
+<h2 id="error-responses">Error Responses<a class="headerlink" href="#error-responses" title="Permanent link">&para;</a></h2>
+<p>In the event of an error, the API will return a JSON response with an <code>error</code> key
+and an HTTP <code>status_code</code>. The <code>error</code> key will contain a message describing the error.</p>
+<table>
+<thead>
+<tr>
+<th><strong>Type</strong></th>
+<th><strong>Status Code</strong></th>
+<th><strong>Response Example</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Request kwargs - RuntimeError</strong></td>
+<td>400</td>
+<td><code>{"error": "..."}</code></td>
+</tr>
+<tr>
+<td><strong>Request kwargs - Exception</strong></td>
+<td>500</td>
+<td><code>{"error": "Unknown Error in kwargs_fn - ..."}</code></td>
+</tr>
+<tr>
+<td><strong>Unknown Error</strong></td>
+<td>500</td>
+<td><code>{"error": "Unknown Error", "error_type": ..., "error_message": ..., "kwargs": ...}</code></td>
+</tr>
+<tr>
+<td><strong><code>POST</code> Integrity Error</strong></td>
+<td>409</td>
+<td><code>{"error": "Integrity Error (Duplicate Record?)", "error_message": ..., "kwargs": ...}</code></td>
+</tr>
+<tr>
+<td><strong><code>POST</code> Data Error</strong></td>
+<td>400</td>
+<td><code>{"error": "Data Error", "error_message": ..., "kwargs": ...}</code></td>
+</tr>
+<tr>
+<td><strong><code>POST</code> SQL Error</strong></td>
+<td>400</td>
+<td><code>{"error": "SQL Error", "error_message": ..., "kwargs": ...}</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="airflow-version">Airflow Version<a class="headerlink" href="#airflow-version" title="Permanent link">&para;</a></h2>
+<p>Returns the version of Airflow that the Starship API is connected to.</p>
+<div class="admonition warning">
+<p class="admonition-title">Deprecated</p>
+<p>Instead use <a href="#starship-info"><code>/api/starship/info</code></a> to get both Airflow and Starship versions plus additional information.</p>
+</div>
+<hr />
+<h3 id="get-apistarshipairflow_version"><code>GET /api/starship/airflow_version</code><a class="headerlink" href="#get-apistarshipairflow_version" title="Permanent link">&para;</a></h3>
+<p><strong>Parameters:</strong> None</p>
+<p><strong>Response</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>2.11.0+astro.1
+</code></pre></div>
+<h2 id="starship-info">Starship Info<a class="headerlink" href="#starship-info" title="Permanent link">&para;</a></h2>
+<p>Returns relevant information related to Starship and the Airflow deployment.</p>
+<hr />
+<h3 id="get-apistarshipinfo"><code>GET /api/starship/info</code><a class="headerlink" href="#get-apistarshipinfo" title="Permanent link">&para;</a></h3>
+<p><strong>Parameters:</strong> None</p>
+<p><strong>Response</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="p">{</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">    </span><span class="nt">"airflow_version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2.11.0+astro.1"</span><span class="p">,</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="nt">"starship_version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2.5.0"</span><span class="p">,</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="p">}</span>
+</code></pre></div>
+<h2 id="health">Health<a class="headerlink" href="#health" title="Permanent link">&para;</a></h2>
+<p>Returns the health of the Starship API</p>
+<div class="admonition warning">
+<p class="admonition-title">Deprecated</p>
+<p>Instead use <a href="#starship-info"><code>/api/starship/info</code></a> to get both Airflow and Starship versions plus additional information.</p>
+</div>
+<hr />
+<h3 id="get-apistarshiphealth"><code>GET /api/starship/health</code><a class="headerlink" href="#get-apistarshiphealth" title="Permanent link">&para;</a></h3>
+<p><strong>Parameters:</strong> None</p>
+<p><strong>Response</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>OK
+</code></pre></div>
+<h2 id="environment-variables">Environment Variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h2>
+<p>Get the Environment Variables, which may be used to set Airflow Connections, Variables, or Configurations</p>
+<hr />
+<h3 id="get-apistarshipenv_vars"><code>GET /api/starship/env_vars</code><a class="headerlink" href="#get-apistarshipenv_vars" title="Permanent link">&para;</a></h3>
+<p><strong>Parameters:</strong> None</p>
+<p><strong>Response</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="p">{</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">    </span><span class="nt">"FOO"</span><span class="p">:</span><span class="w"> </span><span class="s2">"bar"</span><span class="p">,</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="nt">"AIRFLOW__CORE__SQL_ALCHEMY_CONN"</span><span class="p">:</span><span class="w"> </span><span class="s2">"sqlite:////usr/local/airflow/airflow.db"</span><span class="p">,</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">    </span><span class="err">...</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="p">}</span>
+</code></pre></div>
+<h2 id="variable">Variable<a class="headerlink" href="#variable" title="Permanent link">&para;</a></h2>
+<p>Get Variables or set a Variable</p>
+<p><strong>Model:</strong> <code>airflow.models.Variable</code></p>
+<p><strong>Table:</strong> <code>variable</code></p>
+<hr />
+<h3 id="get-apistarshipvariable"><code>GET /api/starship/variable</code><a class="headerlink" href="#get-apistarshipvariable" title="Permanent link">&para;</a></h3>
+<p><strong>Parameters:</strong> None</p>
+<p><strong>Response</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="p">[</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">    </span><span class="p">{</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">        </span><span class="nt">"key"</span><span class="p">:</span><span class="w"> </span><span class="s2">"key"</span><span class="p">,</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">        </span><span class="nt">"val"</span><span class="p">:</span><span class="w"> </span><span class="s2">"val"</span><span class="p">,</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">        </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"My Var"</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">    </span><span class="p">},</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">    </span><span class="err">...</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="p">]</span>
+</code></pre></div>
+<h3 id="post-apistarshipvariable"><code>POST /api/starship/variable</code><a class="headerlink" href="#post-apistarshipvariable" title="Permanent link">&para;</a></h3>
+<p><strong>Parameters:</strong> JSON</p>
+<table>
+<thead>
+<tr>
+<th>Field (*=Required)</th>
+<th>Version</th>
+<th>Type</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>key*</td>
+<td></td>
+<td>str</td>
+<td>key</td>
+</tr>
+<tr>
+<td>val*</td>
+<td></td>
+<td>str</td>
+<td>val</td>
+</tr>
+<tr>
+<td>description</td>
+<td></td>
+<td>str</td>
+<td>My Var</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Response:</strong> List of Variables, as <code>GET</code> Response</p>
+<h3 id="delete-apistarshipvariable"><code>DELETE /api/starship/variable</code><a class="headerlink" href="#delete-apistarshipvariable" title="Permanent link">&para;</a></h3>
+<p><strong>Parameters:</strong> Args</p>
+<table>
+<thead>
+<tr>
+<th>Field (*=Required)</th>
+<th>Version</th>
+<th>Type</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>key*</td>
+<td></td>
+<td>str</td>
+<td>key</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Response:</strong> None</p>
+<h2 id="pools">Pools<a class="headerlink" href="#pools" title="Permanent link">&para;</a></h2>
+<p>Get Pools or set a Pool</p>
+<p><strong>Model:</strong> <code>airflow.models.Pool</code></p>
+<p><strong>Table:</strong> <code>pools</code></p>
+<hr />
+<h3 id="get-apistarshippools">GET /api/starship/pools<a class="headerlink" href="#get-apistarshippools" title="Permanent link">&para;</a></h3>
+<p><strong>Parameters:</strong> None</p>
+<p><strong>Response</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="p">[</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">    </span><span class="p">{</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="w">        </span><span class="nt">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"my_pool"</span><span class="p">,</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="w">        </span><span class="nt">"slots"</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">        </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="err">"My Pool</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="err">    },</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="err">    ...</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="err">]</span>
+</code></pre></div>
+<h3 id="post-apistarshippools">POST /api/starship/pools<a class="headerlink" href="#post-apistarshippools" title="Permanent link">&para;</a></h3>
+<p><strong>Parameters:</strong> JSON</p>
+<table>
+<thead>
+<tr>
+<th>Field (*=Required)</th>
+<th>Version</th>
+<th>Type</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>name*</td>
+<td></td>
+<td>str</td>
+<td>my_pool</td>
+</tr>
+<tr>
+<td>slots*</td>
+<td></td>
+<td>int</td>
+<td>5</td>
+</tr>
+<tr>
+<td>description</td>
+<td></td>
+<td>str</td>
+<td>My Pool</td>
+</tr>
+<tr>
+<td>include_deferred*</td>
+<td>&gt;=2.7</td>
+<td>bool</td>
+<td>True</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Response:</strong> List of Pools, as <code>GET</code> Response</p>
+<h3 id="delete-apistarshippools">DELETE /api/starship/pools<a class="headerlink" href="#delete-apistarshippools" title="Permanent link">&para;</a></h3>
+<p><strong>Parameters:</strong> Args</p>
+<table>
+<thead>
+<tr>
+<th>Field (*=Required)</th>
+<th>Version</th>
+<th>Type</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>name*</td>
+<td></td>
+<td>str</td>
+<td>my_pool</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Response:</strong> None</p>
+<h2 id="connections">Connections<a class="headerlink" href="#connections" title="Permanent link">&para;</a></h2>
+<p>Get Connections or set a Connection</p>
+<p><strong>Model:</strong> <code>airflow.models.Connections</code></p>
+<p><strong>Table:</strong> <code>connection</code></p>
+<hr />
+<h3 id="get-apistarshipconnection"><code>GET /api/starship/connection</code><a class="headerlink" href="#get-apistarshipconnection" title="Permanent link">&para;</a></h3>
+<p><strong>Parameters:</strong> None</p>
+<p><strong>Response</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="p">[</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="w">    </span><span class="p">{</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">        </span><span class="nt">"conn_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"my_conn"</span><span class="p">,</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="w">        </span><span class="nt">"conn_type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"http"</span><span class="p">,</span>
+<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="w">        </span><span class="nt">"host"</span><span class="p">:</span><span class="w"> </span><span class="s2">"localhost"</span><span class="p">,</span>
+<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="w">        </span><span class="nt">"port"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1234"</span><span class="p">,</span>
+<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="w">        </span><span class="nt">"schema"</span><span class="p">:</span><span class="w"> </span><span class="s2">"https"</span><span class="p">,</span>
+<a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="w">        </span><span class="nt">"login"</span><span class="p">:</span><span class="w"> </span><span class="s2">"user"</span><span class="p">,</span>
+<a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="w">        </span><span class="nt">"password"</span><span class="p">:</span><span class="w"> </span><span class="s2">"foobar"</span><span class="p">,</span><span class="w">  </span><span class="err">#</span><span class="w"> </span><span class="err">pragma</span><span class="p">:</span><span class="w"> </span><span class="err">allowlis</span><span class="kc">t</span><span class="w"> </span><span class="err">secre</span><span class="kc">t</span>
+<a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="w">        </span><span class="nt">"extra"</span><span class="p">:</span><span class="w"> </span><span class="s2">"{}"</span><span class="p">,</span>
+<a id="__codelineno-6-11" name="__codelineno-6-11" href="#__codelineno-6-11"></a><span class="w">        </span><span class="nt">"conn_type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"http"</span><span class="p">,</span>
+<a id="__codelineno-6-12" name="__codelineno-6-12" href="#__codelineno-6-12"></a><span class="w">        </span><span class="nt">"conn_type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"http"</span><span class="p">,</span>
+<a id="__codelineno-6-13" name="__codelineno-6-13" href="#__codelineno-6-13"></a><span class="w">        </span><span class="nt">"conn_type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"http"</span><span class="p">,</span>
+<a id="__codelineno-6-14" name="__codelineno-6-14" href="#__codelineno-6-14"></a><span class="w">        </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"My Var"</span>
+<a id="__codelineno-6-15" name="__codelineno-6-15" href="#__codelineno-6-15"></a><span class="w">    </span><span class="p">},</span>
+<a id="__codelineno-6-16" name="__codelineno-6-16" href="#__codelineno-6-16"></a><span class="w">    </span><span class="err">...</span>
+<a id="__codelineno-6-17" name="__codelineno-6-17" href="#__codelineno-6-17"></a><span class="p">]</span>
+</code></pre></div>
+<h3 id="post-apistarshipconnection"><code>POST /api/starship/connection</code><a class="headerlink" href="#post-apistarshipconnection" title="Permanent link">&para;</a></h3>
+<p><strong>Parameters:</strong> JSON</p>
+<table>
+<thead>
+<tr>
+<th>Field (*=Required)</th>
+<th>Version</th>
+<th>Type</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>conn_id*</td>
+<td></td>
+<td>str</td>
+<td>my_conn</td>
+</tr>
+<tr>
+<td>conn_type*</td>
+<td></td>
+<td>str</td>
+<td>http</td>
+</tr>
+<tr>
+<td>host</td>
+<td></td>
+<td>str</td>
+<td>localhost</td>
+</tr>
+<tr>
+<td>port</td>
+<td></td>
+<td>int</td>
+<td>1234</td>
+</tr>
+<tr>
+<td>schema</td>
+<td></td>
+<td>str</td>
+<td>https</td>
+</tr>
+<tr>
+<td>login</td>
+<td></td>
+<td>str</td>
+<td>user</td>
+</tr>
+<tr>
+<td>password</td>
+<td></td>
+<td>str</td>
+<td><strong>*</strong>*</td>
+</tr>
+<tr>
+<td>extra</td>
+<td></td>
+<td>dict</td>
+<td>{}</td>
+</tr>
+<tr>
+<td>description</td>
+<td></td>
+<td>str</td>
+<td>My Conn</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Response:</strong> List of Connections, as <code>GET</code> Response</p>
+<h3 id="delete-apistarshipconnections">DELETE /api/starship/connections<a class="headerlink" href="#delete-apistarshipconnections" title="Permanent link">&para;</a></h3>
+<p><strong>Parameters:</strong> Args</p>
+<table>
+<thead>
+<tr>
+<th>Field (*=Required)</th>
+<th>Version</th>
+<th>Type</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>conn_id*</td>
+<td></td>
+<td>str</td>
+<td>my_conn</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Response:</strong> None</p>
+<h2 id="dags">DAGs<a class="headerlink" href="#dags" title="Permanent link">&para;</a></h2>
+<p>Get DAG or pause/unpause a DAG</p>
+<p><strong>Model:</strong> <code>airflow.models.DagModel</code></p>
+<p><strong>Table:</strong> <code>dags</code></p>
+<hr />
+<h3 id="get-apistarshipdags"><code>GET /api/starship/dags</code><a class="headerlink" href="#get-apistarshipdags" title="Permanent link">&para;</a></h3>
+<p><strong>Parameters:</strong> None</p>
+<p><strong>Response</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="p">[</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">    </span><span class="p">{</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">        </span><span class="nt">"dag_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"dag_0"</span><span class="p">,</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">        </span><span class="nt">"schedule_interval"</span><span class="p">:</span><span class="w"> </span><span class="s2">"0 0 * * *"</span><span class="p">,</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="w">        </span><span class="nt">"is_paused"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="w">        </span><span class="nt">"fileloc"</span><span class="p">:</span><span class="w"> </span><span class="s2">"/usr/local/airflow/dags/dag_0.py"</span><span class="p">,</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">        </span><span class="nt">"description"</span><span class="p">:</span><span class="w"> </span><span class="s2">"My Dag"</span><span class="p">,</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="w">        </span><span class="nt">"owners"</span><span class="p">:</span><span class="w"> </span><span class="s2">"user"</span><span class="p">,</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="w">        </span><span class="nt">"tags"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="s2">"tag1"</span><span class="p">,</span><span class="w"> </span><span class="s2">"tag2"</span><span class="p">],</span>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="w">        </span><span class="nt">"dag_run_count"</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="w">    </span><span class="p">},</span>
+<a id="__codelineno-7-12" name="__codelineno-7-12" href="#__codelineno-7-12"></a><span class="w">    </span><span class="err">...</span>
+<a id="__codelineno-7-13" name="__codelineno-7-13" href="#__codelineno-7-13"></a><span class="p">]</span>
+</code></pre></div>
+<h3 id="patch-apistarshipdags"><code>PATCH /api/starship/dags</code><a class="headerlink" href="#patch-apistarshipdags" title="Permanent link">&para;</a></h3>
+<p><strong>Parameters:</strong> JSON</p>
+<table>
+<thead>
+<tr>
+<th>Field (*=Required)</th>
+<th>Version</th>
+<th>Type</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>dag_id*</td>
+<td></td>
+<td>str</td>
+<td>dag_0</td>
+</tr>
+<tr>
+<td>is_paused*</td>
+<td></td>
+<td>bool</td>
+<td>true</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="p">{</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">    </span><span class="nt">"dag_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"dag_0"</span><span class="p">,</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">    </span><span class="nt">"is_paused"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="p">}</span>
+</code></pre></div>
+<h2 id="dag-runs">DAG Runs<a class="headerlink" href="#dag-runs" title="Permanent link">&para;</a></h2>
+<p>Get DAG Runs or set DAG Runs</p>
+<p><strong>Model:</strong> <code>airflow.models.DagRun</code></p>
+<p><strong>Table:</strong> <code>dag_run</code></p>
+<hr />
+<h3 id="get-apistarshipdag_runs"><code>GET /api/starship/dag_runs</code><a class="headerlink" href="#get-apistarshipdag_runs" title="Permanent link">&para;</a></h3>
+<p><strong>Parameters:</strong> Args</p>
+<table>
+<thead>
+<tr>
+<th>Field (*=Required)</th>
+<th>Version</th>
+<th>Type</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>dag_id*</td>
+<td></td>
+<td>str</td>
+<td>dag_0</td>
+</tr>
+<tr>
+<td>limit</td>
+<td></td>
+<td>int</td>
+<td>10</td>
+</tr>
+<tr>
+<td>offset</td>
+<td></td>
+<td>int</td>
+<td>0</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Response</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="p">{</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">    </span><span class="nt">"dag_run_count"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">    </span><span class="nt">"dag_runs"</span><span class="p">:</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">        </span><span class="p">[</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">            </span><span class="p">{</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="w">                </span><span class="nt">"dag_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"dag_0"</span><span class="p">,</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="w">                </span><span class="nt">"queued_at"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1970-01-01T00:00:00+00:00"</span><span class="p">,</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="w">                </span><span class="nt">"execution_date"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1970-01-01T00:00:00+00:00"</span><span class="p">,</span>
+<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="w">                </span><span class="nt">"start_date"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1970-01-01T00:00:00+00:00"</span><span class="p">,</span>
+<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="w">                </span><span class="nt">"end_date"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1970-01-01T00:00:00+00:00"</span><span class="p">,</span>
+<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a><span class="w">                </span><span class="nt">"state"</span><span class="p">:</span><span class="w"> </span><span class="s2">"SUCCESS"</span><span class="p">,</span>
+<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="w">                </span><span class="nt">"run_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"manual__1970-01-01T00:00:00+00:00"</span><span class="p">,</span>
+<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a><span class="w">                </span><span class="nt">"creating_job_id"</span><span class="p">:</span><span class="w"> </span><span class="mi">123</span><span class="p">,</span>
+<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a><span class="w">                </span><span class="nt">"external_trigger"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a><span class="w">                </span><span class="nt">"run_type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"manual"</span><span class="p">,</span>
+<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a><span class="w">                </span><span class="nt">"conf"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"my_param"</span><span class="p">:</span><span class="w"> </span><span class="s2">"my_value"</span><span class="p">},</span>
+<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a><span class="w">                </span><span class="nt">"data_interval_start"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1970-01-01T00:00:00+00:00"</span><span class="p">,</span>
+<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a><span class="w">                </span><span class="nt">"data_interval_end"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1970-01-01T00:00:00+00:00"</span><span class="p">,</span>
+<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a><span class="w">                </span><span class="nt">"last_scheduling_decision"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1970-01-01T00:00:00+00:00"</span><span class="p">,</span>
+<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a><span class="w">                </span><span class="nt">"dag_hash"</span><span class="p">:</span><span class="w"> </span><span class="s2">"...."</span>
+<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a><span class="w">            </span><span class="p">},</span>
+<a id="__codelineno-9-22" name="__codelineno-9-22" href="#__codelineno-9-22"></a><span class="w">            </span><span class="err">...</span>
+<a id="__codelineno-9-23" name="__codelineno-9-23" href="#__codelineno-9-23"></a><span class="w">        </span><span class="p">]</span>
+<a id="__codelineno-9-24" name="__codelineno-9-24" href="#__codelineno-9-24"></a><span class="p">}</span>
+</code></pre></div>
+<h3 id="post-apistarshipdag_runs"><code>POST /api/starship/dag_runs</code><a class="headerlink" href="#post-apistarshipdag_runs" title="Permanent link">&para;</a></h3>
+<p><strong>Parameters:</strong> JSON</p>
+<table>
+<thead>
+<tr>
+<th>Field (*=Required)</th>
+<th>Version</th>
+<th>Type</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>dag_runs</td>
+<td></td>
+<td>list[DagRun]</td>
+<td>[ ... ]</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="p">{</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">    </span><span class="nt">"dag_runs"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="err">...</span><span class="w"> </span><span class="p">]</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="p">}</span>
+</code></pre></div>
+<p><strong>DAG Run:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Field (*=Required)</th>
+<th>Version</th>
+<th>Type</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>dag_id*</td>
+<td></td>
+<td>str</td>
+<td>dag_0</td>
+</tr>
+<tr>
+<td>queued_at</td>
+<td></td>
+<td>date</td>
+<td>1970-01-01T00:00:00+00:00</td>
+</tr>
+<tr>
+<td>execution_date*</td>
+<td></td>
+<td>date</td>
+<td>1970-01-01T00:00:00+00:00</td>
+</tr>
+<tr>
+<td>start_date</td>
+<td></td>
+<td>date</td>
+<td>1970-01-01T00:00:00+00:00</td>
+</tr>
+<tr>
+<td>end_date</td>
+<td></td>
+<td>date</td>
+<td>1970-01-01T00:00:00+00:00</td>
+</tr>
+<tr>
+<td>state</td>
+<td></td>
+<td>str</td>
+<td>SUCCESS</td>
+</tr>
+<tr>
+<td>run_id*</td>
+<td></td>
+<td>str</td>
+<td>manual__1970-01-01T00:00:00+00:00</td>
+</tr>
+<tr>
+<td>creating_job_id</td>
+<td></td>
+<td>int</td>
+<td>123</td>
+</tr>
+<tr>
+<td>external_trigger</td>
+<td></td>
+<td>bool</td>
+<td>true</td>
+</tr>
+<tr>
+<td>run_type*</td>
+<td></td>
+<td>str</td>
+<td>manual</td>
+</tr>
+<tr>
+<td>conf</td>
+<td></td>
+<td>dict</td>
+<td>{}</td>
+</tr>
+<tr>
+<td>data_interval_start</td>
+<td>&gt;2.1</td>
+<td>date</td>
+<td>1970-01-01T00:00:00+00:00</td>
+</tr>
+<tr>
+<td>data_interval_end</td>
+<td>&gt;2.1</td>
+<td>date</td>
+<td>1970-01-01T00:00:00+00:00</td>
+</tr>
+<tr>
+<td>last_scheduling_decision</td>
+<td></td>
+<td>date</td>
+<td>1970-01-01T00:00:00+00:00</td>
+</tr>
+<tr>
+<td>dag_hash</td>
+<td></td>
+<td>str</td>
+<td>...</td>
+</tr>
+<tr>
+<td>clear_number</td>
+<td>&gt;=2.8</td>
+<td>int</td>
+<td>0</td>
+</tr>
+</tbody>
+</table>
+<h3 id="delete-apistarshipdag_runs">DELETE /api/starship/dag_runs<a class="headerlink" href="#delete-apistarshipdag_runs" title="Permanent link">&para;</a></h3>
+<p><strong>Parameters:</strong> Args</p>
+<table>
+<thead>
+<tr>
+<th>Field (*=Required)</th>
+<th>Version</th>
+<th>Type</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>dag_id*</td>
+<td></td>
+<td>str</td>
+<td>dag_0</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Response:</strong> None</p>
+<h2 id="task-instances">Task Instances<a class="headerlink" href="#task-instances" title="Permanent link">&para;</a></h2>
+<p>Get TaskInstances or set TaskInstances</p>
+<p><strong>Model:</strong> <code>airflow.models.TaskInstance</code></p>
+<p><strong>Table:</strong> <code>task_instance</code></p>
+<hr />
+<h3 id="get-apistarshiptask_instances"><code>GET /api/starship/task_instances</code><a class="headerlink" href="#get-apistarshiptask_instances" title="Permanent link">&para;</a></h3>
+<p><strong>Parameters:</strong> Args</p>
+<table>
+<thead>
+<tr>
+<th>Field (*=Required)</th>
+<th>Version</th>
+<th>Type</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>dag_id*</td>
+<td></td>
+<td>str</td>
+<td>dag_0</td>
+</tr>
+<tr>
+<td>limit</td>
+<td></td>
+<td>int</td>
+<td>10</td>
+</tr>
+<tr>
+<td>offset</td>
+<td></td>
+<td>int</td>
+<td>0</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Response</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="p">{</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="w">    </span><span class="nt">"task_instances"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="w">        </span><span class="p">{</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a><span class="w">            </span><span class="nt">"task_instances"</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="w">            </span><span class="nt">"run_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"manual__1970-01-01T00:00:00+00:00"</span><span class="p">,</span>
+<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="w">            </span><span class="nt">"queued_at"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1970-01-01T00:00:00+00:00"</span><span class="p">,</span>
+<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="w">            </span><span class="nt">"execution_date"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1970-01-01T00:00:00+00:00"</span><span class="p">,</span>
+<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a><span class="w">            </span><span class="nt">"start_date"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1970-01-01T00:00:00+00:00"</span><span class="p">,</span>
+<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a><span class="w">            </span><span class="nt">"end_date"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1970-01-01T00:00:00+00:00"</span><span class="p">,</span>
+<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a><span class="w">            </span><span class="nt">"state"</span><span class="p">:</span><span class="w"> </span><span class="s2">"SUCCESS"</span><span class="p">,</span>
+<a id="__codelineno-11-11" name="__codelineno-11-11" href="#__codelineno-11-11"></a><span class="w">            </span><span class="nt">"creating_job_id"</span><span class="p">:</span><span class="w"> </span><span class="mi">123</span><span class="p">,</span>
+<a id="__codelineno-11-12" name="__codelineno-11-12" href="#__codelineno-11-12"></a><span class="w">            </span><span class="nt">"external_trigger"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<a id="__codelineno-11-13" name="__codelineno-11-13" href="#__codelineno-11-13"></a><span class="w">            </span><span class="nt">"run_type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"manual"</span><span class="p">,</span>
+<a id="__codelineno-11-14" name="__codelineno-11-14" href="#__codelineno-11-14"></a><span class="w">            </span><span class="nt">"conf"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"my_param"</span><span class="p">:</span><span class="w"> </span><span class="s2">"my_value"</span><span class="p">},</span>
+<a id="__codelineno-11-15" name="__codelineno-11-15" href="#__codelineno-11-15"></a><span class="w">            </span><span class="nt">"data_interval_start"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1970-01-01T00:00:00+00:00"</span><span class="p">,</span>
+<a id="__codelineno-11-16" name="__codelineno-11-16" href="#__codelineno-11-16"></a><span class="w">            </span><span class="nt">"data_interval_end"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1970-01-01T00:00:00+00:00"</span><span class="p">,</span>
+<a id="__codelineno-11-17" name="__codelineno-11-17" href="#__codelineno-11-17"></a><span class="w">            </span><span class="nt">"last_scheduling_decision"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1970-01-01T00:00:00+00:00"</span><span class="p">,</span>
+<a id="__codelineno-11-18" name="__codelineno-11-18" href="#__codelineno-11-18"></a><span class="w">            </span><span class="nt">"dag_hash"</span><span class="p">:</span><span class="w"> </span><span class="s2">"...."</span>
+<a id="__codelineno-11-19" name="__codelineno-11-19" href="#__codelineno-11-19"></a><span class="w">        </span><span class="p">},</span>
+<a id="__codelineno-11-20" name="__codelineno-11-20" href="#__codelineno-11-20"></a><span class="w">        </span><span class="err">...</span>
+<a id="__codelineno-11-21" name="__codelineno-11-21" href="#__codelineno-11-21"></a><span class="w">    </span><span class="p">],</span>
+<a id="__codelineno-11-22" name="__codelineno-11-22" href="#__codelineno-11-22"></a><span class="w">    </span><span class="nt">"dag_run_count"</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+<a id="__codelineno-11-23" name="__codelineno-11-23" href="#__codelineno-11-23"></a><span class="p">}</span>
+</code></pre></div>
+<h3 id="post-apistarshiptask_instances"><code>POST /api/starship/task_instances</code><a class="headerlink" href="#post-apistarshiptask_instances" title="Permanent link">&para;</a></h3>
+<p><strong>Parameters:</strong> JSON</p>
+<table>
+<thead>
+<tr>
+<th>Field (*=Required)</th>
+<th>Version</th>
+<th>Type</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>task_instances</td>
+<td></td>
+<td>list[TaskInstance]</td>
+<td>[ ... ]</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="p">{</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">    </span><span class="nt">"task_instances"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="err">...</span><span class="w"> </span><span class="p">]</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="p">}</span>
+</code></pre></div>
+<p><strong>Task Instance:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Field (*=Required)</th>
+<th>Version</th>
+<th>Type</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>dag_id*</td>
+<td></td>
+<td>str</td>
+<td>dag_0</td>
+</tr>
+<tr>
+<td>run_id*</td>
+<td>&gt;2.1</td>
+<td>str</td>
+<td>manual__1970-01-01T00:00:00+00:00</td>
+</tr>
+<tr>
+<td>task_id*</td>
+<td></td>
+<td>str</td>
+<td>task_0</td>
+</tr>
+<tr>
+<td>map_index*</td>
+<td>&gt;2.2</td>
+<td>int</td>
+<td>-1</td>
+</tr>
+<tr>
+<td>execution_date*</td>
+<td>&lt;=2.1</td>
+<td>date</td>
+<td>1970-01-01T00:00:00+00:00</td>
+</tr>
+<tr>
+<td>start_date</td>
+<td></td>
+<td>date</td>
+<td>1970-01-01T00:00:00+00:00</td>
+</tr>
+<tr>
+<td>end_date</td>
+<td></td>
+<td>date</td>
+<td>1970-01-01T00:00:00+00:00</td>
+</tr>
+<tr>
+<td>duration</td>
+<td></td>
+<td>float</td>
+<td>0.0</td>
+</tr>
+<tr>
+<td>max_tries</td>
+<td></td>
+<td>int</td>
+<td>2</td>
+</tr>
+<tr>
+<td>hostname</td>
+<td></td>
+<td>str</td>
+<td>host</td>
+</tr>
+<tr>
+<td>unixname</td>
+<td></td>
+<td>str</td>
+<td>unixname</td>
+</tr>
+<tr>
+<td>job_id</td>
+<td></td>
+<td>int</td>
+<td>123</td>
+</tr>
+<tr>
+<td>pool*</td>
+<td></td>
+<td>str</td>
+<td>default_pool</td>
+</tr>
+<tr>
+<td>pool_slots</td>
+<td></td>
+<td>int</td>
+<td>1</td>
+</tr>
+<tr>
+<td>queue</td>
+<td></td>
+<td>str</td>
+<td>queue</td>
+</tr>
+<tr>
+<td>priority_weight</td>
+<td></td>
+<td>int</td>
+<td>1</td>
+</tr>
+<tr>
+<td>operator</td>
+<td></td>
+<td>str</td>
+<td>BashOperator</td>
+</tr>
+<tr>
+<td>queued_dttm</td>
+<td></td>
+<td>date</td>
+<td>1970-01-01T00:00:00+00:00</td>
+</tr>
+<tr>
+<td>queued_by_job_id</td>
+<td></td>
+<td>int</td>
+<td>123</td>
+</tr>
+<tr>
+<td>pid</td>
+<td></td>
+<td>int</td>
+<td>123</td>
+</tr>
+<tr>
+<td>external_executor_id</td>
+<td></td>
+<td>int</td>
+<td></td>
+</tr>
+<tr>
+<td>trigger_id</td>
+<td>&gt;2.1</td>
+<td>str</td>
+<td></td>
+</tr>
+<tr>
+<td>trigger_timeout</td>
+<td>&gt;2.1</td>
+<td>date</td>
+<td>1970-01-01T00:00:00+00:00</td>
+</tr>
+<tr>
+<td>executor_config</td>
+<td></td>
+<td>str</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="task-instance-history">Task Instance History<a class="headerlink" href="#task-instance-history" title="Permanent link">&para;</a></h2>
+<p>Get and set TaskInstanceHistory records.</p>
+<p><strong>Model:</strong> <code>airflow.models.TaskInstanceHistory</code></p>
+<p><strong>Table:</strong> <code>task_instance_history</code></p>
+<hr />
+<h3 id="get-apistarshiptask_instance_history"><code>GET /api/starship/task_instance_history</code><a class="headerlink" href="#get-apistarshiptask_instance_history" title="Permanent link">&para;</a></h3>
+<p><strong>Parameters:</strong> Args</p>
+<table>
+<thead>
+<tr>
+<th>Field (*=Required)</th>
+<th>Version</th>
+<th>Type</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>dag_id*</td>
+<td></td>
+<td>str</td>
+<td>dag_0</td>
+</tr>
+<tr>
+<td>limit</td>
+<td></td>
+<td>int</td>
+<td>10</td>
+</tr>
+<tr>
+<td>offset</td>
+<td></td>
+<td>int</td>
+<td>0</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Response</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="p">{</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">    </span><span class="nt">"task_instances"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="w">        </span><span class="p">{</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="w">            </span><span class="nt">"task_instances"</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="w">            </span><span class="nt">"run_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"manual__1970-01-01T00:00:00+00:00"</span><span class="p">,</span>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="w">            </span><span class="nt">"queued_at"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1970-01-01T00:00:00+00:00"</span><span class="p">,</span>
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="w">            </span><span class="nt">"execution_date"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1970-01-01T00:00:00+00:00"</span><span class="p">,</span>
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a><span class="w">            </span><span class="nt">"start_date"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1970-01-01T00:00:00+00:00"</span><span class="p">,</span>
+<a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a><span class="w">            </span><span class="nt">"end_date"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1970-01-01T00:00:00+00:00"</span><span class="p">,</span>
+<a id="__codelineno-13-10" name="__codelineno-13-10" href="#__codelineno-13-10"></a><span class="w">            </span><span class="nt">"state"</span><span class="p">:</span><span class="w"> </span><span class="s2">"SUCCESS"</span><span class="p">,</span>
+<a id="__codelineno-13-11" name="__codelineno-13-11" href="#__codelineno-13-11"></a><span class="w">            </span><span class="nt">"creating_job_id"</span><span class="p">:</span><span class="w"> </span><span class="mi">123</span><span class="p">,</span>
+<a id="__codelineno-13-12" name="__codelineno-13-12" href="#__codelineno-13-12"></a><span class="w">            </span><span class="nt">"external_trigger"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<a id="__codelineno-13-13" name="__codelineno-13-13" href="#__codelineno-13-13"></a><span class="w">            </span><span class="nt">"run_type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"manual"</span><span class="p">,</span>
+<a id="__codelineno-13-14" name="__codelineno-13-14" href="#__codelineno-13-14"></a><span class="w">            </span><span class="nt">"conf"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="nt">"my_param"</span><span class="p">:</span><span class="w"> </span><span class="s2">"my_value"</span><span class="p">},</span>
+<a id="__codelineno-13-15" name="__codelineno-13-15" href="#__codelineno-13-15"></a><span class="w">            </span><span class="nt">"data_interval_start"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1970-01-01T00:00:00+00:00"</span><span class="p">,</span>
+<a id="__codelineno-13-16" name="__codelineno-13-16" href="#__codelineno-13-16"></a><span class="w">            </span><span class="nt">"data_interval_end"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1970-01-01T00:00:00+00:00"</span><span class="p">,</span>
+<a id="__codelineno-13-17" name="__codelineno-13-17" href="#__codelineno-13-17"></a><span class="w">            </span><span class="nt">"last_scheduling_decision"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1970-01-01T00:00:00+00:00"</span><span class="p">,</span>
+<a id="__codelineno-13-18" name="__codelineno-13-18" href="#__codelineno-13-18"></a><span class="w">            </span><span class="nt">"dag_hash"</span><span class="p">:</span><span class="w"> </span><span class="s2">"...."</span>
+<a id="__codelineno-13-19" name="__codelineno-13-19" href="#__codelineno-13-19"></a><span class="w">        </span><span class="p">},</span>
+<a id="__codelineno-13-20" name="__codelineno-13-20" href="#__codelineno-13-20"></a><span class="w">        </span><span class="err">...</span>
+<a id="__codelineno-13-21" name="__codelineno-13-21" href="#__codelineno-13-21"></a><span class="w">    </span><span class="p">],</span>
+<a id="__codelineno-13-22" name="__codelineno-13-22" href="#__codelineno-13-22"></a><span class="w">    </span><span class="nt">"dag_run_count"</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+<a id="__codelineno-13-23" name="__codelineno-13-23" href="#__codelineno-13-23"></a><span class="p">}</span>
+</code></pre></div>
+<h3 id="post-apistarshiptask_instance_history"><code>POST /api/starship/task_instance_history</code><a class="headerlink" href="#post-apistarshiptask_instance_history" title="Permanent link">&para;</a></h3>
+<p><strong>Parameters:</strong> JSON</p>
+<table>
+<thead>
+<tr>
+<th>Field (*=Required)</th>
+<th>Version</th>
+<th>Type</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>task_instances</td>
+<td></td>
+<td>list[TaskInstance]</td>
+<td>[ ... ]</td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="p">{</span>
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="w">    </span><span class="nt">"task_instances"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w"> </span><span class="err">...</span><span class="w"> </span><span class="p">]</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="p">}</span>
+</code></pre></div>
+<p><strong>Task Instance:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Field (*=Required)</th>
+<th>Version</th>
+<th>Type</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>dag_id*</td>
+<td></td>
+<td>str</td>
+<td>dag_0</td>
+</tr>
+<tr>
+<td>run_id*</td>
+<td>&gt;2.1</td>
+<td>str</td>
+<td>manual__1970-01-01T00:00:00+00:00</td>
+</tr>
+<tr>
+<td>task_id*</td>
+<td></td>
+<td>str</td>
+<td>task_0</td>
+</tr>
+<tr>
+<td>map_index*</td>
+<td>&gt;2.2</td>
+<td>int</td>
+<td>-1</td>
+</tr>
+<tr>
+<td>execution_date*</td>
+<td>&lt;=2.1</td>
+<td>date</td>
+<td>1970-01-01T00:00:00+00:00</td>
+</tr>
+<tr>
+<td>start_date</td>
+<td></td>
+<td>date</td>
+<td>1970-01-01T00:00:00+00:00</td>
+</tr>
+<tr>
+<td>end_date</td>
+<td></td>
+<td>date</td>
+<td>1970-01-01T00:00:00+00:00</td>
+</tr>
+<tr>
+<td>duration</td>
+<td></td>
+<td>float</td>
+<td>0.0</td>
+</tr>
+<tr>
+<td>max_tries</td>
+<td></td>
+<td>int</td>
+<td>2</td>
+</tr>
+<tr>
+<td>hostname</td>
+<td></td>
+<td>str</td>
+<td>host</td>
+</tr>
+<tr>
+<td>unixname</td>
+<td></td>
+<td>str</td>
+<td>unixname</td>
+</tr>
+<tr>
+<td>job_id</td>
+<td></td>
+<td>int</td>
+<td>123</td>
+</tr>
+<tr>
+<td>pool*</td>
+<td></td>
+<td>str</td>
+<td>default_pool</td>
+</tr>
+<tr>
+<td>pool_slots</td>
+<td></td>
+<td>int</td>
+<td>1</td>
+</tr>
+<tr>
+<td>queue</td>
+<td></td>
+<td>str</td>
+<td>queue</td>
+</tr>
+<tr>
+<td>priority_weight</td>
+<td></td>
+<td>int</td>
+<td>1</td>
+</tr>
+<tr>
+<td>operator</td>
+<td></td>
+<td>str</td>
+<td>BashOperator</td>
+</tr>
+<tr>
+<td>queued_dttm</td>
+<td></td>
+<td>date</td>
+<td>1970-01-01T00:00:00+00:00</td>
+</tr>
+<tr>
+<td>queued_by_job_id</td>
+<td></td>
+<td>int</td>
+<td>123</td>
+</tr>
+<tr>
+<td>pid</td>
+<td></td>
+<td>int</td>
+<td>123</td>
+</tr>
+<tr>
+<td>external_executor_id</td>
+<td></td>
+<td>int</td>
+<td></td>
+</tr>
+<tr>
+<td>trigger_id</td>
+<td>&gt;2.1</td>
+<td>str</td>
+<td></td>
+</tr>
+<tr>
+<td>trigger_timeout</td>
+<td>&gt;2.1</td>
+<td>date</td>
+<td>1970-01-01T00:00:00+00:00</td>
+</tr>
+<tr>
+<td>executor_config</td>
+<td></td>
+<td>str</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="task-log">Task Log<a class="headerlink" href="#task-log" title="Permanent link">&para;</a></h2>
+<p>Get, set or delete task logs.</p>
+<div class="admonition danger">
+<p class="admonition-title">Experimental</p>
+<p>This feature is considered experimental and subject to change.</p>
+</div>
+<p><strong>Requirements:</strong></p>
+<ul>
+<li>Airflow 2.8+</li>
+<li>Astro hosted deployments or local astro dev environment</li>
+</ul>
+<hr />
+<h3 id="get-apistarshiptask_log"><code>GET /api/starship/task_log</code><a class="headerlink" href="#get-apistarshiptask_log" title="Permanent link">&para;</a></h3>
+<p><strong>Parameters:</strong> Args</p>
+<table>
+<thead>
+<tr>
+<th>Field (*=Required)</th>
+<th>Version</th>
+<th>Type</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>dag_id*</td>
+<td></td>
+<td>str</td>
+<td>dag_0</td>
+</tr>
+<tr>
+<td>run_id*</td>
+<td></td>
+<td>str</td>
+<td>scheduled__2025-06-30T20:00:00+00:00</td>
+</tr>
+<tr>
+<td>task_id*</td>
+<td></td>
+<td>str</td>
+<td>task_0</td>
+</tr>
+<tr>
+<td>map_index*</td>
+<td></td>
+<td>int</td>
+<td>-1</td>
+</tr>
+<tr>
+<td>try_number*</td>
+<td></td>
+<td>int</td>
+<td>1</td>
+</tr>
+<tr>
+<td>block_size</td>
+<td></td>
+<td>int</td>
+<td>1048576</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Response</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a>[2025-06-30T21:02:11.417+0000] ...
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>... Task exited with return code 0
+</code></pre></div>
+<h3 id="post-apistarshiptask_log"><code>POST /api/starship/task_log</code><a class="headerlink" href="#post-apistarshiptask_log" title="Permanent link">&para;</a></h3>
+<p><strong>Parameters:</strong> Args</p>
+<table>
+<thead>
+<tr>
+<th>Field (*=Required)</th>
+<th>Version</th>
+<th>Type</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>dag_id*</td>
+<td></td>
+<td>str</td>
+<td>dag_0</td>
+</tr>
+<tr>
+<td>run_id*</td>
+<td></td>
+<td>str</td>
+<td>scheduled__2025-06-30T20:00:00+00:00</td>
+</tr>
+<tr>
+<td>task_id*</td>
+<td></td>
+<td>str</td>
+<td>task_0</td>
+</tr>
+<tr>
+<td>map_index*</td>
+<td></td>
+<td>int</td>
+<td>-1</td>
+</tr>
+<tr>
+<td>try_number*</td>
+<td></td>
+<td>int</td>
+<td>1</td>
+</tr>
+<tr>
+<td>block_size</td>
+<td></td>
+<td>int</td>
+<td>1048576</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Request</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a>[2025-06-30T21:02:11.417+0000] ...
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>... Task exited with return code 0
+</code></pre></div>
+<p><strong>Response:</strong> None</p>
+<h3 id="delete-apistarshiptask_log">DELETE /api/starship/task_log<a class="headerlink" href="#delete-apistarshiptask_log" title="Permanent link">&para;</a></h3>
+<p><strong>Parameters:</strong> Args</p>
+<table>
+<thead>
+<tr>
+<th>Field (*=Required)</th>
+<th>Version</th>
+<th>Type</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>dag_id*</td>
+<td></td>
+<td>str</td>
+<td>dag_0</td>
+</tr>
+<tr>
+<td>run_id*</td>
+<td></td>
+<td>str</td>
+<td>scheduled__2025-06-30T20:00:00+00:00</td>
+</tr>
+<tr>
+<td>task_id*</td>
+<td></td>
+<td>str</td>
+<td>task_0</td>
+</tr>
+<tr>
+<td>map_index*</td>
+<td></td>
+<td>int</td>
+<td>-1</td>
+</tr>
+<tr>
+<td>try_number*</td>
+<td></td>
+<td>int</td>
+<td>1</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Response:</strong> None</p>
+<h2 id="xcom">XCom<a class="headerlink" href="#xcom" title="Permanent link">&para;</a></h2>
+<p>Get, set or delete XComs.</p>
+<div class="admonition danger">
+<p class="admonition-title">Experimental</p>
+<p>This feature is considered experimental and subject to change.</p>
+</div>
+<p><strong>Requirements:</strong></p>
+<ul>
+<li>Airflow 2.8+</li>
+</ul>
+<hr />
+<h3 id="get-apistarshipxcom"><code>GET /api/starship/xcom</code><a class="headerlink" href="#get-apistarshipxcom" title="Permanent link">&para;</a></h3>
+<p><strong>Parameters:</strong> Args</p>
+<table>
+<thead>
+<tr>
+<th>Field (*=Required)</th>
+<th>Version</th>
+<th>Type</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>dag_id*</td>
+<td></td>
+<td>str</td>
+<td>dag_0</td>
+</tr>
+<tr>
+<td>run_id*</td>
+<td></td>
+<td>str</td>
+<td>scheduled__2025-06-30T20:00:00+00:00</td>
+</tr>
+<tr>
+<td>task_id*</td>
+<td></td>
+<td>str</td>
+<td>task_0</td>
+</tr>
+<tr>
+<td>map_index*</td>
+<td></td>
+<td>int</td>
+<td>-1</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Response</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="p">[</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="w">    </span><span class="p">{</span>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="w">        </span><span class="nt">"dag_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"example_xcom"</span><span class="p">,</span>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="w">        </span><span class="nt">"key"</span><span class="p">:</span><span class="w"> </span><span class="s2">"example_str"</span><span class="p">,</span>
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="w">        </span><span class="nt">"map_index"</span><span class="p">:</span><span class="w"> </span><span class="mi">-1</span><span class="p">,</span>
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a><span class="w">        </span><span class="nt">"run_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"scheduled__2025-07-17T00:00:00+00:00"</span><span class="p">,</span>
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a><span class="w">        </span><span class="nt">"task_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"run"</span><span class="p">,</span>
+<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a><span class="w">        </span><span class="nt">"value"</span><span class="p">:</span><span class="w"> </span><span class="s2">"bnVsbA=="</span>
+<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a><span class="p">]</span>
+</code></pre></div>
+<h3 id="post-apistarshipxcom"><code>POST /api/starship/xcom</code><a class="headerlink" href="#post-apistarshipxcom" title="Permanent link">&para;</a></h3>
+<p><strong>Parameters:</strong> JSON</p>
+<table>
+<thead>
+<tr>
+<th>Field (*=Required)</th>
+<th>Version</th>
+<th>Type</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>dag_id*</td>
+<td></td>
+<td>str</td>
+<td>dag_0</td>
+</tr>
+<tr>
+<td>run_id*</td>
+<td></td>
+<td>str</td>
+<td>scheduled__2025-06-30T20:00:00+00:00</td>
+</tr>
+<tr>
+<td>task_id*</td>
+<td></td>
+<td>str</td>
+<td>task_0</td>
+</tr>
+<tr>
+<td>map_index*</td>
+<td></td>
+<td>int</td>
+<td>-1</td>
+</tr>
+<tr>
+<td>key*</td>
+<td></td>
+<td>str</td>
+<td>return_value</td>
+</tr>
+<tr>
+<td>value*</td>
+<td></td>
+<td>str</td>
+<td>bnVsbA==</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Request</strong>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="p">{</span>
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="w">    </span><span class="nt">"dag_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"example_xcom"</span><span class="p">,</span>
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="w">    </span><span class="nt">"key"</span><span class="p">:</span><span class="w"> </span><span class="s2">"example_str"</span><span class="p">,</span>
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="w">    </span><span class="nt">"map_index"</span><span class="p">:</span><span class="w"> </span><span class="mi">-1</span><span class="p">,</span>
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a><span class="w">    </span><span class="nt">"run_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"scheduled__2025-07-17T00:00:00+00:00"</span><span class="p">,</span>
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a><span class="w">    </span><span class="nt">"task_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"run"</span><span class="p">,</span>
+<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a><span class="w">    </span><span class="nt">"value"</span><span class="p">:</span><span class="w"> </span><span class="s2">"bnVsbA=="</span>
+<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a><span class="p">}</span>
+</code></pre></div>
+<p><strong>Response</strong>: None</p>
+<h3 id="delete-apistarshipxcom">DELETE /api/starship/xcom<a class="headerlink" href="#delete-apistarshipxcom" title="Permanent link">&para;</a></h3>
+<p><strong>Parameters:</strong> Args</p>
+<table>
+<thead>
+<tr>
+<th>Field (*=Required)</th>
+<th>Version</th>
+<th>Type</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>dag_id*</td>
+<td></td>
+<td>str</td>
+<td>dag_0</td>
+</tr>
+<tr>
+<td>run_id*</td>
+<td></td>
+<td>str</td>
+<td>scheduled__2025-06-30T20:00:00+00:00</td>
+</tr>
+<tr>
+<td>task_id*</td>
+<td></td>
+<td>str</td>
+<td>task_0</td>
+</tr>
+<tr>
+<td>map_index*</td>
+<td></td>
+<td>int</td>
+<td>-1</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Response:</strong> None</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Apache Airflow® is a trademark of the Apache Software Foundation
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+      <div class="md-progress" data-md-component="progress" role="progressbar"></div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.path", "navigation.sections", "navigation.tabs", "navigation.tabs.sticky", "navigation.top", "navigation.instant", "navigation.instant.progress", "toc.follow", "toc.integrate", "content.tabs.link", "content.action.edit", "content.code.copy", "search.share", "search.highlight", "search.suggest"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
