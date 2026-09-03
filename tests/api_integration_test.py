@@ -107,7 +107,11 @@ def test_integration_dags(url_and_token_and_starship):
     expected_get = get_test_data(attrs=starship.dag_attrs())
     actual = requests.get(f"{url}/{route}", **get_extras(url, token))
     assert actual.status_code == 200, actual.text
-    for dag in actual.json():
+    body = actual.json()
+    # get_dags returns {"dags": [...], "total_dag_count": N} (>=2.11);
+    # older releases returned a bare list.
+    dags = body["dags"] if isinstance(body, dict) else body
+    for dag in dags:
         if dag["dag_id"] == expected_get["dag_id"]:
             assert dag["dag_id"] == expected_get["dag_id"], actual.text
             assert dag["schedule_interval"] == expected_get["schedule_interval"], actual.text

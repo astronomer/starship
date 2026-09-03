@@ -100,19 +100,54 @@ def test_dags(starship):
     assert actual == test_input, actual
 
     test_input = get_test_data(attrs=starship.dag_attrs())
-    actual = starship.get_dags()
+    result = starship.get_dags()
+    # get_dags returns {"dags": [...], "total_dag_count": N} (>=2.11);
+    # older releases returned a bare list.
+    actual = result["dags"] if isinstance(result, dict) else result
     actual_dags = [dag for dag in actual if dag["dag_id"] == test_input["dag_id"]]
     assert len(actual_dags) == 1, actual_dags
 
     # not predictable, so remove it
     del actual_dags[0]["fileloc"]
-    del test_input["fileloc"]
 
     # not predictable (sorting), so remove it
     del actual_dags[0]["tags"]
-    del test_input["tags"]
 
-    assert actual_dags[0] == test_input, actual_dags[0]
+    # Row-shape assertion should ignore keys that only appear in test_input as
+    # query-param descriptors (limit/offset/search), which are never row fields.
+    filtered_input = {k: v for k, v in test_input.items() if k in actual_dags[0]}
+    assert actual_dags[0] == filtered_input, actual_dags[0]
+
+
+@docker_test
+def test_dags_pagination_and_search(starship):
+    # Response wraps the list plus a total that reflects the filter, not the page window.
+    result = starship.get_dags()
+    assert isinstance(result, dict), result
+    assert "dags" in result and "total_dag_count" in result, result
+    all_dags = result["dags"]
+    total = result["total_dag_count"]
+    assert total == len(all_dags), (total, len(all_dags))
+
+    # Paged fetch returns a slice of the same set.
+    if total >= 2:
+        page = starship.get_dags(limit=1, offset=0)
+        assert len(page["dags"]) == 1, page
+        assert page["total_dag_count"] == total, page
+
+        next_page = starship.get_dags(limit=1, offset=1)
+        assert len(next_page["dags"]) == 1, next_page
+        assert next_page["dags"][0]["dag_id"] != page["dags"][0]["dag_id"], (page, next_page)
+
+    # Search restricts total_dag_count, not just the page window.
+    if all_dags:
+        target = all_dags[0]["dag_id"]
+        hit = starship.get_dags(search=target)
+        assert hit["total_dag_count"] >= 1, hit
+        assert any(d["dag_id"] == target for d in hit["dags"]), hit
+
+    miss = starship.get_dags(search="__nonexistent_starship_test_dag__")
+    assert miss == {"dags": [], "total_dag_count": 0}, miss
 
 
 @docker_test

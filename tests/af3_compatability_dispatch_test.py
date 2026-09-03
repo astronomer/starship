@@ -21,6 +21,7 @@ ATTR_METHODS = [
     "pool_attrs",
     "variable_attrs",
     "connection_attrs",
+    "dag_attrs",
     "dag_run_attrs",
     "task_instance_attrs",
     "dag_runs_attrs",
@@ -213,3 +214,46 @@ def test_compatability_layer_defaults_to_installed_airflow_version(monkeypatch):
 
     monkeypatch.setattr(airflow, "__version__", "3.3.1", raising=False)
     assert isinstance(StarshipCompatabilityLayer(), StarshipAirflow33)
+
+
+DAG_PAGINATION_PARAMS = ("limit", "offset", "search")
+
+DAG_ROW_KEYS = (
+    "dag_id",
+    "timetable_summary",
+    "is_paused",
+    "fileloc",
+    "description",
+    "owners",
+    "tags",
+    "dag_run_count",
+)
+
+
+@pytest.mark.parametrize("cls", ALL_AF3_SUBCLASSES)
+@pytest.mark.parametrize("param", DAG_PAGINATION_PARAMS)
+def test_dag_attrs_pagination_params_are_get_only(cls, param):
+    # Params are consumed as query args by get_kwargs_fn and must not surface as row fields.
+    desc = cls.dag_attrs()[param]
+    assert desc["methods"] == [("GET", False)], desc
+
+
+@pytest.mark.parametrize("cls", ALL_AF3_SUBCLASSES)
+@pytest.mark.parametrize("row_key", DAG_ROW_KEYS)
+def test_dag_attrs_row_shape_regression(cls, row_key):
+    # Guards against accidentally dropping any existing dag_attrs row field when
+    # adding new params or subclass overrides.
+    assert row_key in cls.dag_attrs(), f"{cls.__name__}.dag_attrs missing row field {row_key!r}"
+
+
+@pytest.mark.parametrize("cls", ALL_AF3_SUBCLASSES)
+def test_dag_attrs_pagination_params_are_not_row_fields(cls):
+    # get_dags() must skip GET-only descriptors when building each row so the
+    # response doesn't contain phantom `limit`/`offset`/`search` keys.
+    row_attrs = {
+        attr: desc
+        for attr, desc in cls.dag_attrs().items()
+        if not (desc["methods"] and all(m[0] == "GET" for m in desc["methods"]))
+    }
+    for param in DAG_PAGINATION_PARAMS:
+        assert param not in row_attrs, f"{cls.__name__}.dag_attrs: {param!r} leaked into row shape"
