@@ -159,38 +159,112 @@ class StarshipAirflow30(StarshipAirflow):
                 "methods": [],
                 "test_value": 0,
             },
+            # Pagination and search are query params on GET, not row fields.
+            "limit": {
+                "attr": "limit",
+                "methods": [("GET", False)],
+                "test_value": 50,
+            },
+            "offset": {
+                "attr": "offset",
+                "methods": [("GET", False)],
+                "test_value": 0,
+            },
+            "search": {
+                "attr": "search",
+                "methods": [("GET", False)],
+                "test_value": "dag_0",
+            },
         }
 
-    def get_dags(self):
-        from airflow.models import DagModel
+    def get_dags(self, limit=None, offset=0, search=None):
+        from airflow.models import DagModel, DagTag
+        from sqlalchemy import distinct, func, or_, select
+        from sqlalchemy.sql.functions import count
+
+        # Query params come in as strings via request.args; coerce.
+        limit = int(limit) if limit is not None else None
+        offset = int(offset) if offset else 0
+
+        # `dag_attrs` mixes row-shape fields and query-param descriptors -- filter out
+        # the params so they don't leak into every DAG row.
+        row_attrs = {
+            attr: desc
+            for attr, desc in self.dag_attrs().items()
+            if not (desc["methods"] and all(m[0] == "GET" for m in desc["methods"]))
+        }
+        fields = [
+            getattr(DagModel, attr_desc["attr"]) for attr_desc in row_attrs.values() if attr_desc["attr"] is not None
+        ]
 
         try:
-            fields = [
-                getattr(DagModel, attr_desc["attr"])
-                for attr_desc in self.dag_attrs().values()
-                if attr_desc["attr"] is not None
-            ]
+            # Search matches dag_id, owners, or any tag (case-insensitive substring).
+            def _apply_search(query):
+                if not search:
+                    return query
+                pattern = f"%{search}%"
+                tag_subq = select(DagTag.dag_id).where(DagTag.name.ilike(pattern)).distinct()
+                return query.filter(
+                    or_(
+                        DagModel.dag_id.ilike(pattern),
+                        DagModel.owners.ilike(pattern),
+                        DagModel.dag_id.in_(tag_subq),
+                    )
+                )
 
-            return json.loads(
+            # Total count reflects the search filter, not the page window.
+            total = _apply_search(self.session.query(func.count(DagModel.dag_id))).scalar() or 0
+
+            page_query = _apply_search(self.session.query(*fields)).order_by(DagModel.dag_id)
+            if offset:
+                page_query = page_query.offset(offset)
+            if limit is not None:
+                page_query = page_query.limit(limit)
+            page = page_query.all()
+            page_dag_ids = [row.dag_id for row in page]
+
+            # Batched tag lookup: one query instead of N.
+            # noqa comprehension (not `dict.fromkeys`) is intentional: each value is a fresh list.
+            tags_by_dag = {dag_id: [] for dag_id in page_dag_ids}  # noqa: C420
+            if page_dag_ids:
+                for dag_id, tag_name in self.session.query(DagTag.dag_id, DagTag.name).filter(
+                    DagTag.dag_id.in_(page_dag_ids)
+                ):
+                    tags_by_dag[dag_id].append(tag_name)
+
+            # Batched run count: one grouped query instead of N.
+            from airflow.models import DagRun
+
+            counts_by_dag = dict.fromkeys(page_dag_ids, 0)
+            if page_dag_ids:
+                for dag_id, run_count in (
+                    self.session.query(DagRun.dag_id, count(distinct(DagRun.run_id)))
+                    .filter(DagRun.dag_id.in_(page_dag_ids))
+                    .group_by(DagRun.dag_id)
+                ):
+                    counts_by_dag[dag_id] = run_count
+
+            dags = json.loads(
                 json.dumps(
                     [
                         {
                             attr: (
-                                self._get_tags(result.dag_id)
+                                tags_by_dag.get(result.dag_id, [])
                                 if attr == "tags"
                                 else (
-                                    self._get_dag_run_count(result.dag_id)
+                                    counts_by_dag.get(result.dag_id, 0)
                                     if attr == "dag_run_count"
                                     else getattr(result, attr_desc["attr"], None)
                                 )
                             )
-                            for attr, attr_desc in self.dag_attrs().items()
+                            for attr, attr_desc in row_attrs.items()
                         }
-                        for result in self.session.query(*fields).all()
+                        for result in page
                     ],
                     default=str,
                 )
             )
+            return {"dags": dags, "total_dag_count": total}
         except Exception as e:
             self.session.rollback()
             raise e

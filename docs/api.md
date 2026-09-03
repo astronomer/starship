@@ -266,25 +266,37 @@ Get DAG or pause/unpause a DAG
 
 ### `GET /api/starship/dags`
 
-**Parameters:** None
+**Parameters:** Args
+
+| Field (*=Required) | Version | Type | Example |
+|--------------------|---------|------|---------|
+| limit              | >=2.11  | int  | 50      |
+| offset             | >=2.11  | int  | 0       |
+| search             | >=2.11  | str  | example |
+
+When `limit`/`offset` are omitted, all DAGs are returned. `search` matches (case-insensitive substring) against `dag_id`, `owners`, and any DAG tag.
 
 **Response**:
 
 ```json
-[
-    {
-        "dag_id": "dag_0",
-        "schedule_interval": "0 0 * * *",
-        "is_paused": true,
-        "fileloc": "/usr/local/airflow/dags/dag_0.py",
-        "description": "My Dag",
-        "owners": "user",
-        "tags": ["tag1", "tag2"],
-        "dag_run_count": 2,
-    },
-    ...
-]
+{
+    "dags": [
+        {
+            "dag_id": "dag_0",
+            "schedule_interval": "0 0 * * *",
+            "is_paused": true,
+            "fileloc": "/usr/local/airflow/dags/dag_0.py",
+            "description": "My Dag",
+            "owners": "user",
+            "tags": ["tag1", "tag2"],
+            "dag_run_count": 2
+        }
+    ],
+    "total_dag_count": 1
+}
 ```
+
+`total_dag_count` reflects the total number of DAGs matching `search` (or the full set when no `search` is given), independent of `limit`/`offset`. Rows are ordered by `dag_id` for stable pagination.
 
 ### `PATCH /api/starship/dags`
 

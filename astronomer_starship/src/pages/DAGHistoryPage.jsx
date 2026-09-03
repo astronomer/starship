@@ -4,17 +4,22 @@ import {
   Badge,
   Box,
   Button,
+  Checkbox,
   FormControl,
   Heading,
   HStack,
+  IconButton,
+  Input,
   InputGroup,
   InputLeftAddon,
+  InputLeftElement,
   Link,
   NumberDecrementStepper,
   NumberIncrementStepper,
   NumberInput,
   NumberInputField,
   NumberInputStepper,
+  Select,
   Stack,
   Switch,
   Tag,
@@ -25,7 +30,7 @@ import {
 } from '@chakra-ui/react';
 import axios from 'axios';
 import humanFormat from 'human-format';
-import { ExternalLinkIcon, RepeatIcon } from '@chakra-ui/icons';
+import { ChevronLeftIcon, ChevronRightIcon, ExternalLinkIcon, RepeatIcon, SearchIcon } from '@chakra-ui/icons';
 import { FiPause, FiPlay } from 'react-icons/fi';
 import { useAppDispatch, useTargetConfig, useDagHistoryConfig } from '../AppContext';
 import DataTable from '../component/DataTable';
@@ -239,13 +244,19 @@ function createColumns(config) {
 
 export default function DAGHistoryPage() {
   const { targetUrl, token, localAirflowVersion } = useTargetConfig();
-  const { limit, batchSize } = useDagHistoryConfig();
+  const { limit, batchSize, page, pageSize, search, unmigratedOnly } = useDagHistoryConfig();
   const dispatch = useAppDispatch();
   const toast = useToast();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [data, setData] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+  // Set of dag_ids that exist on the target -- used by the "unmigrated only" filter.
+  // Fetched once per page mount; stays local (not in AppContext) since it can be sizeable.
+  const [targetDagIds, setTargetDagIds] = useState(() => new Set());
+  // Local mirror of the search input so we can debounce dispatches to AppContext.
+  const [searchInput, setSearchInput] = useState(search);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -260,13 +271,25 @@ export default function DAGHistoryPage() {
         }
       }
 
+      const params = { limit: pageSize, offset: page * pageSize };
+      if (search) params.search = search;
+
       const [localRes, remoteRes] = await Promise.all([
-        axios.get(localRoute(constants.DAGS_ROUTE)),
-        axios.get(proxyUrl(targetUrl + constants.DAGS_ROUTE), { headers: proxyHeaders(token) }),
+        axios.get(localRoute(constants.DAGS_ROUTE), { params }),
+        axios.get(proxyUrl(targetUrl + constants.DAGS_ROUTE), { params, headers: proxyHeaders(token) }),
       ]);
 
       if (localRes.status === 200 && remoteRes.status === 200) {
-        setData(mergeDagData(localRes.data, remoteRes.data));
+        // Response shape (>=2.11): {dags: [...], total_dag_count: N}. Older releases returned a bare list.
+        const unwrap = (res) => (Array.isArray(res.data) ? res.data : res.data?.dags ?? []);
+        const localDags = unwrap(localRes);
+        const remoteDags = unwrap(remoteRes);
+        setData(mergeDagData(localDags, remoteDags));
+        // Total from the source is authoritative for pagination; target count may differ.
+        const nextTotal = Array.isArray(localRes.data)
+          ? localDags.length
+          : (localRes.data?.total_dag_count ?? localDags.length);
+        setTotalCount(nextTotal);
       } else {
         throw new Error('Invalid response from server');
       }
@@ -278,11 +301,44 @@ export default function DAGHistoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [targetUrl, token, dispatch, localAirflowVersion]);
+  }, [targetUrl, token, dispatch, localAirflowVersion, page, pageSize, search]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // One-time (per targetUrl change) fetch of every target dag_id so the "unmigrated only"
+  // filter can flag migrated rows accurately across pages. Payload is dag_ids-only-ish
+  // and typically <100KB even for thousands of DAGs.
+  useEffect(() => {
+    if (!targetUrl || !token) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await axios.get(proxyUrl(targetUrl + constants.DAGS_ROUTE), {
+          params: { limit: 10000, offset: 0 },
+          headers: proxyHeaders(token),
+        });
+        if (cancelled) return;
+        const dags = Array.isArray(res.data) ? res.data : res.data?.dags ?? [];
+        setTargetDagIds(new Set(dags.map((d) => d.dag_id)));
+      } catch {
+        // Non-fatal: the filter just becomes a no-op if we can't reach target here.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [targetUrl, token]);
+
+  // Debounce search input -> AppContext dispatch (~300ms).
+  useEffect(() => {
+    if (searchInput === search) return undefined;
+    const t = setTimeout(() => {
+      dispatch({ type: 'set-dag-history-search', search: searchInput });
+    }, 300);
+    return () => clearTimeout(t);
+  }, [searchInput, search, dispatch]);
 
   const handlePausedClick = useCallback(
     async (isPaused, dagId, isLocal) => {
@@ -503,14 +559,81 @@ export default function DAGHistoryPage() {
         </HStack>
       </HStack>
 
+      <HStack spacing={3} mb={3} align="center">
+        <InputGroup size="sm" maxW="sm">
+          <InputLeftElement pointerEvents="none">
+            <SearchIcon color="gray.400" />
+          </InputLeftElement>
+          <Input
+            placeholder="Search DAGs by ID, tag, owner..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+          />
+        </InputGroup>
+        <Checkbox
+          isChecked={unmigratedOnly}
+          onChange={(e) =>
+            dispatch({ type: 'set-dag-history-unmigrated-only', unmigratedOnly: e.target.checked })
+          }
+        >
+          Unmigrated only
+        </Checkbox>
+        <Text fontSize="sm" color="gray.600" ml="auto">
+          {totalCount === 0
+            ? 'No DAGs'
+            : `Showing ${page * pageSize + 1}\u2013${Math.min((page + 1) * pageSize, totalCount)} of ${totalCount}`}
+        </Text>
+      </HStack>
+
       <VStack spacing={3} align="stretch" w="100%">
         <Box>
           {loading || error ? (
             <PageLoading loading={loading} error={error} />
           ) : (
-            <DataTable data={data} columns={columns} searchPlaceholder="Search DAGs by ID, tags, owners..." />
+            <DataTable
+              data={unmigratedOnly ? data.filter((d) => !targetDagIds.has(d.local.dag_id)) : data}
+              columns={columns}
+              showSearch={false}
+            />
           )}
         </Box>
+        {!loading && !error && totalCount > 0 && (
+          <HStack spacing={2} justify="flex-end" align="center">
+            <Text fontSize="sm" color="gray.600">
+              Rows per page:
+            </Text>
+            <Select
+              size="sm"
+              w="20"
+              value={pageSize}
+              onChange={(e) =>
+                dispatch({ type: 'set-dag-history-page-size', pageSize: Number(e.target.value) })
+              }
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </Select>
+            <IconButton
+              size="sm"
+              aria-label="Previous page"
+              icon={<ChevronLeftIcon />}
+              onClick={() => dispatch({ type: 'set-dag-history-page', page: Math.max(0, page - 1) })}
+              isDisabled={page === 0}
+            />
+            <Text fontSize="sm" color="gray.600" minW="20" textAlign="center">
+              Page {page + 1} of {Math.max(1, Math.ceil(totalCount / pageSize))}
+            </Text>
+            <IconButton
+              size="sm"
+              aria-label="Next page"
+              icon={<ChevronRightIcon />}
+              onClick={() => dispatch({ type: 'set-dag-history-page', page: page + 1 })}
+              isDisabled={(page + 1) * pageSize >= totalCount}
+            />
+          </HStack>
+        )}
       </VStack>
     </Box>
   );

@@ -36,6 +36,12 @@ const initialState = {
   limit: 100,
   batchSize: 10,
 
+  // DAG History pagination
+  dagHistoryPage: 0,
+  dagHistoryPageSize: 50,
+  dagHistorySearch: '',
+  dagHistoryUnmigratedOnly: false,
+
   // Local Airflow info
   localAirflowVersion: null,
 };
@@ -109,6 +115,15 @@ function reducer(state, action) {
       return { ...state, limit: action.limit };
     case 'set-batch-size':
       return { ...state, batchSize: action.batchSize };
+    case 'set-dag-history-page':
+      return { ...state, dagHistoryPage: action.page };
+    case 'set-dag-history-page-size':
+      // Reset to page 0 when page size changes so offsets stay valid.
+      return { ...state, dagHistoryPageSize: action.pageSize, dagHistoryPage: 0 };
+    case 'set-dag-history-search':
+      return { ...state, dagHistorySearch: action.search, dagHistoryPage: 0 };
+    case 'set-dag-history-unmigrated-only':
+      return { ...state, dagHistoryUnmigratedOnly: action.unmigratedOnly };
     case 'set-local-airflow-version':
       return { ...state, localAirflowVersion: action.version };
     case 'reset':
@@ -229,8 +244,19 @@ export function useDagHistoryConfig() {
     () => ({
       limit: state.limit,
       batchSize: state.batchSize,
+      page: state.dagHistoryPage,
+      pageSize: state.dagHistoryPageSize,
+      search: state.dagHistorySearch,
+      unmigratedOnly: state.dagHistoryUnmigratedOnly,
     }),
-    [state.limit, state.batchSize],
+    [
+      state.limit,
+      state.batchSize,
+      state.dagHistoryPage,
+      state.dagHistoryPageSize,
+      state.dagHistorySearch,
+      state.dagHistoryUnmigratedOnly,
+    ],
   );
 }
 
