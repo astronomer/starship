@@ -183,8 +183,10 @@ class StarshipAirflow30(StarshipAirflow):
         from sqlalchemy.sql.functions import count
 
         # Query params come in as strings via request.args; coerce.
-        limit = int(limit) if limit is not None else None
-        offset = int(offset) if offset else 0
+        # Treat empty strings as unset (e.g. `?limit=&offset=`).
+        limit = int(limit) if limit not in (None, "") else None
+        offset = int(offset) if offset not in (None, "", 0, "0") else 0
+        search = search or None
 
         # `dag_attrs` mixes row-shape fields and query-param descriptors -- filter out
         # the params so they don't leak into every DAG row.
