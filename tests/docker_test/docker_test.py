@@ -151,6 +151,46 @@ def test_dags_pagination_and_search(starship):
 
 
 @docker_test
+def test_dags_search_field(starship):
+    # search_field=None|""|"bogus" must fall back to OR-across-all (regression:
+    # `field_filters.get(x) or or_(...)` used to raise TypeError on the returned
+    # SQLAlchemy clause via __bool__).
+    result = starship.get_dags()
+    all_dags = result["dags"]
+    if not all_dags:
+        return  # No DAGs to filter against; test is a no-op.
+
+    sample = all_dags[0]
+    dag_id = sample["dag_id"]
+
+    # search_field=dag_id: matches the sample DAG by its id.
+    by_id = starship.get_dags(search=dag_id, search_field="dag_id")
+    assert by_id["total_dag_count"] >= 1, by_id
+    assert any(d["dag_id"] == dag_id for d in by_id["dags"]), by_id
+
+    # search_field=owner: substring-match on owners.
+    if sample.get("owners"):
+        owner_frag = sample["owners"].split(",")[0].strip()
+        if owner_frag:
+            by_owner = starship.get_dags(search=owner_frag, search_field="owner")
+            assert by_owner["total_dag_count"] >= 1, by_owner
+
+    # search_field=tag: substring-match on any tag.
+    if sample.get("tags"):
+        tag_frag = sample["tags"][0]
+        by_tag = starship.get_dags(search=tag_frag, search_field="tag")
+        assert by_tag["total_dag_count"] >= 1, by_tag
+        assert any(dag_id == d["dag_id"] for d in by_tag["dags"]), by_tag
+
+    # Unknown search_field values must not error; they degrade to the
+    # OR-across-all behaviour of an unset field.
+    any_any = starship.get_dags(search=dag_id)
+    for field in ("", "bogus", "any"):
+        alt = starship.get_dags(search=dag_id, search_field=field)
+        assert alt["total_dag_count"] == any_any["total_dag_count"], (field, alt, any_any)
+
+
+@docker_test
 def test_dag_runs_and_task_instances(starship):
     test_input = get_test_data(method="POST", attrs=starship.dag_runs_attrs())
     dag_id = test_input["dag_runs"][0]["dag_id"]
