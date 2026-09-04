@@ -213,7 +213,7 @@ class StarshipAirflow(BaseStarshipAirflow):
                     "owner": DagModel.owners.ilike(pattern),
                     "tag": DagModel.dag_id.in_(tag_subq),
                 }
-                clause = field_filters.get(search_field) or or_(*field_filters.values())
+                clause = field_filters[search_field] if search_field in field_filters else or_(*field_filters.values())
                 return query.filter(clause)
 
             # Total count reflects the search filter, not the page window.
