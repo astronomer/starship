@@ -273,8 +273,13 @@ Get DAG or pause/unpause a DAG
 | limit              | >=2.11  | int  | 50      |
 | offset             | >=2.11  | int  | 0       |
 | search             | >=2.11  | str  | example |
+| search_field       | >=2.11  | str  | dag_id  |
 
-When `limit`/`offset` are omitted, all DAGs are returned. `search` matches (case-insensitive substring) against `dag_id`, `owners`, and any DAG tag.
+When `limit`/`offset` are omitted, all DAGs are returned. `search` matches
+(case-insensitive substring) against `dag_id`, `owners`, and any DAG tag by
+default. Set `search_field` to `dag_id`, `owner`, or `tag` to restrict the
+match to that single column; any other value (or unset) preserves the default
+"any of the three" behaviour.
 
 **Response**:
 
