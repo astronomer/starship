@@ -13,6 +13,7 @@ import {
   FormControl,
   Heading,
   HStack,
+  Icon,
   IconButton,
   Input,
   InputGroup,
@@ -36,8 +37,15 @@ import {
 } from '@chakra-ui/react';
 import axios from 'axios';
 import humanFormat from 'human-format';
-import { ChevronLeftIcon, ChevronRightIcon, ExternalLinkIcon, RepeatIcon, SearchIcon } from '@chakra-ui/icons';
-import { FiPause, FiPlay } from 'react-icons/fi';
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  CloseIcon,
+  ExternalLinkIcon,
+  RepeatIcon,
+  SearchIcon,
+} from '@chakra-ui/icons';
+import { FiFilter, FiPause, FiPlay } from 'react-icons/fi';
 import { useAppDispatch, useTargetConfig, useDagHistoryConfig } from '../AppContext';
 import DataTable from '../component/DataTable';
 import PageLoading from '../component/PageLoading';
@@ -579,35 +587,65 @@ export default function DAGHistoryPage() {
       </HStack>
 
       <HStack spacing={3} mb={3} align="center">
-        <Select
-          size="sm"
-          w="32"
-          value={searchField}
-          onChange={(e) => dispatch({ type: 'set-dag-history-search-field', searchField: e.target.value })}
-        >
-          <option value="any">Any field</option>
-          <option value="dag_id">DAG ID</option>
-          <option value="owner">Owner</option>
-          <option value="tag">Tag</option>
-        </Select>
-        <InputGroup size="sm" maxW="sm">
-          <InputLeftElement pointerEvents="none">
-            <SearchIcon color="gray.400" />
-          </InputLeftElement>
-          <Input
-            placeholder={
-              searchField === 'dag_id'
-                ? 'Search by DAG ID...'
-                : searchField === 'owner'
-                  ? 'Search by owner...'
-                  : searchField === 'tag'
-                    ? 'Search by tag...'
-                    : 'Search by ID, tag, or owner...'
-            }
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-          />
-        </InputGroup>
+        <HStack spacing={0} border="1px solid" borderColor="gray.200" borderRadius="md" overflow="hidden" bg="white">
+          <HStack px={3} h="8" bg="gray.50" spacing={1.5} borderRight="1px solid" borderColor="gray.200">
+            <Icon as={FiFilter} boxSize={3.5} color="gray.500" />
+            <Text fontSize="xs" fontWeight="semibold" color="gray.600" textTransform="uppercase" letterSpacing="wider">
+              Filter
+            </Text>
+          </HStack>
+          <Select
+            size="sm"
+            w="32"
+            value={searchField}
+            onChange={(e) => dispatch({ type: 'set-dag-history-search-field', searchField: e.target.value })}
+            border="0"
+            borderRadius={0}
+            _focus={{ boxShadow: 'none' }}
+            aria-label="Filter field"
+          >
+            <option value="any">Any field</option>
+            <option value="dag_id">DAG ID</option>
+            <option value="owner">Owner</option>
+            <option value="tag">Tag</option>
+          </Select>
+          <InputGroup size="sm" w="64" borderLeft="1px solid" borderColor="gray.200">
+            <InputLeftElement pointerEvents="none">
+              <SearchIcon color="gray.400" boxSize={3.5} />
+            </InputLeftElement>
+            <Input
+              border="0"
+              borderRadius={0}
+              placeholder={
+                searchField === 'dag_id'
+                  ? 'Search by DAG ID...'
+                  : searchField === 'owner'
+                    ? 'Search by owner...'
+                    : searchField === 'tag'
+                      ? 'Search by tag...'
+                      : 'Search by ID, tag, or owner...'
+              }
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              _focus={{ boxShadow: 'none' }}
+              aria-label="Filter value"
+            />
+          </InputGroup>
+        </HStack>
+        {(searchInput || (searchField && searchField !== 'any')) && (
+          <Button
+            size="sm"
+            variant="ghost"
+            leftIcon={<CloseIcon boxSize={2.5} />}
+            onClick={() => {
+              setSearchInput('');
+              dispatch({ type: 'set-dag-history-search', search: '' });
+              dispatch({ type: 'set-dag-history-search-field', searchField: 'any' });
+            }}
+          >
+            Reset
+          </Button>
+        )}
         <Text fontSize="sm" color="gray.600" ml="auto">
           {totalCount === 0
             ? 'No DAGs'
