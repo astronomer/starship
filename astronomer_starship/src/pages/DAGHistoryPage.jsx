@@ -25,6 +25,7 @@ import {
   NumberInput,
   NumberInputField,
   NumberInputStepper,
+  Progress,
   Select,
   Stack,
   Switch,
@@ -381,20 +382,34 @@ export default function DAGHistoryPage() {
   const { isOpen: isBulkPauseOpen, onOpen: openBulkPauseDialog, onClose: closeBulkPauseDialog } = useDisclosure();
   const [bulkPauseIntent, setBulkPauseIntent] = useState(null);
   const [isBulkPausing, setIsBulkPausing] = useState(false);
+  // Live progress shown inside the modal while the loop runs and after it finishes.
+  const [bulkPauseProgress, setBulkPauseProgress] = useState(null);
+  // Toggled by the Stop button to short-circuit the loop mid-run.
+  const bulkPauseAbortRef = useRef(false);
   const bulkPauseCancelRef = useRef(null);
 
   const requestBulkPause = useCallback(
     (isLocal, pause) => {
       setBulkPauseIntent({ isLocal, pause });
+      setBulkPauseProgress(null);
+      bulkPauseAbortRef.current = false;
       openBulkPauseDialog();
     },
     [openBulkPauseDialog],
   );
 
+  const dismissBulkPauseDialog = useCallback(() => {
+    bulkPauseAbortRef.current = true;
+    closeBulkPauseDialog();
+    setBulkPauseIntent(null);
+    setBulkPauseProgress(null);
+  }, [closeBulkPauseDialog]);
+
   const runBulkPause = useCallback(async () => {
     if (!bulkPauseIntent) return;
     const { isLocal, pause } = bulkPauseIntent;
     setIsBulkPausing(true);
+    bulkPauseAbortRef.current = false;
 
     try {
       const params = { limit: 99999, offset: 0 };
@@ -408,58 +423,52 @@ export default function DAGHistoryPage() {
       const targets = dags.filter((d) => d.is_paused !== pause);
 
       if (targets.length === 0) {
-        toast({
-          title: 'No changes needed',
-          description: `All matching ${isLocal ? 'local' : 'remote'} DAGs are already ${pause ? 'paused' : 'active'}`,
-          status: 'info',
-          duration: 4000,
-          variant: 'outline',
-        });
+        setBulkPauseProgress({ done: 0, failed: 0, total: 0, finished: true, aborted: false });
         return;
       }
 
-      toast({
-        title: `Updating ${targets.length} ${isLocal ? 'local' : 'remote'} DAGs...`,
-        status: 'info',
-        duration: 3000,
-        variant: 'outline',
-      });
+      setBulkPauseProgress({ done: 0, failed: 0, total: targets.length, finished: false, aborted: false });
 
-      let successCount = 0;
+      let done = 0;
+      let failed = 0;
       for (const dag of targets) {
+        if (bulkPauseAbortRef.current) break;
         try {
           await handlePausedClick(pause, dag.dag_id, isLocal);
-          successCount += 1;
+          done += 1;
         } catch (_err) {
-          // Continue on error
+          failed += 1;
         }
+        setBulkPauseProgress({
+          done,
+          failed,
+          total: targets.length,
+          finished: done + failed === targets.length,
+          aborted: false,
+        });
       }
 
-      const dagLabel = successCount !== 1 ? 'DAGs' : 'DAG';
-      const failedCount = targets.length - successCount;
-      toast({
-        title: `${pause ? 'Paused' : 'Activated'} ${successCount} ${isLocal ? 'local' : 'remote'} ${dagLabel}`,
-        description:
-          failedCount > 0
-            ? `${failedCount} ${failedCount !== 1 ? 'DAGs' : 'DAG'} failed to update`
-            : `Successfully updated ${isLocal ? 'local' : 'remote'} Airflow instance`,
-        status: failedCount > 0 ? 'warning' : 'success',
-        duration: 5000,
-        variant: 'outline',
+      const aborted = bulkPauseAbortRef.current;
+      setBulkPauseProgress({
+        done,
+        failed,
+        total: targets.length,
+        finished: true,
+        aborted,
       });
     } catch (err) {
-      toast({
-        title: 'Failed to fetch DAGs for bulk action',
-        description: err.message,
-        status: 'error',
-        duration: 5000,
-        variant: 'outline',
+      setBulkPauseProgress({
+        done: 0,
+        failed: 0,
+        total: 0,
+        finished: true,
+        aborted: false,
+        error: err.message,
       });
     } finally {
       setIsBulkPausing(false);
-      setBulkPauseIntent(null);
     }
-  }, [bulkPauseIntent, search, searchField, targetUrl, token, handlePausedClick, toast]);
+  }, [bulkPauseIntent, search, searchField, targetUrl, token, handlePausedClick]);
 
   const columns = useMemo(
     () =>
@@ -701,8 +710,10 @@ export default function DAGHistoryPage() {
       <AlertDialog
         isOpen={isBulkPauseOpen}
         leastDestructiveRef={bulkPauseCancelRef}
-        onClose={closeBulkPauseDialog}
+        onClose={dismissBulkPauseDialog}
         isCentered
+        closeOnEsc={!isBulkPausing}
+        closeOnOverlayClick={!isBulkPausing}
       >
         <AlertDialogOverlay>
           <AlertDialogContent>
@@ -710,33 +721,86 @@ export default function DAGHistoryPage() {
               {bulkPauseIntent?.pause ? 'Pause' : 'Unpause'} {bulkPauseIntent?.isLocal ? 'local' : 'remote'} DAGs
             </AlertDialogHeader>
             <AlertDialogBody>
-              This will {bulkPauseIntent?.pause ? 'pause' : 'unpause'} up to <strong>{totalCount}</strong>{' '}
-              {bulkPauseIntent?.isLocal ? 'local' : 'remote'} DAG
-              {totalCount === 1 ? '' : 's'}
-              {search ? (
+              {!bulkPauseProgress ? (
                 <>
-                  {' '}
-                  matching search <em>&quot;{search}&quot;</em>
-                  {searchField && searchField !== 'any' ? <> in {searchField.replace('_', ' ')}</> : null}
+                  This will {bulkPauseIntent?.pause ? 'pause' : 'unpause'} up to <strong>{totalCount}</strong>{' '}
+                  {bulkPauseIntent?.isLocal ? 'local' : 'remote'} DAG
+                  {totalCount === 1 ? '' : 's'}
+                  {search ? (
+                    <>
+                      {' '}
+                      matching search <em>&quot;{search}&quot;</em>
+                      {searchField && searchField !== 'any' ? <> in {searchField.replace('_', ' ')}</> : null}
+                    </>
+                  ) : null}
+                  . DAGs already in the desired state are skipped. Continue?
                 </>
-              ) : null}
-              . DAGs already in the desired state are skipped. Continue?
+              ) : bulkPauseProgress.error ? (
+                <Text color="red.600">Failed to fetch DAGs: {bulkPauseProgress.error}</Text>
+              ) : bulkPauseProgress.total === 0 ? (
+                <Text>
+                  All matching {bulkPauseIntent?.isLocal ? 'local' : 'remote'} DAGs are already{' '}
+                  {bulkPauseIntent?.pause ? 'paused' : 'active'}. Nothing to do.
+                </Text>
+              ) : (
+                <Box>
+                  <Text mb={2}>
+                    {bulkPauseProgress.finished
+                      ? bulkPauseProgress.aborted
+                        ? 'Stopped: '
+                        : 'Done: '
+                      : bulkPauseIntent?.pause
+                        ? 'Pausing '
+                        : 'Unpausing '}
+                    <strong>{bulkPauseProgress.done}</strong> of <strong>{bulkPauseProgress.total}</strong> DAGs
+                    {bulkPauseProgress.failed > 0 ? (
+                      <>
+                        {' '}
+                        (
+                        <Text as="span" color="red.600">
+                          {bulkPauseProgress.failed} failed
+                        </Text>
+                        )
+                      </>
+                    ) : null}
+                  </Text>
+                  <Progress
+                    value={((bulkPauseProgress.done + bulkPauseProgress.failed) * 100) / bulkPauseProgress.total}
+                    size="sm"
+                    colorScheme={bulkPauseIntent?.pause ? 'orange' : 'green'}
+                    hasStripe={!bulkPauseProgress.finished}
+                    isAnimated={!bulkPauseProgress.finished}
+                    borderRadius="md"
+                  />
+                </Box>
+              )}
             </AlertDialogBody>
             <AlertDialogFooter>
-              <Button ref={bulkPauseCancelRef} onClick={closeBulkPauseDialog} isDisabled={isBulkPausing}>
-                Cancel
-              </Button>
-              <Button
-                colorScheme={bulkPauseIntent?.pause ? 'orange' : 'green'}
-                onClick={() => {
-                  closeBulkPauseDialog();
-                  runBulkPause();
-                }}
-                isLoading={isBulkPausing}
-                ml={3}
-              >
-                {bulkPauseIntent?.pause ? 'Pause All' : 'Unpause All'}
-              </Button>
+              {!bulkPauseProgress ? (
+                <>
+                  <Button ref={bulkPauseCancelRef} onClick={dismissBulkPauseDialog}>
+                    Cancel
+                  </Button>
+                  <Button colorScheme={bulkPauseIntent?.pause ? 'orange' : 'green'} onClick={runBulkPause} ml={3}>
+                    {bulkPauseIntent?.pause ? 'Pause All' : 'Unpause All'}
+                  </Button>
+                </>
+              ) : !bulkPauseProgress.finished ? (
+                <Button
+                  ref={bulkPauseCancelRef}
+                  colorScheme="red"
+                  variant="outline"
+                  onClick={() => {
+                    bulkPauseAbortRef.current = true;
+                  }}
+                >
+                  Stop
+                </Button>
+              ) : (
+                <Button ref={bulkPauseCancelRef} onClick={dismissBulkPauseDialog}>
+                  Close
+                </Button>
+              )}
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialogOverlay>
