@@ -1,6 +1,12 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
 import {
+  AlertDialog,
+  AlertDialogBody,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogOverlay,
   Badge,
   Box,
   Button,
@@ -24,6 +30,7 @@ import {
   Tag,
   Text,
   Tooltip,
+  useDisclosure,
   useToast,
   VStack,
 } from '@chakra-ui/react';
@@ -243,7 +250,7 @@ function createColumns(config) {
 
 export default function DAGHistoryPage() {
   const { targetUrl, token, localAirflowVersion } = useTargetConfig();
-  const { limit, batchSize, page, pageSize, search } = useDagHistoryConfig();
+  const { limit, batchSize, page, pageSize, search, searchField } = useDagHistoryConfig();
   const dispatch = useAppDispatch();
   const toast = useToast();
 
@@ -269,6 +276,7 @@ export default function DAGHistoryPage() {
 
       const params = { limit: pageSize, offset: page * pageSize };
       if (search) params.search = search;
+      if (searchField && searchField !== 'any') params.search_field = searchField;
 
       const [localRes, remoteRes] = await Promise.all([
         axios.get(localRoute(constants.DAGS_ROUTE), { params }),
@@ -297,7 +305,7 @@ export default function DAGHistoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [targetUrl, token, dispatch, localAirflowVersion, page, pageSize, search]);
+  }, [targetUrl, token, dispatch, localAirflowVersion, page, pageSize, search, searchField]);
 
   useEffect(() => {
     fetchData();
@@ -360,17 +368,41 @@ export default function DAGHistoryPage() {
     );
   }, []);
 
-  const handleBulkPause = useCallback(
-    async (isLocal, pause) => {
-      const items = data.filter((item) => {
-        const target = isLocal ? item.local : item.remote;
-        return target && target.is_paused !== pause;
-      });
+  // Bulk pause/unpause: opens a confirmation modal, then fetches ALL matching
+  // DAGs (across pages) and updates them. Respects the current search filter.
+  const { isOpen: isBulkPauseOpen, onOpen: openBulkPauseDialog, onClose: closeBulkPauseDialog } = useDisclosure();
+  const [bulkPauseIntent, setBulkPauseIntent] = useState(null);
+  const [isBulkPausing, setIsBulkPausing] = useState(false);
+  const bulkPauseCancelRef = useRef(null);
 
-      if (items.length === 0) {
+  const requestBulkPause = useCallback(
+    (isLocal, pause) => {
+      setBulkPauseIntent({ isLocal, pause });
+      openBulkPauseDialog();
+    },
+    [openBulkPauseDialog],
+  );
+
+  const runBulkPause = useCallback(async () => {
+    if (!bulkPauseIntent) return;
+    const { isLocal, pause } = bulkPauseIntent;
+    setIsBulkPausing(true);
+
+    try {
+      const params = { limit: 99999, offset: 0 };
+      if (search) params.search = search;
+      if (searchField && searchField !== 'any') params.search_field = searchField;
+
+      const url = isLocal ? localRoute(constants.DAGS_ROUTE) : proxyUrl(targetUrl + constants.DAGS_ROUTE);
+      const cfg = isLocal ? { params } : { params, headers: proxyHeaders(token) };
+      const res = await axios.get(url, cfg);
+      const dags = Array.isArray(res.data) ? res.data : (res.data?.dags ?? []);
+      const targets = dags.filter((d) => d.is_paused !== pause);
+
+      if (targets.length === 0) {
         toast({
           title: 'No changes needed',
-          description: `All ${isLocal ? 'local' : 'remote'} DAGs are already ${pause ? 'paused' : 'active'}`,
+          description: `All matching ${isLocal ? 'local' : 'remote'} DAGs are already ${pause ? 'paused' : 'active'}`,
           status: 'info',
           duration: 4000,
           variant: 'outline',
@@ -378,11 +410,17 @@ export default function DAGHistoryPage() {
         return;
       }
 
-      let successCount = 0;
+      toast({
+        title: `Updating ${targets.length} ${isLocal ? 'local' : 'remote'} DAGs...`,
+        status: 'info',
+        duration: 3000,
+        variant: 'outline',
+      });
 
-      for (const item of items) {
+      let successCount = 0;
+      for (const dag of targets) {
         try {
-          await handlePausedClick(pause, item.local.dag_id, isLocal);
+          await handlePausedClick(pause, dag.dag_id, isLocal);
           successCount += 1;
         } catch (_err) {
           // Continue on error
@@ -390,21 +428,30 @@ export default function DAGHistoryPage() {
       }
 
       const dagLabel = successCount !== 1 ? 'DAGs' : 'DAG';
-      const locationLabel = isLocal ? 'local' : 'remote';
-      const failedCount = items.length - successCount;
+      const failedCount = targets.length - successCount;
       toast({
-        title: `${pause ? 'Paused' : 'Activated'} ${successCount} ${locationLabel} ${dagLabel}`,
+        title: `${pause ? 'Paused' : 'Activated'} ${successCount} ${isLocal ? 'local' : 'remote'} ${dagLabel}`,
         description:
           failedCount > 0
             ? `${failedCount} ${failedCount !== 1 ? 'DAGs' : 'DAG'} failed to update`
-            : `Successfully updated ${locationLabel} Airflow instance`,
+            : `Successfully updated ${isLocal ? 'local' : 'remote'} Airflow instance`,
         status: failedCount > 0 ? 'warning' : 'success',
-        duration: 4000,
+        duration: 5000,
         variant: 'outline',
       });
-    },
-    [data, toast, handlePausedClick],
-  );
+    } catch (err) {
+      toast({
+        title: 'Failed to fetch DAGs for bulk action',
+        description: err.message,
+        status: 'error',
+        duration: 5000,
+        variant: 'outline',
+      });
+    } finally {
+      setIsBulkPausing(false);
+      setBulkPauseIntent(null);
+    }
+  }, [bulkPauseIntent, search, searchField, targetUrl, token, handlePausedClick, toast]);
 
   const columns = useMemo(
     () =>
@@ -490,7 +537,7 @@ export default function DAGHistoryPage() {
           <Button
             size="sm"
             leftIcon={<FiPause />}
-            onClick={() => handleBulkPause(true, true)}
+            onClick={() => requestBulkPause(true, true)}
             colorScheme="orange"
             variant="outline"
           >
@@ -499,7 +546,7 @@ export default function DAGHistoryPage() {
           <Button
             size="sm"
             leftIcon={<FiPlay />}
-            onClick={() => handleBulkPause(true, false)}
+            onClick={() => requestBulkPause(true, false)}
             colorScheme="green"
             variant="outline"
           >
@@ -513,7 +560,7 @@ export default function DAGHistoryPage() {
           <Button
             size="sm"
             leftIcon={<FiPause />}
-            onClick={() => handleBulkPause(false, true)}
+            onClick={() => requestBulkPause(false, true)}
             colorScheme="orange"
             variant="outline"
           >
@@ -522,7 +569,7 @@ export default function DAGHistoryPage() {
           <Button
             size="sm"
             leftIcon={<FiPlay />}
-            onClick={() => handleBulkPause(false, false)}
+            onClick={() => requestBulkPause(false, false)}
             colorScheme="green"
             variant="outline"
           >
@@ -532,12 +579,31 @@ export default function DAGHistoryPage() {
       </HStack>
 
       <HStack spacing={3} mb={3} align="center">
+        <Select
+          size="sm"
+          w="32"
+          value={searchField}
+          onChange={(e) => dispatch({ type: 'set-dag-history-search-field', searchField: e.target.value })}
+        >
+          <option value="any">Any field</option>
+          <option value="dag_id">DAG ID</option>
+          <option value="owner">Owner</option>
+          <option value="tag">Tag</option>
+        </Select>
         <InputGroup size="sm" maxW="sm">
           <InputLeftElement pointerEvents="none">
             <SearchIcon color="gray.400" />
           </InputLeftElement>
           <Input
-            placeholder="Search DAGs by ID, tag, owner..."
+            placeholder={
+              searchField === 'dag_id'
+                ? 'Search by DAG ID...'
+                : searchField === 'owner'
+                  ? 'Search by owner...'
+                  : searchField === 'tag'
+                    ? 'Search by tag...'
+                    : 'Search by ID, tag, or owner...'
+            }
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
           />
@@ -593,6 +659,50 @@ export default function DAGHistoryPage() {
           </HStack>
         )}
       </VStack>
+
+      <AlertDialog
+        isOpen={isBulkPauseOpen}
+        leastDestructiveRef={bulkPauseCancelRef}
+        onClose={closeBulkPauseDialog}
+        isCentered
+      >
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              {bulkPauseIntent?.pause ? 'Pause' : 'Unpause'} {bulkPauseIntent?.isLocal ? 'local' : 'remote'} DAGs
+            </AlertDialogHeader>
+            <AlertDialogBody>
+              This will {bulkPauseIntent?.pause ? 'pause' : 'unpause'} up to <strong>{totalCount}</strong>{' '}
+              {bulkPauseIntent?.isLocal ? 'local' : 'remote'} DAG
+              {totalCount === 1 ? '' : 's'}
+              {search ? (
+                <>
+                  {' '}
+                  matching search <em>&quot;{search}&quot;</em>
+                  {searchField && searchField !== 'any' ? <> in {searchField.replace('_', ' ')}</> : null}
+                </>
+              ) : null}
+              . DAGs already in the desired state are skipped. Continue?
+            </AlertDialogBody>
+            <AlertDialogFooter>
+              <Button ref={bulkPauseCancelRef} onClick={closeBulkPauseDialog} isDisabled={isBulkPausing}>
+                Cancel
+              </Button>
+              <Button
+                colorScheme={bulkPauseIntent?.pause ? 'orange' : 'green'}
+                onClick={() => {
+                  closeBulkPauseDialog();
+                  runBulkPause();
+                }}
+                isLoading={isBulkPausing}
+                ml={3}
+              >
+                {bulkPauseIntent?.pause ? 'Pause All' : 'Unpause All'}
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
     </Box>
   );
 }

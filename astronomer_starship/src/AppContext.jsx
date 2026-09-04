@@ -40,6 +40,7 @@ const initialState = {
   dagHistoryPage: 0,
   dagHistoryPageSize: 50,
   dagHistorySearch: '',
+  dagHistorySearchField: 'any',
 
   // Local Airflow info
   localAirflowVersion: null,
@@ -121,6 +122,8 @@ function reducer(state, action) {
       return { ...state, dagHistoryPageSize: action.pageSize, dagHistoryPage: 0 };
     case 'set-dag-history-search':
       return { ...state, dagHistorySearch: action.search, dagHistoryPage: 0 };
+    case 'set-dag-history-search-field':
+      return { ...state, dagHistorySearchField: action.searchField, dagHistoryPage: 0 };
     case 'set-local-airflow-version':
       return { ...state, localAirflowVersion: action.version };
     case 'reset':
@@ -244,8 +247,16 @@ export function useDagHistoryConfig() {
       page: state.dagHistoryPage,
       pageSize: state.dagHistoryPageSize,
       search: state.dagHistorySearch,
+      searchField: state.dagHistorySearchField,
     }),
-    [state.limit, state.batchSize, state.dagHistoryPage, state.dagHistoryPageSize, state.dagHistorySearch],
+    [
+      state.limit,
+      state.batchSize,
+      state.dagHistoryPage,
+      state.dagHistoryPageSize,
+      state.dagHistorySearch,
+      state.dagHistorySearchField,
+    ],
   );
 }
 

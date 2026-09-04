@@ -12,11 +12,12 @@ describe('AppContext DAG History pagination reducer', () => {
     localStorage.clear();
   });
 
-  test('defaults expose page=0, pageSize=50, empty search', () => {
+  test('defaults expose page=0, pageSize=50, empty search, searchField=any', () => {
     const { result } = renderHook(() => useDagHistoryConfig(), { wrapper });
     expect(result.current.page).toBe(0);
     expect(result.current.pageSize).toBe(50);
     expect(result.current.search).toBe('');
+    expect(result.current.searchField).toBe('any');
   });
 
   test('set-dag-history-page updates page only', () => {
@@ -39,6 +40,14 @@ describe('AppContext DAG History pagination reducer', () => {
     act(() => result.current.dispatch({ type: 'set-dag-history-page', page: 4 }));
     act(() => result.current.dispatch({ type: 'set-dag-history-search', search: 'example' }));
     expect(result.current.config.search).toBe('example');
+    expect(result.current.config.page).toBe(0);
+  });
+
+  test('set-dag-history-search-field resets page and stores field', () => {
+    const { result } = renderHook(() => ({ config: useDagHistoryConfig(), dispatch: useAppDispatch() }), { wrapper });
+    act(() => result.current.dispatch({ type: 'set-dag-history-page', page: 3 }));
+    act(() => result.current.dispatch({ type: 'set-dag-history-search-field', searchField: 'tag' }));
+    expect(result.current.config.searchField).toBe('tag');
     expect(result.current.config.page).toBe(0);
   });
 });

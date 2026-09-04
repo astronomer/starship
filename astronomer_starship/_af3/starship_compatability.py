@@ -175,9 +175,14 @@ class StarshipAirflow30(StarshipAirflow):
                 "methods": [("GET", False)],
                 "test_value": "dag_0",
             },
+            "search_field": {
+                "attr": "search_field",
+                "methods": [("GET", False)],
+                "test_value": "dag_id",
+            },
         }
 
-    def get_dags(self, limit=None, offset=0, search=None):
+    def get_dags(self, limit=None, offset=0, search=None, search_field=None):
         from airflow.models import DagModel, DagTag
         from sqlalchemy import distinct, func, or_, select
         from sqlalchemy.sql.functions import count
@@ -187,6 +192,7 @@ class StarshipAirflow30(StarshipAirflow):
         limit = int(limit) if limit not in (None, "") else None
         offset = int(offset) if offset not in (None, "", 0, "0") else 0
         search = search or None
+        search_field = search_field or None
 
         # `dag_attrs` mixes row-shape fields and query-param descriptors -- filter out
         # the params so they don't leak into every DAG row.
@@ -201,18 +207,19 @@ class StarshipAirflow30(StarshipAirflow):
 
         try:
             # Search matches dag_id, owners, or any tag (case-insensitive substring).
+            # `search_field` narrows to a single column: dag_id | owner | tag.
             def _apply_search(query):
                 if not search:
                     return query
                 pattern = f"%{search}%"
                 tag_subq = select(DagTag.dag_id).where(DagTag.name.ilike(pattern)).distinct()
-                return query.filter(
-                    or_(
-                        DagModel.dag_id.ilike(pattern),
-                        DagModel.owners.ilike(pattern),
-                        DagModel.dag_id.in_(tag_subq),
-                    )
-                )
+                field_filters = {
+                    "dag_id": DagModel.dag_id.ilike(pattern),
+                    "owner": DagModel.owners.ilike(pattern),
+                    "tag": DagModel.dag_id.in_(tag_subq),
+                }
+                clause = field_filters.get(search_field) or or_(*field_filters.values())
+                return query.filter(clause)
 
             # Total count reflects the search filter, not the page window.
             total = _apply_search(self.session.query(func.count(DagModel.dag_id))).scalar() or 0
