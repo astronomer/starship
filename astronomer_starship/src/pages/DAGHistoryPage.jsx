@@ -4,7 +4,6 @@ import {
   Badge,
   Box,
   Button,
-  Checkbox,
   FormControl,
   Heading,
   HStack,
@@ -244,7 +243,7 @@ function createColumns(config) {
 
 export default function DAGHistoryPage() {
   const { targetUrl, token, localAirflowVersion } = useTargetConfig();
-  const { limit, batchSize, page, pageSize, search, unmigratedOnly } = useDagHistoryConfig();
+  const { limit, batchSize, page, pageSize, search } = useDagHistoryConfig();
   const dispatch = useAppDispatch();
   const toast = useToast();
 
@@ -252,9 +251,6 @@ export default function DAGHistoryPage() {
   const [error, setError] = useState(null);
   const [data, setData] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
-  // Set of dag_ids that exist on the target -- used by the "unmigrated only" filter.
-  // Fetched once per page mount; stays local (not in AppContext) since it can be sizeable.
-  const [targetDagIds, setTargetDagIds] = useState(() => new Set());
   // Local mirror of the search input so we can debounce dispatches to AppContext.
   const [searchInput, setSearchInput] = useState(search);
 
@@ -281,7 +277,7 @@ export default function DAGHistoryPage() {
 
       if (localRes.status === 200 && remoteRes.status === 200) {
         // Response shape (>=2.11): {dags: [...], total_dag_count: N}. Older releases returned a bare list.
-        const unwrap = (res) => (Array.isArray(res.data) ? res.data : res.data?.dags ?? []);
+        const unwrap = (res) => (Array.isArray(res.data) ? res.data : (res.data?.dags ?? []));
         const localDags = unwrap(localRes);
         const remoteDags = unwrap(remoteRes);
         setData(mergeDagData(localDags, remoteDags));
@@ -306,30 +302,6 @@ export default function DAGHistoryPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-
-  // One-time (per targetUrl change) fetch of every target dag_id so the "unmigrated only"
-  // filter can flag migrated rows accurately across pages. Payload is dag_ids-only-ish
-  // and typically <100KB even for thousands of DAGs.
-  useEffect(() => {
-    if (!targetUrl || !token) return undefined;
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await axios.get(proxyUrl(targetUrl + constants.DAGS_ROUTE), {
-          params: { limit: 10000, offset: 0 },
-          headers: proxyHeaders(token),
-        });
-        if (cancelled) return;
-        const dags = Array.isArray(res.data) ? res.data : res.data?.dags ?? [];
-        setTargetDagIds(new Set(dags.map((d) => d.dag_id)));
-      } catch {
-        // Non-fatal: the filter just becomes a no-op if we can't reach target here.
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [targetUrl, token]);
 
   // Debounce search input -> AppContext dispatch (~300ms).
   useEffect(() => {
@@ -570,14 +542,6 @@ export default function DAGHistoryPage() {
             onChange={(e) => setSearchInput(e.target.value)}
           />
         </InputGroup>
-        <Checkbox
-          isChecked={unmigratedOnly}
-          onChange={(e) =>
-            dispatch({ type: 'set-dag-history-unmigrated-only', unmigratedOnly: e.target.checked })
-          }
-        >
-          Unmigrated only
-        </Checkbox>
         <Text fontSize="sm" color="gray.600" ml="auto">
           {totalCount === 0
             ? 'No DAGs'
@@ -590,11 +554,7 @@ export default function DAGHistoryPage() {
           {loading || error ? (
             <PageLoading loading={loading} error={error} />
           ) : (
-            <DataTable
-              data={unmigratedOnly ? data.filter((d) => !targetDagIds.has(d.local.dag_id)) : data}
-              columns={columns}
-              showSearch={false}
-            />
+            <DataTable data={data} columns={columns} showSearch={false} />
           )}
         </Box>
         {!loading && !error && totalCount > 0 && (
@@ -606,9 +566,7 @@ export default function DAGHistoryPage() {
               size="sm"
               w="20"
               value={pageSize}
-              onChange={(e) =>
-                dispatch({ type: 'set-dag-history-page-size', pageSize: Number(e.target.value) })
-              }
+              onChange={(e) => dispatch({ type: 'set-dag-history-page-size', pageSize: Number(e.target.value) })}
             >
               <option value={25}>25</option>
               <option value={50}>50</option>
