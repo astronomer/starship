@@ -601,22 +601,15 @@ export default function DAGHistoryPage() {
             px={3}
             h="8"
             bg="gray.50"
-            spacing={1.5}
+            spacing={2}
             borderRight="1px solid"
             borderColor="gray.200"
             alignItems="center"
             flexShrink={0}
             lineHeight="1"
           >
-            <Icon as={FiFilter} boxSize={3.5} color="gray.500" display="block" />
-            <Text
-              fontSize="xs"
-              fontWeight="semibold"
-              color="gray.600"
-              textTransform="uppercase"
-              letterSpacing="wider"
-              lineHeight="1"
-            >
+            <Icon as={FiFilter} boxSize={4} color="gray.500" display="block" />
+            <Text fontSize="sm" fontWeight="medium" color="gray.700" lineHeight="1">
               Filter
             </Text>
           </HStack>
