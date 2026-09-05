@@ -22,6 +22,17 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _nonneg_int(value, default):
+    """Return `value` coerced to a non-negative int, or `default` on bad input."""
+    if value in (None, ""):
+        return default
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return default
+    return max(n, 0)
+
+
 class StarshipAirflow(BaseStarshipAirflow):
     """Base class for Airflow 2.x compatibility layers.
 
@@ -153,41 +164,126 @@ class StarshipAirflow(BaseStarshipAirflow):
                 "methods": [],
                 "test_value": 0,
             },
+            # Pagination and search are query params on GET, not row fields.
+            "limit": {
+                "attr": "limit",
+                "methods": [("GET", False)],
+                "test_value": 50,
+            },
+            "offset": {
+                "attr": "offset",
+                "methods": [("GET", False)],
+                "test_value": 0,
+            },
+            "search": {
+                "attr": "search",
+                "methods": [("GET", False)],
+                "test_value": "dag_0",
+            },
+            "search_field": {
+                "attr": "search_field",
+                "methods": [("GET", False)],
+                "test_value": "dag_id",
+            },
         }
 
-    def get_dags(self):
-        """Get all DAGs"""
-        from airflow.models import DagModel
+    def get_dags(self, limit=None, offset=0, search=None, search_field=None):
+        """Get DAGs with optional pagination and search."""
+        from airflow.models import DagModel, DagTag
+        from sqlalchemy import distinct, func, or_
+        from sqlalchemy.sql.functions import count
+
+        # Query params come in as strings via request.args; coerce.
+        # Treat empty strings as unset (e.g. `?limit=&offset=`) and silently
+        # clamp non-int / negative values to safe defaults so bad input yields
+        # a well-formed empty response instead of a 500.
+        limit = _nonneg_int(limit, default=None)
+        offset = _nonneg_int(offset, default=0)
+        search = search or None
+        search_field = search_field or None
+
+        # `dag_attrs` mixes row-shape fields and query-param descriptors -- filter out
+        # the params so they don't leak into every DAG row.
+        row_attrs = {
+            attr: desc
+            for attr, desc in self.dag_attrs().items()
+            if not (desc["methods"] and all(m[0] == "GET" for m in desc["methods"]))
+        }
+        fields = [
+            getattr(DagModel, attr_desc["attr"]) for attr_desc in row_attrs.values() if attr_desc["attr"] is not None
+        ]
 
         try:
-            fields = [
-                getattr(DagModel, attr_desc["attr"])
-                for attr_desc in self.dag_attrs().values()
-                if attr_desc["attr"] is not None
-            ]
-            # py36/sqlalchemy1.3 doesn't like label?
-            # noinspection PyUnresolvedReferences
-            return json.loads(
+            # Search matches dag_id, owners, or any tag (case-insensitive substring).
+            # `search_field` narrows to a single column: dag_id | owner | tag.
+            def _apply_search(query):
+                if not search:
+                    return query
+                pattern = f"%{search}%"
+                # session.query subquery form is portable across SQLAlchemy 1.3/1.4/2.x;
+                # the newer `select(col)` short form is 1.4+ only.
+                tag_subq = self.session.query(DagTag.dag_id).filter(DagTag.name.ilike(pattern)).distinct()
+                field_filters = {
+                    "dag_id": DagModel.dag_id.ilike(pattern),
+                    "owner": DagModel.owners.ilike(pattern),
+                    "tag": DagModel.dag_id.in_(tag_subq),
+                }
+                clause = field_filters[search_field] if search_field in field_filters else or_(*field_filters.values())
+                return query.filter(clause)
+
+            # Total count reflects the search filter, not the page window.
+            total = _apply_search(self.session.query(func.count(DagModel.dag_id))).scalar() or 0
+
+            page_query = _apply_search(self.session.query(*fields)).order_by(DagModel.dag_id)
+            if offset:
+                page_query = page_query.offset(offset)
+            if limit is not None:
+                page_query = page_query.limit(limit)
+            page = page_query.all()
+            page_dag_ids = [row.dag_id for row in page]
+
+            # Batched tag lookup: one query instead of N.
+            # noqa comprehension (not `dict.fromkeys`) is intentional: each value is a fresh list.
+            tags_by_dag = {dag_id: [] for dag_id in page_dag_ids}  # noqa: C420
+            if page_dag_ids:
+                for dag_id, tag_name in self.session.query(DagTag.dag_id, DagTag.name).filter(
+                    DagTag.dag_id.in_(page_dag_ids)
+                ):
+                    tags_by_dag[dag_id].append(tag_name)
+
+            # Batched run count: one grouped query instead of N.
+            from airflow.models import DagRun
+
+            counts_by_dag = dict.fromkeys(page_dag_ids, 0)
+            if page_dag_ids:
+                for dag_id, run_count in (
+                    self.session.query(DagRun.dag_id, count(distinct(DagRun.run_id)))
+                    .filter(DagRun.dag_id.in_(page_dag_ids))
+                    .group_by(DagRun.dag_id)
+                ):
+                    counts_by_dag[dag_id] = run_count
+
+            dags = json.loads(
                 json.dumps(
                     [
                         {
                             attr: (
-                                self._get_tags(result.dag_id)
+                                tags_by_dag.get(result.dag_id, [])
                                 if attr == "tags"
                                 else (
-                                    self._get_dag_run_count(result.dag_id)
+                                    counts_by_dag.get(result.dag_id, 0)
                                     if attr == "dag_run_count"
                                     else getattr(result, attr_desc["attr"], None)
                                 )
-                                # e.g. result.dag_id
                             )
-                            for attr, attr_desc in self.dag_attrs().items()
+                            for attr, attr_desc in row_attrs.items()
                         }
-                        for result in self.session.query(*fields).all()
+                        for result in page
                     ],
                     default=str,
                 )
             )
+            return {"dags": dags, "total_dag_count": total}
         except Exception as e:
             self.session.rollback()
             raise e
