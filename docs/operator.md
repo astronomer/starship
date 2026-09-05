@@ -15,17 +15,48 @@ to migrate data.
 Add the following line to your `requirements.txt` in your source environment:
 
    ```
-   astronomer-starship[provider]
+   astronomer-starship
    ```
 
+!!! note
+    Earlier releases required the `[provider]` extra
+    (`astronomer-starship[provider]`) to pull in `apache-airflow-providers-http`.
+    That package is now part of the core dependencies, so the extra is no longer
+    necessary. It is still accepted for backwards compatibility and installs the
+    same package.
+
 ## Setup
+
+### Target connection
+
 Make a connection in Airflow with the following details:
+
 - **Conn ID**: `starship_default`
 - **Conn Type**: `HTTP`
 - **Host**: the URL of the homepage of Airflow (excluding `/home` on the end of the URL)
   - For example, if your deployment URL is `https://astronomer.astronomer.run/abcdt4ry/home`, you'll use `https://astronomer.astronomer.run/abcdt4ry`
 - **Schema**: `https`
 - **Extra**: `{"Authorization": "Bearer <token>"}`
+
+### Source connection (Airflow 3 only)
+
+On Airflow 3 the migration DAG cannot use direct database access from workers,
+so the source hook now talks to the source Airflow's Starship HTTP API. This
+requires a second Airflow connection **on the source deployment itself**:
+
+- **Conn ID**: `starship_source`
+- **Conn Type**: `HTTP`
+- **Host**: the base URL of the source Airflow (same rules as above -- exclude any `/home` suffix)
+- **Schema**: `https`
+- **Extra**: `{"Authorization": "Bearer <token>"}`
+
+The token must be valid for the source Airflow's `/api/starship/*` endpoints.
+If the connection is missing when the DAG runs, Starship raises a clear
+`RuntimeError` naming the connection and explaining the requirement, so you can
+add the connection and re-run.
+
+On Airflow 2 no source connection is needed -- the source hook reads directly
+from the local metadata DB, exactly as it did in prior releases.
 
 ## Usage
 1. Add the following DAG to your source environment:

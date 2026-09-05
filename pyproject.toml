@@ -14,7 +14,12 @@ authors = [
 readme = "README.md"
 license = { text = "PROPRIETARY" }
 requires-python = ">=3.6"
-dependencies = []
+dependencies = [
+    # Starship's operator-based migration flow talks HTTP end-to-end (both hooks
+    # subclass HttpHook on Airflow 3, and the target hook always does), so the
+    # HTTP provider is required at runtime, not optional.
+    "apache-airflow-providers-http",
+]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Framework :: Apache Airflow",
@@ -62,6 +67,9 @@ exclude = [
 ]
 
 [project.optional-dependencies]
+# Kept as an alias for backwards compatibility with older docs / install
+# instructions; the HTTP provider is now installed by default via `dependencies`
+# above.
 provider = [
     "apache-airflow-providers-http",
 ]
