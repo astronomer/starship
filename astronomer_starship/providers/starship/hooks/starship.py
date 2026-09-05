@@ -194,9 +194,9 @@ class StarshipHttpHook(HttpHook, StarshipHook):
 # Dispatch StarshipLocalHook to the version-specific implementation. Kept at
 # the bottom because both submodules import from this file.
 if AIRFLOW_V_3:
-    from astronomer_starship.providers.starship.hooks._local_af3 import StarshipLocalHook
+    from astronomer_starship._af3.starship_hook import StarshipLocalHook
 elif AIRFLOW_V_2:
-    from astronomer_starship.providers.starship.hooks._local_af2 import StarshipLocalHook
+    from astronomer_starship._af2.starship_hook import StarshipLocalHook
 else:
     raise RuntimeError("Unsupported Airflow version")
 
