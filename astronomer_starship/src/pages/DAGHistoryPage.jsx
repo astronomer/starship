@@ -825,10 +825,16 @@ export default function DAGHistoryPage() {
             <AlertDialogFooter>
               {!bulkPauseProgress ? (
                 <>
-                  <Button ref={bulkPauseCancelRef} onClick={dismissBulkPauseDialog}>
+                  <Button ref={bulkPauseCancelRef} onClick={dismissBulkPauseDialog} isDisabled={isBulkPausing}>
                     Cancel
                   </Button>
-                  <Button colorScheme={bulkPauseIntent?.pause ? 'orange' : 'green'} onClick={runBulkPause} ml={3}>
+                  <Button
+                    colorScheme={bulkPauseIntent?.pause ? 'orange' : 'green'}
+                    onClick={runBulkPause}
+                    ml={3}
+                    isLoading={isBulkPausing}
+                    loadingText="Loading DAGs..."
+                  >
                     {bulkPauseIntent?.pause ? 'Pause All' : 'Unpause All'}
                   </Button>
                 </>
