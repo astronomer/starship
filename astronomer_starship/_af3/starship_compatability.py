@@ -184,7 +184,7 @@ class StarshipAirflow30(StarshipAirflow):
 
     def get_dags(self, limit=None, offset=0, search=None, search_field=None):
         from airflow.models import DagModel, DagTag
-        from sqlalchemy import distinct, func, or_, select
+        from sqlalchemy import distinct, func, or_
         from sqlalchemy.sql.functions import count
 
         # Query params come in as strings via request.args; coerce.
@@ -212,7 +212,9 @@ class StarshipAirflow30(StarshipAirflow):
                 if not search:
                     return query
                 pattern = f"%{search}%"
-                tag_subq = select(DagTag.dag_id).where(DagTag.name.ilike(pattern)).distinct()
+                # session.query subquery form is portable across SQLAlchemy 1.3/1.4/2.x;
+                # the newer `select(col)` short form is 1.4+ only.
+                tag_subq = self.session.query(DagTag.dag_id).filter(DagTag.name.ilike(pattern)).distinct()
                 field_filters = {
                     "dag_id": DagModel.dag_id.ilike(pattern),
                     "owner": DagModel.owners.ilike(pattern),
