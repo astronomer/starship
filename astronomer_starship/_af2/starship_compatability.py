@@ -22,6 +22,17 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _nonneg_int(value, default):
+    """Return `value` coerced to a non-negative int, or `default` on bad input."""
+    if value in (None, ""):
+        return default
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return default
+    return max(n, 0)
+
+
 class StarshipAirflow(BaseStarshipAirflow):
     """Base class for Airflow 2.x compatibility layers.
 
@@ -183,9 +194,11 @@ class StarshipAirflow(BaseStarshipAirflow):
         from sqlalchemy.sql.functions import count
 
         # Query params come in as strings via request.args; coerce.
-        # Treat empty strings as unset (e.g. `?limit=&offset=`).
-        limit = int(limit) if limit not in (None, "") else None
-        offset = int(offset) if offset not in (None, "", 0, "0") else 0
+        # Treat empty strings as unset (e.g. `?limit=&offset=`) and silently
+        # clamp non-int / negative values to safe defaults so bad input yields
+        # a well-formed empty response instead of a 500.
+        limit = _nonneg_int(limit, default=None)
+        offset = _nonneg_int(offset, default=0)
         search = search or None
         search_field = search_field or None
 

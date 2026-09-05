@@ -332,7 +332,8 @@ export default function DAGHistoryPage() {
   const patchPauseState = useCallback(
     async (isPaused, dagId, isLocal) => {
       const url = isLocal ? localRoute(constants.DAGS_ROUTE) : proxyUrl(targetUrl + constants.DAGS_ROUTE);
-      const res = await axios.patch(url, { dag_id: dagId, is_paused: isPaused }, { headers: proxyHeaders(token) });
+      const cfg = isLocal ? {} : { headers: proxyHeaders(token) };
+      const res = await axios.patch(url, { dag_id: dagId, is_paused: isPaused }, cfg);
       return res.data;
     },
     [targetUrl, token],
