@@ -320,6 +320,20 @@ export default function DAGHistoryPage() {
     fetchData();
   }, [fetchData]);
 
+  // Keep local input mirror in sync when `search` changes externally
+  // (e.g. token invalidation resetting AppContext).
+  useEffect(() => {
+    setSearchInput(search);
+  }, [search]);
+
+  // A saved page can point past totalCount (deployment shrank, filter narrowed,
+  // or state was persisted from a larger deployment). Snap back to page 0.
+  useEffect(() => {
+    if (totalCount > 0 && page * pageSize >= totalCount) {
+      dispatch({ type: 'set-dag-history-page', page: 0 });
+    }
+  }, [totalCount, page, pageSize, dispatch]);
+
   // Debounce search input -> AppContext dispatch (~300ms).
   useEffect(() => {
     if (searchInput === search) return undefined;
@@ -440,6 +454,9 @@ export default function DAGHistoryPage() {
 
       let done = 0;
       let failed = 0;
+      // Batch state updates so a 1000-item loop doesn't cause 1000 re-renders;
+      // always emit the final state so the modal shows the exact totals.
+      const shouldEmit = (processed) => processed === targets.length || targets.length <= 50 || processed % 10 === 0;
       for (const dag of targets) {
         if (bulkPauseAbortRef.current) break;
         try {
@@ -448,13 +465,16 @@ export default function DAGHistoryPage() {
         } catch (_err) {
           failed += 1;
         }
-        setBulkPauseProgress({
-          done,
-          failed,
-          total: targets.length,
-          finished: done + failed === targets.length,
-          aborted: false,
-        });
+        const processed = done + failed;
+        if (shouldEmit(processed)) {
+          setBulkPauseProgress({
+            done,
+            failed,
+            total: targets.length,
+            finished: processed === targets.length,
+            aborted: false,
+          });
+        }
       }
 
       await fetchData();
