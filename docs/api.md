@@ -281,6 +281,10 @@ default. Set `search_field` to `dag_id`, `owner`, or `tag` to restrict the
 match to that single column; any other value (or unset) preserves the default
 "any of the three" behaviour.
 
+The schedule field on each row is `schedule_interval` on Airflow 2.x and
+`timetable_summary` on Airflow 3.x -- consumers should read whichever key is
+present.
+
 **Response**:
 
 ```json

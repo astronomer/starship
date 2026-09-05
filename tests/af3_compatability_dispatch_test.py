@@ -216,7 +216,7 @@ def test_compatability_layer_defaults_to_installed_airflow_version(monkeypatch):
     assert isinstance(StarshipCompatabilityLayer(), StarshipAirflow33)
 
 
-DAG_PAGINATION_PARAMS = ("limit", "offset", "search")
+DAG_PAGINATION_PARAMS = ("limit", "offset", "search", "search_field")
 
 DAG_ROW_KEYS = (
     "dag_id",

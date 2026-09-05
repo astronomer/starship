@@ -329,16 +329,24 @@ export default function DAGHistoryPage() {
     return () => clearTimeout(t);
   }, [searchInput, search, dispatch]);
 
-  const handlePausedClick = useCallback(
+  const patchPauseState = useCallback(
     async (isPaused, dagId, isLocal) => {
       const url = isLocal ? localRoute(constants.DAGS_ROUTE) : proxyUrl(targetUrl + constants.DAGS_ROUTE);
+      const res = await axios.patch(url, { dag_id: dagId, is_paused: isPaused }, { headers: proxyHeaders(token) });
+      return res.data;
+    },
+    [targetUrl, token],
+  );
+
+  const handlePausedClick = useCallback(
+    async (isPaused, dagId, isLocal) => {
       try {
-        const res = await axios.patch(url, { dag_id: dagId, is_paused: isPaused }, { headers: proxyHeaders(token) });
+        const data = await patchPauseState(isPaused, dagId, isLocal);
         setData((prev) =>
           prev.map((item) => {
             if (item.local.dag_id !== dagId) return item;
             const key = isLocal ? 'local' : 'remote';
-            return { ...item, [key]: { ...item[key], is_paused: res.data.is_paused } };
+            return { ...item, [key]: { ...item[key], is_paused: data.is_paused } };
           }),
         );
       } catch (err) {
@@ -352,7 +360,7 @@ export default function DAGHistoryPage() {
         });
       }
     },
-    [targetUrl, token, toast],
+    [patchPauseState, toast],
   );
 
   const handleMigrate = useCallback((dagId, runCount) => {
@@ -412,7 +420,9 @@ export default function DAGHistoryPage() {
     bulkPauseAbortRef.current = false;
 
     try {
-      const params = { limit: 99999, offset: 0 };
+      // No `limit`/`offset`: the backend treats them as unset and returns every
+      // matching DAG, so we correctly hit deployments with more than ~99k DAGs.
+      const params = {};
       if (search) params.search = search;
       if (searchField && searchField !== 'any') params.search_field = searchField;
 
@@ -434,7 +444,7 @@ export default function DAGHistoryPage() {
       for (const dag of targets) {
         if (bulkPauseAbortRef.current) break;
         try {
-          await handlePausedClick(pause, dag.dag_id, isLocal);
+          await patchPauseState(pause, dag.dag_id, isLocal);
           done += 1;
         } catch (_err) {
           failed += 1;
@@ -447,6 +457,10 @@ export default function DAGHistoryPage() {
           aborted: false,
         });
       }
+
+      // Refresh visible-page data once at the end instead of poking setData per
+      // item; keeps the render cost O(1) for a 1000-item loop.
+      await fetchData();
 
       const aborted = bulkPauseAbortRef.current;
       setBulkPauseProgress({
@@ -468,7 +482,7 @@ export default function DAGHistoryPage() {
     } finally {
       setIsBulkPausing(false);
     }
-  }, [bulkPauseIntent, search, searchField, targetUrl, token, handlePausedClick]);
+  }, [bulkPauseIntent, search, searchField, targetUrl, token, patchPauseState, fetchData]);
 
   const columns = useMemo(
     () =>
@@ -733,9 +747,15 @@ export default function DAGHistoryPage() {
             <AlertDialogBody>
               {!bulkPauseProgress ? (
                 <>
-                  This will {bulkPauseIntent?.pause ? 'pause' : 'unpause'} up to <strong>{totalCount}</strong>{' '}
-                  {bulkPauseIntent?.isLocal ? 'local' : 'remote'} DAG
-                  {totalCount === 1 ? '' : 's'}
+                  This will {bulkPauseIntent?.pause ? 'pause' : 'unpause'}{' '}
+                  {bulkPauseIntent?.isLocal ? (
+                    <>
+                      up to <strong>{totalCount}</strong> local DAG
+                      {totalCount === 1 ? '' : 's'}
+                    </>
+                  ) : (
+                    <>all matching remote DAGs</>
+                  )}
                   {search ? (
                     <>
                       {' '}

@@ -114,7 +114,9 @@ def test_integration_dags(url_and_token_and_starship):
     for dag in dags:
         if dag["dag_id"] == expected_get["dag_id"]:
             assert dag["dag_id"] == expected_get["dag_id"], actual.text
-            assert dag["schedule_interval"] == expected_get["schedule_interval"], actual.text
+            # `schedule_interval` on AF2, `timetable_summary` on AF3 -- read whichever the fixture supplies.
+            schedule_key = "schedule_interval" if "schedule_interval" in expected_get else "timetable_summary"
+            assert dag[schedule_key] == expected_get[schedule_key], actual.text
             assert dag["is_paused"] == expected_get["is_paused"], actual.text
             assert dag["description"] == expected_get["description"], actual.text
             assert dag["owners"] == expected_get["owners"], actual.text
