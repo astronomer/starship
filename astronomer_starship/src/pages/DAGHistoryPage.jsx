@@ -420,8 +420,6 @@ export default function DAGHistoryPage() {
     bulkPauseAbortRef.current = false;
 
     try {
-      // No `limit`/`offset`: the backend treats them as unset and returns every
-      // matching DAG, so we correctly hit deployments with more than ~99k DAGs.
       const params = {};
       if (search) params.search = search;
       if (searchField && searchField !== 'any') params.search_field = searchField;
@@ -458,8 +456,6 @@ export default function DAGHistoryPage() {
         });
       }
 
-      // Refresh visible-page data once at the end instead of poking setData per
-      // item; keeps the render cost O(1) for a 1000-item loop.
       await fetchData();
 
       const aborted = bulkPauseAbortRef.current;
