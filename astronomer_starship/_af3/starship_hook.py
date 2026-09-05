@@ -5,7 +5,12 @@ metadata through the source instance's own /api/starship/* endpoints. Expects
 an Airflow HTTP connection (default id: ``starship_source``).
 """
 
-from airflow.sdk import BaseHook
+try:
+    # AF 3.1+ exports BaseHook via the SDK.
+    from airflow.sdk import BaseHook
+except ImportError:
+    # AF 3.0 still ships BaseHook only under the classic path.
+    from airflow.hooks.base import BaseHook
 
 from astronomer_starship.providers.starship.hooks.starship import (
     STARSHIP_SOURCE_CONN_ID,
