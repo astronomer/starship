@@ -16,15 +16,13 @@ INSTALL_OUTPUT=$( \
   python -m pip install --upgrade pip && \
   python -m pip install pytest $WHEEL 2>&1 \
 )
+PIP_EXIT_CODE=$?
 echo -e $INSTALL_OUTPUT
 popd || exit 1
 
-# if we don't find 'Successfully installed' or if we find 'ERROR'
-grep -q 'Successfully installed astronomer-starship' <<< $INSTALL_OUTPUT
+grep -qE 'Successfully installed.*astronomer[_-]starship-[0-9]' <<< $INSTALL_OUTPUT
 SUCCESSFULLY_INSTALLED=$?
-grep -q 'ERROR' <<< $INSTALL_OUTPUT
-ERROR=$?
-if [ $SUCCESSFULLY_INSTALLED -eq 0 ] && [ $ERROR -ne 0 ]; then
+if [ $PIP_EXIT_CODE -eq 0 ] && [ $SUCCESSFULLY_INSTALLED -eq 0 ]; then
   echo -e "[STARSHIP-INSTALL-SUCCESS image=$IMAGE]"
 else
   echo -e "[STARSHIP-INSTALL-ERROR image=$IMAGE]"
