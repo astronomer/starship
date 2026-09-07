@@ -53,6 +53,17 @@ class ConflictError(HttpError):
         super().__init__(msg, 409)
 
 
+def nonneg_int(value, default):
+    """Return `value` coerced to a non-negative int, or `default` on bad input."""
+    if value in (None, ""):
+        return default
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return default
+    return max(n, 0)
+
+
 def get_json_or_clean_str(o: str) -> Union[List[Any], Dict[Any, Any], Any]:
     """For Aeroscope - Either load JSON (if we can) or strip and split the string, while logging the error"""
     import logging

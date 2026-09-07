@@ -1,12 +1,14 @@
 import datetime
 import json
 import logging
+from collections import defaultdict
 from datetime import timezone
 from typing import TYPE_CHECKING
 
 from astronomer_starship.common import (
     BaseStarshipAirflow,
     generic_delete,
+    nonneg_int,
     results_to_list_via_attrs,
 )
 
@@ -17,17 +19,6 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
-
-
-def _nonneg_int(value, default):
-    """Return `value` coerced to a non-negative int, or `default` on bad input."""
-    if value in (None, ""):
-        return default
-    try:
-        n = int(value)
-    except (TypeError, ValueError):
-        return default
-    return max(n, 0)
 
 
 class StarshipAirflow(BaseStarshipAirflow):
@@ -202,8 +193,8 @@ class StarshipAirflow30(StarshipAirflow):
         # Treat empty strings as unset (e.g. `?limit=&offset=`) and silently
         # clamp non-int / negative values to safe defaults so bad input yields
         # a well-formed empty response instead of a 500.
-        limit = _nonneg_int(limit, default=None)
-        offset = _nonneg_int(offset, default=0)
+        limit = nonneg_int(limit, default=None)
+        offset = nonneg_int(offset, default=0)
         search = search or None
         search_field = search_field or None
 
@@ -248,8 +239,7 @@ class StarshipAirflow30(StarshipAirflow):
             page_dag_ids = [row.dag_id for row in page]
 
             # Batched tag lookup: one query instead of N.
-            # noqa comprehension (not `dict.fromkeys`) is intentional: each value is a fresh list.
-            tags_by_dag = {dag_id: [] for dag_id in page_dag_ids}  # noqa: C420
+            tags_by_dag = defaultdict(list)
             if page_dag_ids:
                 for dag_id, tag_name in self.session.query(DagTag.dag_id, DagTag.name).filter(
                     DagTag.dag_id.in_(page_dag_ids)
