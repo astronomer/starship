@@ -9,6 +9,11 @@ from astronomer_starship.providers.starship.hooks.starship import StarshipHook
 class StarshipLocalHook(BaseHook, StarshipHook):
     """Hook to retrieve local Airflow data, which can then be sent to the Target Starship instance."""
 
+    def __init__(self, http_conn_id=None, **kwargs):
+        # AF2 reads source metadata directly from the DB, so no HTTP conn is
+        # needed. Accept `http_conn_id` for API parity with the AF3 hook.
+        super().__init__(**kwargs)
+
     def get_variables(self):
         return StarshipCompatabilityLayer().get_variables()
 

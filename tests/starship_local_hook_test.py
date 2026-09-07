@@ -129,3 +129,52 @@ class TestStarshipLocalHookAf2:
         hook = StarshipLocalHook()
         with pytest.raises(RuntimeError, match="not supported"):
             getattr(hook, method)(**kwargs)
+
+    @af2_only
+    def test_accepts_http_conn_id_kwarg(self):
+        # For API parity with the AF3 hook so operator code can pass
+        # `http_conn_id=...` uniformly across Airflow versions.
+        hook = StarshipLocalHook(http_conn_id="some_source")
+        from airflow.hooks.base import BaseHook
+
+        assert isinstance(hook, BaseHook)
+
+
+class TestStarshipMigrationOperator:
+    """Constructor-level wiring of source/target connection kwargs."""
+
+    def _make_op(self, **kwargs):
+        from astronomer_starship.providers.starship.operators.starship import (
+            StarshipMigrationOperator,
+        )
+
+        # BaseOperator requires task_id; DAG context is not needed for __init__.
+        return StarshipMigrationOperator(task_id="t", **kwargs)
+
+    def test_target_http_conn_id_wins_over_http_conn_id(self, monkeypatch):
+        monkeypatch.setenv("AIRFLOW_CONN_STARSHIP_SOURCE", "http://source.example.com/")
+        op = self._make_op(
+            http_conn_id="legacy_target",
+            target_http_conn_id="explicit_target",
+        )
+        assert op.target_hook.http_conn_id == "explicit_target"
+
+    def test_http_conn_id_used_as_target_fallback(self, monkeypatch):
+        monkeypatch.setenv("AIRFLOW_CONN_STARSHIP_SOURCE", "http://source.example.com/")
+        op = self._make_op(http_conn_id="legacy_target")
+        assert op.target_hook.http_conn_id == "legacy_target"
+
+    @af3_only
+    def test_source_http_conn_id_wires_source_hook(self, monkeypatch):
+        monkeypatch.setenv("AIRFLOW_CONN_CUSTOM_SOURCE", "http://source.example.com/")
+        op = self._make_op(
+            http_conn_id="target",
+            source_http_conn_id="custom_source",
+        )
+        assert op.source_hook.http_conn_id == "custom_source"
+
+    @af3_only
+    def test_source_defaults_to_starship_source(self, monkeypatch):
+        monkeypatch.setenv("AIRFLOW_CONN_STARSHIP_SOURCE", "http://source.example.com/")
+        op = self._make_op(http_conn_id="target")
+        assert op.source_hook.http_conn_id == STARSHIP_SOURCE_CONN_ID

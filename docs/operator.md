@@ -44,7 +44,7 @@ On Airflow 3 the migration DAG cannot use direct database access from workers,
 so the source hook now talks to the source Airflow's Starship HTTP API. This
 requires a second Airflow connection **on the source deployment itself**:
 
-- **Conn ID**: `starship_source`
+- **Conn ID**: `starship_source` (default; overridable via `source_http_conn_id`)
 - **Conn Type**: `HTTP`
 - **Host**: the base URL of the source Airflow (same rules as above -- exclude any `/home` suffix)
 - **Schema**: `https`
@@ -67,7 +67,9 @@ from the local metadata DB, exactly as it did in prior releases.
     )
 
     globals()["starship_airflow_migration_dag"] = StarshipAirflowMigrationDAG(
-        http_conn_id="starship_default"
+        target_http_conn_id="starship_default",
+        # Airflow 3 only; omit on Airflow 2. Defaults to "starship_source".
+        source_http_conn_id="starship_source",
     )
     ```
 
@@ -80,13 +82,25 @@ The `StarshipAirflowMigrationDAG` can be configured as follows:
 
 ```python
 StarshipAirflowMigrationDAG(
-    http_conn_id="starship_default",
+    # Preferred kwargs (Airflow 2 + 3):
+    target_http_conn_id="starship_default",
+    source_http_conn_id="starship_source",  # Airflow 3 only; ignored on Airflow 2
+    # Legacy alias (still supported; acts as target_http_conn_id):
+    # http_conn_id="starship_default",
     variables=None,  # None to migrate all, or ["var1", "var2"] to migrate specific items, or empty list to skip all
     pools=None,  # None to migrate all, or ["pool1", "pool2"] to migrate specific items, or empty list to skip all
     connections=None,  # None to migrate all, or ["conn1", "conn2"] to migrate specific items, or empty list to skip all
     dag_ids=None,  # None to migrate all, or ["dag1", "dag2"] to migrate specific items, or empty list to skip all
 )
 ```
+
+### Connection kwargs
+
+| Kwarg | Purpose | Default | Notes |
+|---|---|---|---|
+| `target_http_conn_id` | HTTP conn id for the **target** Airflow (where data is written) | falls back to `http_conn_id` | Preferred name |
+| `source_http_conn_id` | HTTP conn id for the **source** Airflow (where data is read from) | `"starship_source"` | Airflow 3 only; ignored on Airflow 2 |
+| `http_conn_id` | Legacy alias for `target_http_conn_id` | `None` | Kept for backward compatibility |
 
 You can use this DAG to migrate all items, or specific items by providing a list of names.
 
