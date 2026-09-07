@@ -10,6 +10,7 @@ from astronomer_starship.common import (
     generic_delete,
     nonneg_int,
     results_to_list_via_attrs,
+    row_shape_attrs,
 )
 
 if TYPE_CHECKING:
@@ -198,13 +199,7 @@ class StarshipAirflow30(StarshipAirflow):
         search = search or None
         search_field = search_field or None
 
-        # `dag_attrs` mixes row-shape fields and query-param descriptors -- filter out
-        # the params so they don't leak into every DAG row.
-        row_attrs = {
-            attr: desc
-            for attr, desc in self.dag_attrs().items()
-            if not (desc["methods"] and all(m[0] == "GET" for m in desc["methods"]))
-        }
+        row_attrs = row_shape_attrs(self.dag_attrs())
         fields = [
             getattr(DagModel, attr_desc["attr"]) for attr_desc in row_attrs.values() if attr_desc["attr"] is not None
         ]

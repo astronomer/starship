@@ -64,6 +64,31 @@ def nonneg_int(value, default):
     return max(n, 0)
 
 
+def row_shape_attrs(attrs):
+    """Pick just the row fields out of an ``*_attrs()`` dict.
+
+    Each ``*_attrs()`` dict does two jobs: it describes the columns we return
+    in a response row, and it also lists the query params we accept on a GET
+    request (``limit``, ``offset``, ``search``, etc.). The query-param entries
+    are tagged as GET-only; everything else is a real row field. When we're
+    building rows we only want the row fields, so we drop the GET-only ones.
+
+    >>> row_shape_attrs(
+    ...     {
+    ...         "dag_id": {"attr": "dag_id", "methods": [("PATCH", True)]},
+    ...         "owners": {"attr": "owners", "methods": []},
+    ...         "limit": {"attr": None, "methods": [("GET", False)]},
+    ...     }
+    ... )  # doctest: +ELLIPSIS
+    {'dag_id': {...}, 'owners': {...}}
+    """
+    return {
+        attr: desc
+        for attr, desc in attrs.items()
+        if not (desc["methods"] and all(m[0] == "GET" for m in desc["methods"]))
+    }
+
+
 def get_json_or_clean_str(o: str) -> Union[List[Any], Dict[Any, Any], Any]:
     """For Aeroscope - Either load JSON (if we can) or strip and split the string, while logging the error"""
     import logging
