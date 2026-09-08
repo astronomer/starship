@@ -14,9 +14,7 @@ authors = [
 readme = "README.md"
 license = { text = "PROPRIETARY" }
 requires-python = ">=3.6"
-dependencies = [
-    "apache-airflow-providers-http",
-]
+dependencies = []
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Framework :: Apache Airflow",

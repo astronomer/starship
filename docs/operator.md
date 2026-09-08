@@ -12,18 +12,18 @@ These environments do not support webserver plugins and will require using the `
 to migrate data.
 
 ## Installation
-Add the following line to your `requirements.txt` in your source environment:
+Add the following lines to your `requirements.txt` in your source environment:
 
    ```
    astronomer-starship
+   apache-airflow-providers-http
    ```
 
 !!! note
-    Earlier releases required the `[provider]` extra
-    (`astronomer-starship[provider]`) to pull in `apache-airflow-providers-http`.
-    That package is now part of the core dependencies, so the extra is no longer
-    necessary. It is still accepted for backwards compatibility and installs the
-    same package.
+    You only need `apache-airflow-providers-http` if you're using the migration
+    DAG. If you're only using the Starship plugin UI, `astronomer-starship`
+    alone is enough. If the provider is missing, importing the DAG will raise
+    an `ImportError`.
 
 ## Setup
 

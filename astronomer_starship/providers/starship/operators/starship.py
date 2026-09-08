@@ -1,5 +1,13 @@
 """Operators, TaskGroups, and DAGs for interacting with the Starship migrations."""
 
+try:
+    from airflow.providers.http.hooks.http import HttpHook  # noqa: F401
+except ImportError as e:
+    raise ImportError(
+        "The Starship migration DAG requires the apache-airflow-providers-http provider. "
+        "Install it to use the migration DAG."
+    ) from e
+
 import logging
 from datetime import datetime
 from typing import Any, List, Union
