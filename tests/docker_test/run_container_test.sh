@@ -20,7 +20,7 @@ PIP_EXIT_CODE=$?
 echo -e $INSTALL_OUTPUT
 popd || exit 1
 
-grep -qE 'Successfully installed.*astronomer[_-]starship-[0-9]' <<< $INSTALL_OUTPUT
+grep -qE 'Successfully installed.*astronomer[_-]starship-[0-9]' <<< "$INSTALL_OUTPUT"
 SUCCESSFULLY_INSTALLED=$?
 if [ $PIP_EXIT_CODE -eq 0 ] && [ $SUCCESSFULLY_INSTALLED -eq 0 ]; then
   echo -e "[STARSHIP-INSTALL-SUCCESS image=$IMAGE]"

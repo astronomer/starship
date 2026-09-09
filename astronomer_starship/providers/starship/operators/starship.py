@@ -224,7 +224,7 @@ def starship_connections_migration(
         else:
             for connection in connections_result.output:
                 connections_result >> StarshipConnectionMigrationOperator(
-                    task_id="migrate_connection_" + connection.conn_id,
+                    task_id="migrate_connection_" + connection,
                     connection_id=connection,
                     source_http_conn_id=source_http_conn_id,
                     **kwargs,
@@ -335,6 +335,11 @@ def StarshipAirflowMigrationDAG(  # noqa: N802
     # alias so existing DAGs keep working. `source_http_conn_id` overrides the
     # default source connection id (``starship_source``) used on Airflow 3.
     target_http_conn_id = target_http_conn_id or http_conn_id
+    if not target_http_conn_id:
+        raise ValueError(
+            "StarshipAirflowMigrationDAG requires a target connection. "
+            "Pass target_http_conn_id (preferred) or http_conn_id."
+        )
     dag = DAG(
         dag_id="starship_airflow_migration_dag",
         schedule="@once",
