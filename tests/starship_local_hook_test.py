@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 import pytest
 
-from astronomer_starship.compat import AIRFLOW_V_3
+from astronomer_starship.compat import AIRFLOW_V_2, AIRFLOW_V_3
 from astronomer_starship.providers.starship.hooks.starship import (
     STARSHIP_SOURCE_CONN_ID,
     StarshipHook,
@@ -18,7 +18,7 @@ from astronomer_starship.providers.starship.hooks.starship import (
 )
 
 af3_only = pytest.mark.skipif(not AIRFLOW_V_3, reason="AF3-only behaviour")
-af2_only = pytest.mark.skipif(AIRFLOW_V_3, reason="AF2-only behaviour")
+af2_only = pytest.mark.skipif(not AIRFLOW_V_2, reason="AF2-only behaviour")
 
 
 class TestStarshipLocalHookAf3:
