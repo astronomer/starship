@@ -2,7 +2,6 @@ import datetime
 import json
 import logging
 import os
-from collections import defaultdict
 from datetime import timezone
 from typing import TYPE_CHECKING
 
@@ -180,10 +179,25 @@ class StarshipAirflow(BaseStarshipAirflow):
         }
 
     def get_dags(self, limit=None, offset=0, search=None, search_field=None):
-        """Get DAGs with optional pagination and search."""
+        """Return a page of DAGs with optional filtering.
+
+        :param limit: max rows to return; ``None`` (or empty/invalid) means
+            no limit.
+        :param offset: number of rows to skip; invalid values coerce to 0.
+        :param search: case-insensitive substring; matches ``dag_id``,
+            ``owners``, or any tag.
+        :param search_field: narrow the match to one of ``"dag_id"``,
+            ``"owner"``, or ``"tag"``. Unset means match against all three.
+        :returns: ``{"dags": [...page rows...], "total_dag_count": N}``
+            where ``N`` reflects the search filter (not the page window).
+
+        Query params are coerced defensively -- bad input yields an empty
+        response instead of a 500. Tag and DAG-run counts are batched into
+        single queries per page (see :meth:`_fetch_tags_by_dag_id` and
+        :meth:`_fetch_dag_run_counts`) to avoid N+1.
+        """
         from airflow.models import DagModel, DagTag
-        from sqlalchemy import distinct, func, or_
-        from sqlalchemy.sql.functions import count
+        from sqlalchemy import func, or_
 
         # Query params come in as strings via request.args; coerce.
         # Treat empty strings as unset (e.g. `?limit=&offset=`) and silently
@@ -228,25 +242,8 @@ class StarshipAirflow(BaseStarshipAirflow):
             page = page_query.all()
             page_dag_ids = [row.dag_id for row in page]
 
-            # Batched tag lookup: one query instead of N.
-            tags_by_dag = defaultdict(list)
-            if page_dag_ids:
-                for dag_id, tag_name in self.session.query(DagTag.dag_id, DagTag.name).filter(
-                    DagTag.dag_id.in_(page_dag_ids)
-                ):
-                    tags_by_dag[dag_id].append(tag_name)
-
-            # Batched run count: one grouped query instead of N.
-            from airflow.models import DagRun
-
-            counts_by_dag = dict.fromkeys(page_dag_ids, 0)
-            if page_dag_ids:
-                for dag_id, run_count in (
-                    self.session.query(DagRun.dag_id, count(distinct(DagRun.run_id)))
-                    .filter(DagRun.dag_id.in_(page_dag_ids))
-                    .group_by(DagRun.dag_id)
-                ):
-                    counts_by_dag[dag_id] = run_count
+            tags_by_dag = self._fetch_tags_by_dag_id(page_dag_ids)
+            counts_by_dag = self._fetch_dag_run_counts(page_dag_ids)
 
             dags = json.loads(
                 json.dumps(

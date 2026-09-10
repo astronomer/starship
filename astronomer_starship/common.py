@@ -418,6 +418,44 @@ class BaseStarshipAirflow:
     def get_env_vars(cls):
         return dict(os.environ)
 
+    def _fetch_tags_by_dag_id(self, dag_ids: list) -> Dict[str, List[str]]:
+        """Return ``{dag_id: [tag_name, ...]}`` for the given dag_ids.
+
+        Fetches all tags for the requested DAGs in a single query to avoid an
+        N+1 pattern when serializing a page of DAGs.
+        """
+        from collections import defaultdict
+
+        from airflow.models import DagTag
+
+        tags_by_dag: Dict[str, List[str]] = defaultdict(list)
+        if not dag_ids:
+            return tags_by_dag
+        for dag_id, tag_name in self.session.query(DagTag.dag_id, DagTag.name).filter(DagTag.dag_id.in_(dag_ids)):
+            tags_by_dag[dag_id].append(tag_name)
+        return tags_by_dag
+
+    def _fetch_dag_run_counts(self, dag_ids: list) -> Dict[str, int]:
+        """Return ``{dag_id: run_count}`` for the given dag_ids.
+
+        Missing dag_ids (no DAG runs) are included with a count of 0. Fetches
+        all counts in a single ``GROUP BY`` query to avoid an N+1 pattern.
+        """
+        from airflow.models import DagRun
+        from sqlalchemy import distinct
+        from sqlalchemy.sql.functions import count
+
+        counts_by_dag: Dict[str, int] = dict.fromkeys(dag_ids, 0)
+        if not dag_ids:
+            return counts_by_dag
+        for dag_id, run_count in (
+            self.session.query(DagRun.dag_id, count(distinct(DagRun.run_id)))
+            .filter(DagRun.dag_id.in_(dag_ids))
+            .group_by(DagRun.dag_id)
+        ):
+            counts_by_dag[dag_id] = run_count
+        return counts_by_dag
+
     @classmethod
     def pool_attrs(cls) -> "Dict[str, AttrDesc]":
         raise NotImplementedError("Subclasses must implement pool_attrs method")

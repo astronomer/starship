@@ -1,6 +1,7 @@
 import pytest
 
 from astronomer_starship._af3.starship_compatability import (
+    StarshipAirflow30,
     StarshipAirflow31,
     StarshipAirflow32,
     StarshipAirflow33,
@@ -10,6 +11,8 @@ from astronomer_starship._af3.starship_compatability import (
 # parametrize FK-stripping tests over every subclass to guard against a future override
 # silently dropping the stripping logic.
 STARSHIP_SUBCLASSES = [StarshipAirflow31, StarshipAirflow32, StarshipAirflow33]
+
+ALL_STARSHIP_SUBCLASSES = [StarshipAirflow30, StarshipAirflow31, StarshipAirflow32, StarshipAirflow33]
 
 
 class FakeColumn:
@@ -70,6 +73,32 @@ class FakeSession:
 
     def rollback(self):
         raise AssertionError("rollback should not be called")
+
+
+class FakeQuery:
+    """Minimal fake for a SQLAlchemy query chain: ``filter``/``group_by`` are no-ops; iteration yields ``rows``."""
+
+    def __init__(self, rows):
+        self._rows = rows
+
+    def filter(self, *args, **kwargs):
+        return self
+
+    def group_by(self, *args, **kwargs):
+        return self
+
+    def __iter__(self):
+        return iter(self._rows)
+
+
+class FakeQuerySession:
+    """Minimal fake for the SQLAlchemy session: ``.query(*cols)`` returns a FakeQuery over the pre-canned rows."""
+
+    def __init__(self, rows):
+        self._rows = rows
+
+    def query(self, *columns):
+        return FakeQuery(self._rows)
 
 
 @pytest.mark.parametrize("starship_cls", STARSHIP_SUBCLASSES)
@@ -176,3 +205,73 @@ def test_task_instance_direct_insert_strips_source_trigger_id(monkeypatch, stars
             "map_index": -1,
         }
     ]
+
+
+# ---------------------------------------------------------------------------
+# Batched DAG-metadata helpers on BaseStarshipAirflow
+#
+# _fetch_tags_by_dag_id and _fetch_dag_run_counts back get_dags. Testing them
+# in isolation localizes regressions without going through the full pagination
+# code path.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("starship_cls", ALL_STARSHIP_SUBCLASSES)
+def test_fetch_tags_empty_input_returns_empty_dict(starship_cls):
+    starship = starship_cls()
+    # Contract: empty input short-circuits without touching the session.
+    starship._session = None
+    assert starship._fetch_tags_by_dag_id([]) == {}
+
+
+@pytest.mark.parametrize("starship_cls", ALL_STARSHIP_SUBCLASSES)
+def test_fetch_tags_groups_multiple_tags_per_dag(starship_cls):
+    starship = starship_cls()
+    starship._session = FakeQuerySession(
+        [
+            ("dag_a", "tag1"),
+            ("dag_a", "tag2"),
+            ("dag_b", "tag3"),
+        ]
+    )
+    assert starship._fetch_tags_by_dag_id(["dag_a", "dag_b"]) == {
+        "dag_a": ["tag1", "tag2"],
+        "dag_b": ["tag3"],
+    }
+
+
+@pytest.mark.parametrize("starship_cls", ALL_STARSHIP_SUBCLASSES)
+def test_fetch_tags_missing_dag_absent_from_result(starship_cls):
+    # DAGs without any tags don't appear as empty lists -- callers use
+    # dict.get(dag_id, []) at the read site.
+    starship = starship_cls()
+    starship._session = FakeQuerySession([("dag_a", "only_tag")])
+    assert starship._fetch_tags_by_dag_id(["dag_a", "dag_b_no_tags"]) == {"dag_a": ["only_tag"]}
+
+
+@pytest.mark.parametrize("starship_cls", ALL_STARSHIP_SUBCLASSES)
+def test_fetch_run_counts_empty_input_returns_empty_dict(starship_cls):
+    starship = starship_cls()
+    starship._session = None
+    assert starship._fetch_dag_run_counts([]) == {}
+
+
+@pytest.mark.parametrize("starship_cls", ALL_STARSHIP_SUBCLASSES)
+def test_fetch_run_counts_populates_from_group_by(starship_cls):
+    starship = starship_cls()
+    starship._session = FakeQuerySession(
+        [
+            ("dag_a", 5),
+            ("dag_b", 2),
+        ]
+    )
+    assert starship._fetch_dag_run_counts(["dag_a", "dag_b"]) == {"dag_a": 5, "dag_b": 2}
+
+
+@pytest.mark.parametrize("starship_cls", ALL_STARSHIP_SUBCLASSES)
+def test_fetch_run_counts_zero_fills_missing_dags(starship_cls):
+    # Contract: dag_ids requested but absent from the GROUP BY result still
+    # appear with count 0. Row builders rely on this to produce complete rows.
+    starship = starship_cls()
+    starship._session = FakeQuerySession([("dag_a", 3)])
+    assert starship._fetch_dag_run_counts(["dag_a", "dag_never_ran"]) == {"dag_a": 3, "dag_never_ran": 0}
