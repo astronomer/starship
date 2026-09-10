@@ -5,8 +5,6 @@ from typing import List
 
 from airflow.providers.http.hooks.http import HttpHook
 
-from astronomer_starship.compat import AIRFLOW_V_2, AIRFLOW_V_3
-
 POOLS_ROUTE = "/api/starship/pools"
 CONNECTIONS_ROUTE = "/api/starship/connections"
 VARIABLES_ROUTE = "/api/starship/variables"
@@ -14,7 +12,7 @@ DAGS_ROUTE = "/api/starship/dags"
 DAG_RUNS_ROUTE = "/api/starship/dag_runs"
 TASK_INSTANCES_ROUTE = "/api/starship/task_instances"
 
-# Default Airflow connection id the AF3 StarshipLocalHook reads from.
+# Default Airflow connection id the AF3 StarshipHttpSourceHook reads from.
 STARSHIP_SOURCE_CONN_ID = "starship_source"
 
 
@@ -191,19 +189,11 @@ class StarshipHttpHook(HttpHook, StarshipHook):
         return res.json()
 
 
-# Dispatch StarshipLocalHook to the version-specific implementation. Kept at
-# the bottom because both submodules import from this file.
-if AIRFLOW_V_3:
-    from astronomer_starship._af3.starship_hook import StarshipLocalHook
-elif AIRFLOW_V_2:
-    from astronomer_starship._af2.starship_hook import StarshipLocalHook
-else:
-    raise RuntimeError("Unsupported Airflow version")
-
-
+# Version-specific source hooks (``StarshipLocalHook`` on AF2,
+# ``StarshipHttpSourceHook`` on AF3) live in their own submodules under
+# ``astronomer_starship._af2/_af3``. Import from those directly.
 __all__ = [
     "STARSHIP_SOURCE_CONN_ID",
     "StarshipHook",
     "StarshipHttpHook",
-    "StarshipLocalHook",
 ]

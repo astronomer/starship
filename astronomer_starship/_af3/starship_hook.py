@@ -1,4 +1,4 @@
-"""Airflow 3 implementation of StarshipLocalHook: HTTP against the source Starship API.
+"""Airflow 3 implementation of the StarshipHttpSourceHook: HTTP against the source Starship API.
 
 Airflow 3 disallows direct DB access from workers, so operators read source
 metadata through the source instance's own /api/starship/* endpoints. Expects
@@ -29,13 +29,13 @@ def _missing_conn_error(conn_id: str) -> RuntimeError:
     )
 
 
-class StarshipLocalHook(StarshipHttpHook):
+class StarshipHttpSourceHook(StarshipHttpHook):
     """Read source Airflow metadata via HTTP on Airflow 3.
 
     Inherits all ``get_*`` methods and ``set_dag_is_paused`` from
     :class:`StarshipHttpHook`. Overrides the remaining ``set_*`` methods to
-    preserve the read-only semantics of the Airflow 2 LocalHook: mutating
-    source state is not part of Starship's migration flow.
+    preserve the read-only semantics of the Airflow 2 ``StarshipLocalHook``:
+    mutating source state is not part of Starship's migration flow.
     """
 
     def __init__(self, http_conn_id: str = STARSHIP_SOURCE_CONN_ID, **kwargs):

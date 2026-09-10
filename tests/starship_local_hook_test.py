@@ -1,9 +1,9 @@
-"""Unit tests for the StarshipLocalHook class.
+"""Unit tests for the StarshipHttpSourceHook.
 
-These tests exercise whichever code path (AF2 direct-DB or AF3 HTTP) is
-selected at import time based on the Airflow version running the test suite.
-The default dev venv pins ``apache-airflow<3.4`` so this file typically runs
-against Airflow 3.x.
+These tests exercise whichever code path (AF2 direct-DB ``StarshipLocalHook``
+or AF3 HTTP ``StarshipHttpSourceHook``) is selected at import time based on
+the Airflow version running the test suite. The default dev venv pins
+``apache-airflow<3.4`` so this file typically runs against Airflow 3.x.
 """
 
 from unittest.mock import patch
@@ -14,15 +14,19 @@ from astronomer_starship.compat import AIRFLOW_V_2, AIRFLOW_V_3
 from astronomer_starship.providers.starship.hooks.starship import (
     STARSHIP_SOURCE_CONN_ID,
     StarshipHook,
-    StarshipLocalHook,
 )
+
+if AIRFLOW_V_2:
+    from astronomer_starship._af2.starship_hook import StarshipLocalHook as SourceHook
+elif AIRFLOW_V_3:
+    from astronomer_starship._af3.starship_hook import StarshipHttpSourceHook as SourceHook
 
 af3_only = pytest.mark.skipif(not AIRFLOW_V_3, reason="AF3-only behaviour")
 af2_only = pytest.mark.skipif(not AIRFLOW_V_2, reason="AF2-only behaviour")
 
 
-class TestStarshipLocalHookAf3:
-    """AF3: LocalHook is an HttpHook against the ``starship_source`` connection."""
+class TestStarshipHttpSourceHookAf3:
+    """AF3: source hook is an HttpHook against the ``starship_source`` connection."""
 
     @af3_only
     def test_default_conn_id_constant(self):
@@ -35,7 +39,7 @@ class TestStarshipLocalHookAf3:
         # HTTP requirement, not a bare AirflowNotFoundException.
         monkeypatch.delenv("AIRFLOW_CONN_STARSHIP_SOURCE", raising=False)
         with pytest.raises(RuntimeError) as exc_info:
-            StarshipLocalHook()
+            SourceHook()
         msg = str(exc_info.value)
         assert "starship_source" in msg
         assert "HTTP" in msg
@@ -46,7 +50,7 @@ class TestStarshipLocalHookAf3:
         # Setting AIRFLOW_CONN_STARSHIP_SOURCE is Airflow's supported way to
         # register a connection without touching the metadata DB.
         monkeypatch.setenv("AIRFLOW_CONN_STARSHIP_SOURCE", "http://source.example.com/")
-        hook = StarshipLocalHook()
+        hook = SourceHook()
         from airflow.providers.http.hooks.http import HttpHook
 
         assert isinstance(hook, HttpHook)
@@ -55,7 +59,7 @@ class TestStarshipLocalHookAf3:
     @af3_only
     def test_custom_conn_id(self, monkeypatch):
         monkeypatch.setenv("AIRFLOW_CONN_MY_SOURCE", "http://source.example.com/")
-        hook = StarshipLocalHook(http_conn_id="my_source")
+        hook = SourceHook(http_conn_id="my_source")
         assert hook.http_conn_id == "my_source"
 
     @af3_only
@@ -70,11 +74,11 @@ class TestStarshipLocalHookAf3:
         ],
     )
     def test_read_only_setters_raise(self, monkeypatch, method, kwargs):
-        # Read-only semantics are preserved from the AF2 LocalHook: mutating
+        # Read-only semantics preserved from the AF2 StarshipLocalHook: mutating
         # the source instance is not part of Starship's migration flow, so
         # these setters raise RuntimeError before any HTTP call is made.
         monkeypatch.setenv("AIRFLOW_CONN_STARSHIP_SOURCE", "http://source.example.com/")
-        hook = StarshipLocalHook()
+        hook = SourceHook()
         with pytest.raises(RuntimeError, match="not supported"):
             getattr(hook, method)(**kwargs)
 
@@ -83,7 +87,7 @@ class TestStarshipLocalHookAf3:
         # set_dag_is_paused is the one allowed setter -- it pauses the source
         # DAG during migration.
         monkeypatch.setenv("AIRFLOW_CONN_STARSHIP_SOURCE", "http://source.example.com/")
-        hook = StarshipLocalHook()
+        hook = SourceHook()
 
         class _MockResponse:
             def raise_for_status(self):
@@ -103,14 +107,14 @@ class TestStarshipLocalHookAf3:
 
 
 class TestStarshipLocalHookAf2:
-    """AF2: LocalHook reads directly from the local Airflow DB via the compat layer."""
+    """AF2: StarshipLocalHook reads directly from the local Airflow DB via the compat layer."""
 
     @af2_only
     def test_is_basehook_not_httphook(self):
         from airflow.hooks.base import BaseHook
         from airflow.providers.http.hooks.http import HttpHook
 
-        hook = StarshipLocalHook()
+        hook = SourceHook()
         assert isinstance(hook, BaseHook)
         assert not isinstance(hook, HttpHook)
 
@@ -126,7 +130,7 @@ class TestStarshipLocalHookAf2:
         ],
     )
     def test_read_only_setters_raise(self, method, kwargs):
-        hook = StarshipLocalHook()
+        hook = SourceHook()
         with pytest.raises(RuntimeError, match="not supported"):
             getattr(hook, method)(**kwargs)
 
@@ -134,7 +138,7 @@ class TestStarshipLocalHookAf2:
     def test_accepts_http_conn_id_kwarg(self):
         # For API parity with the AF3 hook so operator code can pass
         # `http_conn_id=...` uniformly across Airflow versions.
-        hook = StarshipLocalHook(http_conn_id="some_source")
+        hook = SourceHook(http_conn_id="some_source")
         from airflow.hooks.base import BaseHook
 
         assert isinstance(hook, BaseHook)

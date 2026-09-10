@@ -20,8 +20,17 @@ from astronomer_starship.compat import AIRFLOW_V_2, AIRFLOW_V_3
 from astronomer_starship.providers.starship.hooks.starship import (
     STARSHIP_SOURCE_CONN_ID,
     StarshipHttpHook,
-    StarshipLocalHook,
 )
+
+# Dispatch to the version-appropriate source hook. On AF2 direct DB access
+# works, so the source hook is a real BaseHook. On AF3 workers cannot touch
+# the DB, so it's an HttpHook against the source Starship API.
+if AIRFLOW_V_2:
+    from astronomer_starship._af2.starship_hook import StarshipLocalHook as SourceHook
+elif AIRFLOW_V_3:
+    from astronomer_starship._af3.starship_hook import StarshipHttpSourceHook as SourceHook
+else:
+    raise RuntimeError("Unsupported Airflow version")
 
 if AIRFLOW_V_3:
     from airflow.sdk import DAG, BaseOperator, TaskGroup, task
@@ -54,7 +63,7 @@ class StarshipMigrationOperator(BaseOperator):
         # prefer the explicit source/target kwargs.
         target_conn = target_http_conn_id or http_conn_id
         source_conn = source_http_conn_id or STARSHIP_SOURCE_CONN_ID
-        self.source_hook = StarshipLocalHook(http_conn_id=source_conn)
+        self.source_hook = SourceHook(http_conn_id=source_conn)
         self.target_hook = StarshipHttpHook(http_conn_id=target_conn)
 
 
@@ -86,7 +95,7 @@ def starship_variables_migration(
 
         @task()
         def get_variables():
-            _variables = StarshipLocalHook(http_conn_id=source_http_conn_id or STARSHIP_SOURCE_CONN_ID).get_variables()
+            _variables = SourceHook(http_conn_id=source_http_conn_id or STARSHIP_SOURCE_CONN_ID).get_variables()
 
             _variables = (
                 [k["key"] for k in _variables if k["key"] in variables]
@@ -145,7 +154,7 @@ def starship_pools_migration(
 
         @task()
         def get_pools():
-            _pools = StarshipLocalHook(http_conn_id=source_http_conn_id or STARSHIP_SOURCE_CONN_ID).get_pools()
+            _pools = SourceHook(http_conn_id=source_http_conn_id or STARSHIP_SOURCE_CONN_ID).get_pools()
             _pools = (
                 [k["name"] for k in _pools if k["name"] in pools] if pools is not None else [k["name"] for k in _pools]
             )
@@ -201,9 +210,7 @@ def starship_connections_migration(
 
         @task()
         def get_connections():
-            _connections = StarshipLocalHook(
-                http_conn_id=source_http_conn_id or STARSHIP_SOURCE_CONN_ID
-            ).get_connections()
+            _connections = SourceHook(http_conn_id=source_http_conn_id or STARSHIP_SOURCE_CONN_ID).get_connections()
             _connections = (
                 [k["conn_id"] for k in _connections if k["conn_id"] in connections]
                 if connections is not None
@@ -283,7 +290,7 @@ def starship_dag_history_migration(
 
         @task()
         def get_dags():
-            _dags = StarshipLocalHook(http_conn_id=source_http_conn_id or STARSHIP_SOURCE_CONN_ID).get_dags()
+            _dags = SourceHook(http_conn_id=source_http_conn_id or STARSHIP_SOURCE_CONN_ID).get_dags()
             _dags = (
                 [k["dag_id"] for k in _dags if k["dag_id"] in dag_ids and k["dag_id"] != "StarshipAirflowMigrationDAG"]
                 if dag_ids is not None
