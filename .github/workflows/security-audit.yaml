@@ -23,7 +23,7 @@ jobs:
         run: pip install -c constraints.txt '.[dev]'
 
       - name: Run pip-audit
-        uses: pypa/gh-action-pip-audit@v1
+        uses: pypa/gh-action-pip-audit@v1.1.0
 
   audit-npm:
     runs-on: ubuntu-latest
