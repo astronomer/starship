@@ -59,7 +59,10 @@ On Airflow 2 no source connection is needed -- the source hook reads directly
 from the local metadata DB, exactly as it did in prior releases.
 
 ## Usage
-1. Add the following DAG to your source environment:
+
+1. Add the following DAG to your source environment.
+
+    **Airflow 3**:
 
     ```python title="dags/starship_airflow_migration_dag.py"
     from astronomer_starship.providers.starship.operators.starship import (
@@ -68,8 +71,19 @@ from the local metadata DB, exactly as it did in prior releases.
 
     globals()["starship_airflow_migration_dag"] = StarshipAirflowMigrationDAG(
         target_http_conn_id="starship_default",
-        # Airflow 3 only; omit on Airflow 2. Defaults to "starship_source".
         source_http_conn_id="starship_source",
+    )
+    ```
+
+    **Airflow 2**:
+
+    ```python title="dags/starship_airflow_migration_dag.py"
+    from astronomer_starship.providers.starship.operators.starship import (
+        StarshipAirflowMigrationDAG,
+    )
+
+    globals()["starship_airflow_migration_dag"] = StarshipAirflowMigrationDAG(
+        target_http_conn_id="starship_default",
     )
     ```
 
@@ -78,15 +92,38 @@ from the local metadata DB, exactly as it did in prior releases.
 
 ## Configuration
 
-The `StarshipAirflowMigrationDAG` can be configured as follows:
+The `StarshipAirflowMigrationDAG` can be configured as follows.
+
+### Airflow 3 (preferred)
 
 ```python
 StarshipAirflowMigrationDAG(
-    # Preferred kwargs (Airflow 2 + 3):
     target_http_conn_id="starship_default",
-    source_http_conn_id="starship_source",  # Airflow 3 only; ignored on Airflow 2
-    # Legacy alias (still supported; acts as target_http_conn_id):
-    # http_conn_id="starship_default",
+    source_http_conn_id="starship_source",
+    variables=None,  # None to migrate all, or ["var1", "var2"] to migrate specific items, or empty list to skip all
+    pools=None,  # None to migrate all, or ["pool1", "pool2"] to migrate specific items, or empty list to skip all
+    connections=None,  # None to migrate all, or ["conn1", "conn2"] to migrate specific items, or empty list to skip all
+    dag_ids=None,  # None to migrate all, or ["dag1", "dag2"] to migrate specific items, or empty list to skip all
+)
+```
+
+### Airflow 2 (preferred)
+
+```python
+StarshipAirflowMigrationDAG(
+    target_http_conn_id="starship_default",
+    variables=None,  # None to migrate all, or ["var1", "var2"] to migrate specific items, or empty list to skip all
+    pools=None,  # None to migrate all, or ["pool1", "pool2"] to migrate specific items, or empty list to skip all
+    connections=None,  # None to migrate all, or ["conn1", "conn2"] to migrate specific items, or empty list to skip all
+    dag_ids=None,  # None to migrate all, or ["dag1", "dag2"] to migrate specific items, or empty list to skip all
+)
+```
+
+### Airflow 2 (legacy `http_conn_id`, still supported)
+
+```python
+StarshipAirflowMigrationDAG(
+    http_conn_id="starship_default",
     variables=None,  # None to migrate all, or ["var1", "var2"] to migrate specific items, or empty list to skip all
     pools=None,  # None to migrate all, or ["pool1", "pool2"] to migrate specific items, or empty list to skip all
     connections=None,  # None to migrate all, or ["conn1", "conn2"] to migrate specific items, or empty list to skip all
