@@ -196,8 +196,8 @@ class StarshipAirflow(BaseStarshipAirflow):
         single queries per page (see :meth:`_fetch_tags_by_dag_id` and
         :meth:`_fetch_dag_run_counts`) to avoid N+1.
         """
-        from airflow.models import DagModel, DagTag
-        from sqlalchemy import func, or_
+        from airflow.models import DagModel
+        from sqlalchemy import func
 
         # Query params come in as strings via request.args; coerce.
         # Treat empty strings as unset (e.g. `?limit=&offset=`) and silently
@@ -214,27 +214,15 @@ class StarshipAirflow(BaseStarshipAirflow):
         ]
 
         try:
-            # Search matches dag_id, owners, or any tag (case-insensitive substring).
-            # `search_field` narrows to a single column: dag_id | owner | tag.
-            def _apply_search(query):
-                if not search:
-                    return query
-                pattern = f"%{search}%"
-                # session.query subquery form is portable across SQLAlchemy 1.3/1.4/2.x;
-                # the newer `select(col)` short form is 1.4+ only.
-                tag_subq = self.session.query(DagTag.dag_id).filter(DagTag.name.ilike(pattern)).distinct()
-                field_filters = {
-                    "dag_id": DagModel.dag_id.ilike(pattern),
-                    "owner": DagModel.owners.ilike(pattern),
-                    "tag": DagModel.dag_id.in_(tag_subq),
-                }
-                clause = field_filters[search_field] if search_field in field_filters else or_(*field_filters.values())
-                return query.filter(clause)
-
             # Total count reflects the search filter, not the page window.
-            total = _apply_search(self.session.query(func.count(DagModel.dag_id))).scalar() or 0
+            total = (
+                self._search_dag_query(self.session.query(func.count(DagModel.dag_id)), search, search_field).scalar()
+                or 0
+            )
 
-            page_query = _apply_search(self.session.query(*fields)).order_by(DagModel.dag_id)
+            page_query = self._search_dag_query(self.session.query(*fields), search, search_field).order_by(
+                DagModel.dag_id
+            )
             if offset:
                 page_query = page_query.offset(offset)
             if limit is not None:

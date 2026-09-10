@@ -456,6 +456,32 @@ class BaseStarshipAirflow:
             counts_by_dag[dag_id] = run_count
         return counts_by_dag
 
+    def _search_dag_query(self, query, search, search_field):
+        """Apply the DAG search filter to a DagModel-based query.
+
+        ``search`` is a case-insensitive substring matched against
+        ``dag_id``, ``owners``, or any tag. ``search_field`` narrows the
+        match to one of ``"dag_id"``, ``"owner"``, or ``"tag"``; unset (or
+        any other value) matches against all three. A falsy ``search``
+        returns ``query`` unchanged.
+        """
+        from airflow.models import DagModel, DagTag
+        from sqlalchemy import or_
+
+        if not search:
+            return query
+        pattern = f"%{search}%"
+        # session.query subquery form is portable across SQLAlchemy 1.3/1.4/2.x;
+        # the newer `select(col)` short form is 1.4+ only.
+        tag_subq = self.session.query(DagTag.dag_id).filter(DagTag.name.ilike(pattern)).distinct()
+        field_filters = {
+            "dag_id": DagModel.dag_id.ilike(pattern),
+            "owner": DagModel.owners.ilike(pattern),
+            "tag": DagModel.dag_id.in_(tag_subq),
+        }
+        clause = field_filters[search_field] if search_field in field_filters else or_(*field_filters.values())
+        return query.filter(clause)
+
     @classmethod
     def pool_attrs(cls) -> "Dict[str, AttrDesc]":
         raise NotImplementedError("Subclasses must implement pool_attrs method")
