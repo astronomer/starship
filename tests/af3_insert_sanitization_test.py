@@ -1,6 +1,8 @@
 import pytest
+import sqlalchemy as sa
 
 from astronomer_starship._af3.starship_compatability import (
+    StarshipAirflow30,
     StarshipAirflow31,
     StarshipAirflow32,
     StarshipAirflow33,
@@ -10,6 +12,8 @@ from astronomer_starship._af3.starship_compatability import (
 # parametrize FK-stripping tests over every subclass to guard against a future override
 # silently dropping the stripping logic.
 STARSHIP_SUBCLASSES = [StarshipAirflow31, StarshipAirflow32, StarshipAirflow33]
+
+ALL_STARSHIP_SUBCLASSES = [StarshipAirflow30, StarshipAirflow31, StarshipAirflow32, StarshipAirflow33]
 
 
 class FakeColumn:
@@ -70,6 +74,68 @@ class FakeSession:
 
     def rollback(self):
         raise AssertionError("rollback should not be called")
+
+
+class FakeQuery:
+    """Minimal fake for a SQLAlchemy query chain: ``filter``/``group_by``/``distinct`` are no-ops; iteration yields ``rows``."""
+
+    def __init__(self, rows):
+        self._rows = rows
+
+    def filter(self, *args, **kwargs):
+        return self
+
+    def group_by(self, *args, **kwargs):
+        return self
+
+    def distinct(self, *args, **kwargs):
+        return self
+
+    def __iter__(self):
+        return iter(self._rows)
+
+
+class FakeQuerySession:
+    """Minimal fake for the SQLAlchemy session: ``.query(*cols)`` returns a FakeQuery over the pre-canned rows."""
+
+    def __init__(self, rows):
+        self._rows = rows
+
+    def query(self, *columns):
+        return FakeQuery(self._rows)
+
+
+class RecordingQuery:
+    """Fake target query for ``_search_dag_query``: records the clause passed to ``filter`` instead of applying it."""
+
+    def __init__(self):
+        self.filtered_with = None
+
+    def filter(self, clause):
+        self.filtered_with = clause
+        return self
+
+
+class SelectBackedQuery:
+    """Like ``FakeQuery``, but backed by a real Core ``select()`` so it's still
+    a valid ``in_(...)`` target -- ``FakeQuery``'s plain rows iterator isn't."""
+
+    def __init__(self, stmt):
+        self._stmt = stmt
+
+    def filter(self, *clauses):
+        return SelectBackedQuery(self._stmt.where(*clauses))
+
+    def distinct(self):
+        return SelectBackedQuery(self._stmt.distinct())
+
+    def __clause_element__(self):
+        return self._stmt
+
+
+class SelectBackedSession:
+    def query(self, *columns):
+        return SelectBackedQuery(sa.select(*columns))
 
 
 @pytest.mark.parametrize("starship_cls", STARSHIP_SUBCLASSES)
@@ -176,3 +242,149 @@ def test_task_instance_direct_insert_strips_source_trigger_id(monkeypatch, stars
             "map_index": -1,
         }
     ]
+
+
+# ---------------------------------------------------------------------------
+# Batched DAG-metadata helpers on BaseStarshipAirflow
+#
+# _fetch_tags_by_dag_id and _fetch_dag_run_counts back get_dags. Testing them
+# in isolation localizes regressions without going through the full pagination
+# code path.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("starship_cls", ALL_STARSHIP_SUBCLASSES)
+def test_fetch_tags_empty_input_returns_empty_dict(starship_cls):
+    starship = starship_cls()
+    # Contract: empty input short-circuits without touching the session.
+    starship._session = None
+    assert starship._fetch_tags_by_dag_id([]) == {}
+
+
+@pytest.mark.parametrize("starship_cls", ALL_STARSHIP_SUBCLASSES)
+def test_fetch_tags_groups_multiple_tags_per_dag(starship_cls):
+    starship = starship_cls()
+    starship._session = FakeQuerySession(
+        [
+            ("dag_a", "tag1"),
+            ("dag_a", "tag2"),
+            ("dag_b", "tag3"),
+        ]
+    )
+    assert starship._fetch_tags_by_dag_id(["dag_a", "dag_b"]) == {
+        "dag_a": ["tag1", "tag2"],
+        "dag_b": ["tag3"],
+    }
+
+
+@pytest.mark.parametrize("starship_cls", ALL_STARSHIP_SUBCLASSES)
+def test_fetch_tags_missing_dag_absent_from_result(starship_cls):
+    # DAGs without any tags don't appear as empty lists -- callers use
+    # dict.get(dag_id, []) at the read site.
+    starship = starship_cls()
+    starship._session = FakeQuerySession([("dag_a", "only_tag")])
+    assert starship._fetch_tags_by_dag_id(["dag_a", "dag_b_no_tags"]) == {"dag_a": ["only_tag"]}
+
+
+@pytest.mark.parametrize("starship_cls", ALL_STARSHIP_SUBCLASSES)
+def test_fetch_run_counts_empty_input_returns_empty_dict(starship_cls):
+    starship = starship_cls()
+    starship._session = None
+    assert starship._fetch_dag_run_counts([]) == {}
+
+
+@pytest.mark.parametrize("starship_cls", ALL_STARSHIP_SUBCLASSES)
+def test_fetch_run_counts_populates_from_group_by(starship_cls):
+    starship = starship_cls()
+    starship._session = FakeQuerySession(
+        [
+            ("dag_a", 5),
+            ("dag_b", 2),
+        ]
+    )
+    assert starship._fetch_dag_run_counts(["dag_a", "dag_b"]) == {"dag_a": 5, "dag_b": 2}
+
+
+@pytest.mark.parametrize("starship_cls", ALL_STARSHIP_SUBCLASSES)
+def test_fetch_run_counts_zero_fills_missing_dags(starship_cls):
+    # Contract: dag_ids requested but absent from the GROUP BY result still
+    # appear with count 0. Row builders rely on this to produce complete rows.
+    starship = starship_cls()
+    starship._session = FakeQuerySession([("dag_a", 3)])
+    assert starship._fetch_dag_run_counts(["dag_a", "dag_never_ran"]) == {"dag_a": 3, "dag_never_ran": 0}
+
+
+# ---------------------------------------------------------------------------
+# _search_dag_query on BaseStarshipAirflow (backs get_dags' search_field param)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("starship_cls", ALL_STARSHIP_SUBCLASSES)
+def test_search_dag_query_no_search_returns_query_unchanged(starship_cls):
+    starship = starship_cls()
+    starship._session = None
+    query = RecordingQuery()
+    assert starship._search_dag_query(query, None, None) is query
+    assert query.filtered_with is None
+
+
+@pytest.mark.parametrize("starship_cls", ALL_STARSHIP_SUBCLASSES)
+def test_search_dag_query_empty_string_search_returns_query_unchanged(starship_cls):
+    starship = starship_cls()
+    starship._session = None
+    query = RecordingQuery()
+    assert starship._search_dag_query(query, "", "dag_id") is query
+    assert query.filtered_with is None
+
+
+@pytest.mark.parametrize("starship_cls", ALL_STARSHIP_SUBCLASSES)
+def test_search_dag_query_dag_id_field_filters_only_dag_id(starship_cls):
+    starship = starship_cls()
+    starship._session = SelectBackedSession()
+    query = RecordingQuery()
+    starship._search_dag_query(query, "foo", "dag_id")
+    clause = str(query.filtered_with)
+    assert "dag.dag_id" in clause
+    assert "dag.owners" not in clause
+    assert "dag_tag" not in clause
+
+
+@pytest.mark.parametrize("starship_cls", ALL_STARSHIP_SUBCLASSES)
+def test_search_dag_query_owner_field_filters_only_owners(starship_cls):
+    starship = starship_cls()
+    starship._session = SelectBackedSession()
+    query = RecordingQuery()
+    starship._search_dag_query(query, "foo", "owner")
+    clause = str(query.filtered_with)
+    assert "dag.owners" in clause
+    assert "dag.dag_id" not in clause
+    assert "dag_tag" not in clause
+
+
+@pytest.mark.parametrize("starship_cls", ALL_STARSHIP_SUBCLASSES)
+def test_search_dag_query_tag_field_filters_via_tag_subquery(starship_cls):
+    starship = starship_cls()
+    starship._session = SelectBackedSession()
+    query = RecordingQuery()
+    starship._search_dag_query(query, "foo", "tag")
+    clause = str(query.filtered_with)
+    assert "dag.dag_id IN" in clause
+    assert "dag_tag" in clause
+    assert "LIKE" not in clause.split("IN")[0]
+    assert "dag.owners" not in clause
+
+
+@pytest.mark.parametrize("starship_cls", ALL_STARSHIP_SUBCLASSES)
+@pytest.mark.parametrize("search_field", [None, "", "bogus"])
+def test_search_dag_query_unset_or_unknown_field_matches_all_columns(starship_cls, search_field):
+    # Regression coverage for 3a49e05 (SQLAlchemy clauses raise on __bool__,
+    # so this can't be a truthy check on field_filters.get(...)).
+    starship = starship_cls()
+    starship._session = SelectBackedSession()
+    query = RecordingQuery()
+    starship._search_dag_query(query, "foo", search_field)
+    clause = str(query.filtered_with)
+    assert "dag.dag_id" in clause
+    assert "dag.owners" in clause
+    assert "dag_tag" in clause
+    assert clause.count(" OR ") == 2

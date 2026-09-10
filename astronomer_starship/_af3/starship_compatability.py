@@ -7,7 +7,9 @@ from typing import TYPE_CHECKING
 from astronomer_starship.common import (
     BaseStarshipAirflow,
     generic_delete,
+    nonneg_int,
     results_to_list_via_attrs,
+    row_shape_attrs,
 )
 
 if TYPE_CHECKING:
@@ -159,38 +161,105 @@ class StarshipAirflow30(StarshipAirflow):
                 "methods": [],
                 "test_value": 0,
             },
+            # Pagination and search are query params on GET, not row fields.
+            "limit": {
+                "attr": "limit",
+                "methods": [("GET", False)],
+                "test_value": 50,
+            },
+            "offset": {
+                "attr": "offset",
+                "methods": [("GET", False)],
+                "test_value": 0,
+            },
+            "search": {
+                "attr": "search",
+                "methods": [("GET", False)],
+                "test_value": "dag_0",
+            },
+            "search_field": {
+                "attr": "search_field",
+                "methods": [("GET", False)],
+                "test_value": "dag_id",
+            },
         }
 
-    def get_dags(self):
+    def get_dags(self, limit=None, offset=0, search=None, search_field=None):
+        """Return a page of DAGs with optional filtering.
+
+        :param limit: max rows to return; ``None`` (or empty/invalid) means
+            no limit.
+        :param offset: number of rows to skip; invalid values coerce to 0.
+        :param search: case-insensitive substring; matches ``dag_id``,
+            ``owners``, or any tag.
+        :param search_field: narrow the match to one of ``"dag_id"``,
+            ``"owner"``, or ``"tag"``. Unset means match against all three.
+        :returns: ``{"dags": [...page rows...], "total_dag_count": N}``
+            where ``N`` reflects the search filter (not the page window).
+
+        Query params are coerced defensively -- bad input yields an empty
+        response instead of a 500. Tag and DAG-run counts are batched into
+        single queries per page (see :meth:`_fetch_tags_by_dag_id` and
+        :meth:`_fetch_dag_run_counts`) to avoid N+1.
+        """
         from airflow.models import DagModel
+        from sqlalchemy import func
+
+        # Query params come in as strings via request.args; coerce.
+        # Treat empty strings as unset (e.g. `?limit=&offset=`) and silently
+        # clamp non-int / negative values to safe defaults so bad input yields
+        # a well-formed empty response instead of a 500.
+        limit = nonneg_int(limit, default=None)
+        offset = nonneg_int(offset, default=0)
+        search = search or None
+        search_field = search_field or None
+
+        row_attrs = row_shape_attrs(self.dag_attrs())
+        fields = [
+            getattr(DagModel, attr_desc["attr"]) for attr_desc in row_attrs.values() if attr_desc["attr"] is not None
+        ]
 
         try:
-            fields = [
-                getattr(DagModel, attr_desc["attr"])
-                for attr_desc in self.dag_attrs().values()
-                if attr_desc["attr"] is not None
-            ]
+            # Total count reflects the search filter, not the page window.
+            total = (
+                self._search_dag_query(self.session.query(func.count(DagModel.dag_id)), search, search_field).scalar()
+                or 0
+            )
 
-            return json.loads(
+            page_query = self._search_dag_query(self.session.query(*fields), search, search_field).order_by(
+                DagModel.dag_id
+            )
+            if offset:
+                page_query = page_query.offset(offset)
+            if limit is not None:
+                page_query = page_query.limit(limit)
+            page = page_query.all()
+            page_dag_ids = [row.dag_id for row in page]
+
+            tags_by_dag = self._fetch_tags_by_dag_id(page_dag_ids)
+            counts_by_dag = self._fetch_dag_run_counts(page_dag_ids)
+
+            dags = json.loads(
                 json.dumps(
                     [
                         {
                             attr: (
-                                self._get_tags(result.dag_id)
+                                tags_by_dag.get(result.dag_id, [])
                                 if attr == "tags"
                                 else (
-                                    self._get_dag_run_count(result.dag_id)
+                                    counts_by_dag.get(result.dag_id, 0)
                                     if attr == "dag_run_count"
                                     else getattr(result, attr_desc["attr"], None)
                                 )
                             )
-                            for attr, attr_desc in self.dag_attrs().items()
+                            for attr, attr_desc in row_attrs.items()
                         }
-                        for result in self.session.query(*fields).all()
+                        for result in page
                     ],
                     default=str,
                 )
             )
+            return {"dags": dags, "total_dag_count": total}
         except Exception as e:
             self.session.rollback()
             raise e

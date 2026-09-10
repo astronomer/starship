@@ -232,6 +232,9 @@ def starship_dag_history_migration(dag_ids: List[str] = None, **kwargs):
         @task()
         def get_dags():
             _dags = StarshipLocalHook().get_dags()
+            # `get_dags` returns {"dags": [...], "total_dag_count": N}; older releases returned a bare list.
+            if isinstance(_dags, dict):
+                _dags = _dags.get("dags", [])
             _dags = (
                 [k["dag_id"] for k in _dags if k["dag_id"] in dag_ids and k["dag_id"] != "StarshipAirflowMigrationDAG"]
                 if dag_ids is not None

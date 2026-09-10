@@ -54,7 +54,8 @@ repos:
     hooks:
       - id: prettier
         name: prettier
-        entry: npx prettier --write --ignore-unknown
+        entry: npx --yes prettier@3.4.2 --write --ignore-unknown
         language: system
         types_or: [javascript, jsx, css, json]
         files: ^astronomer_starship/(src|tests)/
+        require_serial: true
