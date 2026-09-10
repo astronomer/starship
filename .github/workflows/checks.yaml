@@ -24,9 +24,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: "pip"
-      - uses: extractions/setup-just@v2
+      - uses: extractions/setup-just@v4
       - run: just install
       - run: just test-with-coverage
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
