@@ -3,7 +3,16 @@
 from abc import ABC, abstractmethod
 from typing import List
 
+from airflow.exceptions import AirflowNotFoundException
 from airflow.providers.http.hooks.http import HttpHook
+
+try:
+    from airflow.sdk import BaseHook
+except ImportError:
+    # AF 2.x, and AF 3.0
+    from airflow.hooks.base import BaseHook
+
+from astronomer_starship.compat import AIRFLOW_V_2
 
 POOLS_ROUTE = "/api/starship/pools"
 CONNECTIONS_ROUTE = "/api/starship/connections"
@@ -12,7 +21,8 @@ DAGS_ROUTE = "/api/starship/dags"
 DAG_RUNS_ROUTE = "/api/starship/dag_runs"
 TASK_INSTANCES_ROUTE = "/api/starship/task_instances"
 
-# Default Airflow connection id the AF3 StarshipHttpSourceHook reads from.
+# Default Airflow connection id the HTTP-based source hook reads from.
+# Only relevant for Airflow 3.
 STARSHIP_SOURCE_CONN_ID = "starship_source"
 
 
@@ -189,11 +199,41 @@ class StarshipHttpHook(HttpHook, StarshipHook):
         return res.json()
 
 
-# Version-specific source hooks (``StarshipLocalHook`` on AF2,
-# ``StarshipHttpSourceHook`` on AF3) live in their own submodules under
-# ``astronomer_starship._af2/_af3``. Import from those directly.
+# Direct DB access is only available on Airflow 2 (``StarshipLocalHook``);
+# every other case (Airflow 3 today) reaches the source over HTTP instead,
+# using the same hook already used for the target.
+if AIRFLOW_V_2:
+    from astronomer_starship._af2.starship_hook import StarshipLocalHook as SourceHook
+else:
+    SourceHook = StarshipHttpHook
+
+
+def assert_source_conn_exists(http_conn_id: str) -> None:
+    """Raise a clear error if an HTTP-based source connection is missing.
+
+    Only meaningful when ``SourceHook`` is ``StarshipHttpHook`` -- direct DB
+    access needs no connection, so this is a no-op on Airflow 2.
+    """
+    if SourceHook is not StarshipHttpHook:
+        return
+    try:
+        BaseHook.get_connection(http_conn_id)
+    except AirflowNotFoundException as e:
+        raise RuntimeError(
+            f"Starship source connection '{http_conn_id}' is not configured. "
+            f"When direct database access isn't available (e.g. Airflow 3 "
+            f"workers), the migration operators fetch source metadata via "
+            f"HTTP through the Starship API instead. Create an Airflow HTTP "
+            f"connection with id '{http_conn_id}' whose host points at the "
+            f"source Airflow's base URL (e.g. https://<source>/) and whose "
+            f"password is a valid API token for that instance."
+        ) from e
+
+
 __all__ = [
     "STARSHIP_SOURCE_CONN_ID",
     "StarshipHook",
     "StarshipHttpHook",
+    "SourceHook",
+    "assert_source_conn_exists",
 ]
