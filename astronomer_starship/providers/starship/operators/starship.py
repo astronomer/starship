@@ -13,16 +13,21 @@ from datetime import datetime
 from typing import Any, List, Union
 
 import airflow
-from airflow.exceptions import AirflowSkipException
+from airflow.exceptions import AirflowNotFoundException, AirflowSkipException
 from packaging.version import Version
 
 from astronomer_starship.compat import AIRFLOW_V_2, AIRFLOW_V_3
 from astronomer_starship.providers.starship.hooks.starship import (
     STARSHIP_SOURCE_CONN_ID,
-    SourceHook,
     StarshipHttpHook,
-    assert_source_conn_exists,
 )
+
+try:
+    # AF 3.1+ exports BaseHook via the SDK.
+    from airflow.sdk import BaseHook
+except ImportError:
+    # AF 2.x, and AF 3.0 (whose SDK didn't yet export BaseHook).
+    from airflow.hooks.base import BaseHook
 
 if AIRFLOW_V_3:
     from airflow.sdk import DAG, BaseOperator, TaskGroup, task
@@ -33,6 +38,36 @@ elif AIRFLOW_V_2:
     from airflow.utils.task_group import TaskGroup
 else:
     raise RuntimeError("Unsupported Airflow version")
+
+# Direct DB access is only available on Airflow 2 (``StarshipLocalHook``);
+# every other case (Airflow 3 today) reaches the source over HTTP instead,
+# using the same hook already used for the target.
+if AIRFLOW_V_2:
+    from astronomer_starship._af2.starship_hook import StarshipLocalHook as SourceHook
+else:
+    SourceHook = StarshipHttpHook
+
+
+def assert_source_conn_exists(http_conn_id: str) -> None:
+    """Raise a clear error if an HTTP-based source connection is missing.
+
+    Only meaningful when ``SourceHook`` is ``StarshipHttpHook`` -- direct DB
+    access needs no connection, so this is a no-op on Airflow 2.
+    """
+    if SourceHook is not StarshipHttpHook:
+        return
+    try:
+        BaseHook.get_connection(http_conn_id)
+    except AirflowNotFoundException as e:
+        raise RuntimeError(
+            f"Starship source connection '{http_conn_id}' is not configured. "
+            f"When direct database access isn't available (e.g. Airflow 3 "
+            f"workers), the migration operators fetch source metadata via "
+            f"HTTP through the Starship API instead. Create an Airflow HTTP "
+            f"connection with id '{http_conn_id}' whose host points at the "
+            f"source Airflow's base URL (e.g. https://<source>/) and whose "
+            f"password is a valid API token for that instance."
+        ) from e
 
 
 # Compatability Notes:

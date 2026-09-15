@@ -16,9 +16,11 @@ import pytest
 from astronomer_starship.compat import AIRFLOW_V_2, AIRFLOW_V_3
 from astronomer_starship.providers.starship.hooks.starship import (
     STARSHIP_SOURCE_CONN_ID,
-    SourceHook,
     StarshipHook,
     StarshipHttpHook,
+)
+from astronomer_starship.providers.starship.operators.starship import (
+    SourceHook,
     assert_source_conn_exists,
 )
 
