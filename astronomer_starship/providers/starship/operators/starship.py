@@ -1,18 +1,33 @@
 """Operators, TaskGroups, and DAGs for interacting with the Starship migrations."""
 
+try:
+    from airflow.providers.http.hooks.http import HttpHook  # noqa: F401
+except ImportError as e:
+    raise ImportError(
+        "The Starship migration DAG requires the apache-airflow-providers-http provider. "
+        "Install it to use the migration DAG."
+    ) from e
+
 import logging
 from datetime import datetime
 from typing import Any, List, Union
 
 import airflow
-from airflow.exceptions import AirflowSkipException
+from airflow.exceptions import AirflowNotFoundException, AirflowSkipException
 from packaging.version import Version
 
 from astronomer_starship.compat import AIRFLOW_V_2, AIRFLOW_V_3
 from astronomer_starship.providers.starship.hooks.starship import (
+    STARSHIP_SOURCE_CONN_ID,
     StarshipHttpHook,
-    StarshipLocalHook,
 )
+
+try:
+    # AF 3.1+ exports BaseHook via the SDK.
+    from airflow.sdk import BaseHook
+except ImportError:
+    # AF 2.x, and AF 3.0 (whose SDK didn't yet export BaseHook).
+    from airflow.hooks.base import BaseHook
 
 if AIRFLOW_V_3:
     from airflow.sdk import DAG, BaseOperator, TaskGroup, task
@@ -24,6 +39,36 @@ elif AIRFLOW_V_2:
 else:
     raise RuntimeError("Unsupported Airflow version")
 
+# Direct DB access is only available on Airflow 2 (``StarshipLocalHook``);
+# every other case (Airflow 3 today) reaches the source over HTTP instead,
+# using the same hook already used for the target.
+if AIRFLOW_V_2:
+    from astronomer_starship._af2.starship_hook import StarshipLocalHook as SourceHook
+else:
+    SourceHook = StarshipHttpHook
+
+
+def assert_source_conn_exists(http_conn_id: str) -> None:
+    """Raise a clear error if an HTTP-based source connection is missing.
+
+    Only meaningful when ``SourceHook`` is ``StarshipHttpHook`` -- direct DB
+    access needs no connection, so this is a no-op on Airflow 2.
+    """
+    if SourceHook is not StarshipHttpHook:
+        return
+    try:
+        BaseHook.get_connection(http_conn_id)
+    except AirflowNotFoundException as e:
+        raise RuntimeError(
+            f"Starship source connection '{http_conn_id}' is not configured. "
+            f"When direct database access isn't available (e.g. Airflow 3 "
+            f"workers), the migration operators fetch source metadata via "
+            f"HTTP through the Starship API instead. Create an Airflow HTTP "
+            f"connection with id '{http_conn_id}' whose host points at the "
+            f"source Airflow's base URL (e.g. https://<source>/) and whose "
+            f"password is a valid API token for that instance."
+        ) from e
+
 
 # Compatability Notes:
 # - @task() is >=AF2.0
@@ -33,10 +78,21 @@ else:
 
 
 class StarshipMigrationOperator(BaseOperator):
-    def __init__(self, http_conn_id=None, **kwargs):
+    def __init__(
+        self,
+        http_conn_id=None,
+        source_http_conn_id=None,
+        target_http_conn_id=None,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
-        self.source_hook = StarshipLocalHook()
-        self.target_hook = StarshipHttpHook(http_conn_id=http_conn_id)
+        # `http_conn_id` remains the legacy target alias; new callers should
+        # prefer the explicit source/target kwargs.
+        target_conn = target_http_conn_id or http_conn_id
+        source_conn = source_http_conn_id or STARSHIP_SOURCE_CONN_ID
+        assert_source_conn_exists(source_conn)
+        self.source_hook = SourceHook(http_conn_id=source_conn)
+        self.target_hook = StarshipHttpHook(http_conn_id=target_conn)
 
 
 class StarshipVariableMigrationOperator(StarshipMigrationOperator):
@@ -57,13 +113,19 @@ class StarshipVariableMigrationOperator(StarshipMigrationOperator):
             raise RuntimeError("Variable not found! " + self.variable_key)
 
 
-def starship_variables_migration(variables: List[str] = None, **kwargs):
+def starship_variables_migration(
+    variables: List[str] = None,
+    source_http_conn_id: str = None,
+    **kwargs,
+):
     """TaskGroup to fetch and migrate Variables from one Airflow instance to another."""
     with TaskGroup("variables") as tg:
 
         @task()
         def get_variables():
-            _variables = StarshipLocalHook().get_variables()
+            source_conn = source_http_conn_id or STARSHIP_SOURCE_CONN_ID
+            assert_source_conn_exists(source_conn)
+            _variables = SourceHook(http_conn_id=source_conn).get_variables()
 
             _variables = (
                 [k["key"] for k in _variables if k["key"] in variables]
@@ -77,14 +139,17 @@ def starship_variables_migration(variables: List[str] = None, **kwargs):
 
         variables_results = get_variables()
         if Version(airflow.__version__) >= Version("2.3.0"):
-            StarshipVariableMigrationOperator.partial(task_id="migrate_variables", **kwargs).expand(
-                variable_key=variables_results
-            )
+            StarshipVariableMigrationOperator.partial(
+                task_id="migrate_variables",
+                source_http_conn_id=source_http_conn_id,
+                **kwargs,
+            ).expand(variable_key=variables_results)
         else:
             for variable in variables_results.output:
                 variables_results >> StarshipVariableMigrationOperator(
                     task_id="migrate_variable_" + variable,
                     variable_key=variable,
+                    source_http_conn_id=source_http_conn_id,
                     **kwargs,
                 )
         return tg
@@ -109,13 +174,19 @@ class StarshipPoolMigrationOperator(StarshipMigrationOperator):
             raise RuntimeError("Pool not found!")
 
 
-def starship_pools_migration(pools: List[str] = None, **kwargs):
+def starship_pools_migration(
+    pools: List[str] = None,
+    source_http_conn_id: str = None,
+    **kwargs,
+):
     """TaskGroup to fetch and migrate Pools from one Airflow instance to another."""
     with TaskGroup("pools") as tg:
 
         @task()
         def get_pools():
-            _pools = StarshipLocalHook().get_pools()
+            source_conn = source_http_conn_id or STARSHIP_SOURCE_CONN_ID
+            assert_source_conn_exists(source_conn)
+            _pools = SourceHook(http_conn_id=source_conn).get_pools()
             _pools = (
                 [k["name"] for k in _pools if k["name"] in pools] if pools is not None else [k["name"] for k in _pools]
             )
@@ -126,10 +197,19 @@ def starship_pools_migration(pools: List[str] = None, **kwargs):
 
         pools_result = get_pools()
         if Version(airflow.__version__) >= Version("2.3.0"):
-            StarshipPoolMigrationOperator.partial(task_id="migrate_pools", **kwargs).expand(pool_name=pools_result)
+            StarshipPoolMigrationOperator.partial(
+                task_id="migrate_pools",
+                source_http_conn_id=source_http_conn_id,
+                **kwargs,
+            ).expand(pool_name=pools_result)
         else:
             for pool in pools_result.output:
-                pools_result >> StarshipPoolMigrationOperator(task_id="migrate_pool_" + pool, pool_name=pool, **kwargs)
+                pools_result >> StarshipPoolMigrationOperator(
+                    task_id="migrate_pool_" + pool,
+                    pool_name=pool,
+                    source_http_conn_id=source_http_conn_id,
+                    **kwargs,
+                )
         return tg
 
 
@@ -152,13 +232,19 @@ class StarshipConnectionMigrationOperator(StarshipMigrationOperator):
             raise RuntimeError("Connection not found!")
 
 
-def starship_connections_migration(connections: List[str] = None, **kwargs):
+def starship_connections_migration(
+    connections: List[str] = None,
+    source_http_conn_id: str = None,
+    **kwargs,
+):
     """TaskGroup to fetch and migrate Connections from one Airflow instance to another."""
     with TaskGroup("connections") as tg:
 
         @task()
         def get_connections():
-            _connections = StarshipLocalHook().get_connections()
+            source_conn = source_http_conn_id or STARSHIP_SOURCE_CONN_ID
+            assert_source_conn_exists(source_conn)
+            _connections = SourceHook(http_conn_id=source_conn).get_connections()
             _connections = (
                 [k["conn_id"] for k in _connections if k["conn_id"] in connections]
                 if connections is not None
@@ -171,14 +257,17 @@ def starship_connections_migration(connections: List[str] = None, **kwargs):
 
         connections_result = get_connections()
         if Version(airflow.__version__) >= Version("2.3.0"):
-            StarshipConnectionMigrationOperator.partial(task_id="migrate_connections", **kwargs).expand(
-                connection_id=connections_result
-            )
+            StarshipConnectionMigrationOperator.partial(
+                task_id="migrate_connections",
+                source_http_conn_id=source_http_conn_id,
+                **kwargs,
+            ).expand(connection_id=connections_result)
         else:
             for connection in connections_result.output:
                 connections_result >> StarshipConnectionMigrationOperator(
-                    task_id="migrate_connection_" + connection.conn_id,
+                    task_id="migrate_connection_" + connection,
                     connection_id=connection,
+                    source_http_conn_id=source_http_conn_id,
                     **kwargs,
                 )
         return tg
@@ -225,13 +314,19 @@ class StarshipDagHistoryMigrationOperator(StarshipMigrationOperator):
             self.target_hook.set_dag_is_paused(dag_id=self.target_dag_id, is_paused=False)
 
 
-def starship_dag_history_migration(dag_ids: List[str] = None, **kwargs):
+def starship_dag_history_migration(
+    dag_ids: List[str] = None,
+    source_http_conn_id: str = None,
+    **kwargs,
+):
     """TaskGroup to fetch and migrate DAGs with their history from one Airflow instance to another."""
     with TaskGroup("dag_history") as tg:
 
         @task()
         def get_dags():
-            _dags = StarshipLocalHook().get_dags()
+            source_conn = source_http_conn_id or STARSHIP_SOURCE_CONN_ID
+            assert_source_conn_exists(source_conn)
+            _dags = SourceHook(http_conn_id=source_conn).get_dags()
             _dags = (
                 [k["dag_id"] for k in _dags if k["dag_id"] in dag_ids and k["dag_id"] != "StarshipAirflowMigrationDAG"]
                 if dag_ids is not None
@@ -246,6 +341,7 @@ def starship_dag_history_migration(dag_ids: List[str] = None, **kwargs):
         if Version(airflow.__version__) >= Version("2.3.0"):
             StarshipDagHistoryMigrationOperator.partial(
                 task_id="migrate_dag_ids",
+                source_http_conn_id=source_http_conn_id,
                 **(
                     {"map_index_template": "{{ task.target_dag_id }}"}
                     if Version(airflow.__version__) >= Version("2.9.0")
@@ -256,23 +352,37 @@ def starship_dag_history_migration(dag_ids: List[str] = None, **kwargs):
         else:
             for dag_id in dags_result.output:
                 dags_result >> StarshipDagHistoryMigrationOperator(
-                    task_id="migrate_dag_" + dag_id, target_dag_id=dag_id, **kwargs
+                    task_id="migrate_dag_" + dag_id,
+                    target_dag_id=dag_id,
+                    source_http_conn_id=source_http_conn_id,
+                    **kwargs,
                 )
         return tg
 
 
 # noinspection PyPep8Naming
 def StarshipAirflowMigrationDAG(  # noqa: N802
-    http_conn_id: str,
+    http_conn_id: str = None,
     variables: List[str] = None,
     pools: List[str] = None,
     connections: List[str] = None,
     dag_ids: List[str] = None,
+    source_http_conn_id: str = None,
+    target_http_conn_id: str = None,
     **kwargs,
 ):
     """
     DAG to fetch and migrate Variables, Pools, Connections, and DAGs with history from one Airflow instance to another.
     """
+    # `target_http_conn_id` is preferred; `http_conn_id` remains as a legacy
+    # alias so existing DAGs keep working. `source_http_conn_id` overrides the
+    # default source connection id (``starship_source``) used on Airflow 3.
+    target_http_conn_id = target_http_conn_id or http_conn_id
+    if not target_http_conn_id:
+        raise ValueError(
+            "StarshipAirflowMigrationDAG requires a target connection. "
+            "Pass target_http_conn_id (preferred) or http_conn_id."
+        )
     dag = DAG(
         dag_id="starship_airflow_migration_dag",
         schedule="@once",
@@ -288,13 +398,23 @@ def StarshipAirflowMigrationDAG(  # noqa: N802
         You can skip migration by providing an empty list.
 
         ## Setup:
-        Make a connection in Airflow with the following details:
-        - **Conn ID**: `starship_default`
+
+        ### Target connection (required)
+        Make an Airflow HTTP connection pointing at the **target** Airflow:
+        - **Conn ID**: `starship_default` (or any id you pass as `target_http_conn_id` / `http_conn_id`)
         - **Conn Type**: `HTTP`
-        - **Host**: the URL of the homepage of Airflow (excluding `/home` on the end of the URL)
+        - **Host**: the URL of the homepage of the target Airflow (excluding `/home` on the end of the URL)
           - For example, if your deployment URL is `https://astronomer.astronomer.run/abcdt4ry/home`, you'll use `https://astronomer.astronomer.run/abcdt4ry`
         - **Schema**: `https`
         - **Extras**: `{"Authorization": "Bearer <token>"}`
+
+        ### Source connection (Airflow 3 only)
+        On Airflow 3, workers cannot access the metadata DB directly, so the DAG also needs an HTTP connection pointing at the **source** Airflow:
+        - **Conn ID**: `starship_source` (default) or the id you pass as `source_http_conn_id`
+        - **Conn Type**: `HTTP`
+        - **Host**, **Schema**, **Extras**: same shape as the target connection, but pointing at the source Airflow and using a source-side API token.
+
+        On Airflow 2 the DAG reads source metadata directly from the local metadata DB, so no source connection is needed.
 
         ## Usage:
         ```python
@@ -303,7 +423,11 @@ def StarshipAirflowMigrationDAG(  # noqa: N802
         )
 
         globals()["starship_airflow_migration_dag"] = StarshipAirflowMigrationDAG(
-            http_conn_id="starship_default",
+            # Preferred kwargs (Airflow 2 + 3):
+            target_http_conn_id="starship_default",
+            source_http_conn_id="starship_source",  # Airflow 3 only; ignored on Airflow 2
+            # Legacy alias (still supported; acts as target_http_conn_id):
+            # http_conn_id="starship_default",
             variables=None,  # None to migrate all, or ["var1", "var2"] to migrate specific items, or empty list to skip all
             pools=None,  # None to migrate all, or ["pool1", "pool2"] to migrate specific items, or empty list to skip all
             connections=None,  # None to migrate all, or ["conn1", "conn2"] to migrate specific items, or empty list to skip all
@@ -313,8 +437,28 @@ def StarshipAirflowMigrationDAG(  # noqa: N802
         """,  # noqa: E501
     )
     with dag:
-        starship_variables_migration(variables=variables, http_conn_id=http_conn_id, **kwargs)
-        starship_pools_migration(pools=pools, http_conn_id=http_conn_id, **kwargs)
-        starship_connections_migration(connections=connections, http_conn_id=http_conn_id, **kwargs)
-        starship_dag_history_migration(dag_ids=dag_ids, http_conn_id=http_conn_id, **kwargs)
+        starship_variables_migration(
+            variables=variables,
+            http_conn_id=target_http_conn_id,
+            source_http_conn_id=source_http_conn_id,
+            **kwargs,
+        )
+        starship_pools_migration(
+            pools=pools,
+            http_conn_id=target_http_conn_id,
+            source_http_conn_id=source_http_conn_id,
+            **kwargs,
+        )
+        starship_connections_migration(
+            connections=connections,
+            http_conn_id=target_http_conn_id,
+            source_http_conn_id=source_http_conn_id,
+            **kwargs,
+        )
+        starship_dag_history_migration(
+            dag_ids=dag_ids,
+            http_conn_id=target_http_conn_id,
+            source_http_conn_id=source_http_conn_id,
+            **kwargs,
+        )
     return dag
