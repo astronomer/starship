@@ -53,6 +53,42 @@ class ConflictError(HttpError):
         super().__init__(msg, 409)
 
 
+def nonneg_int(value, default):
+    """Return `value` coerced to a non-negative int, or `default` on bad input."""
+    if value in (None, ""):
+        return default
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return default
+    return max(n, 0)
+
+
+def row_shape_attrs(attrs):
+    """Pick just the row fields out of an ``*_attrs()`` dict.
+
+    Each ``*_attrs()`` dict does two jobs: it describes the columns we return
+    in a response row, and it also lists the query params we accept on a GET
+    request (``limit``, ``offset``, ``search``, etc.). The query-param entries
+    are tagged as GET-only; everything else is a real row field. When we're
+    building rows we only want the row fields, so we drop the GET-only ones.
+
+    >>> row_shape_attrs(
+    ...     {
+    ...         "dag_id": {"attr": "dag_id", "methods": [("PATCH", True)]},
+    ...         "owners": {"attr": "owners", "methods": []},
+    ...         "limit": {"attr": None, "methods": [("GET", False)]},
+    ...     }
+    ... )  # doctest: +ELLIPSIS
+    {'dag_id': {...}, 'owners': {...}}
+    """
+    return {
+        attr: desc
+        for attr, desc in attrs.items()
+        if not (desc["methods"] and all(m[0] == "GET" for m in desc["methods"]))
+    }
+
+
 def get_json_or_clean_str(o: str) -> Union[List[Any], Dict[Any, Any], Any]:
     """For Aeroscope - Either load JSON (if we can) or strip and split the string, while logging the error"""
     import logging
@@ -381,6 +417,70 @@ class BaseStarshipAirflow:
     @classmethod
     def get_env_vars(cls):
         return dict(os.environ)
+
+    def _fetch_tags_by_dag_id(self, dag_ids: list) -> Dict[str, List[str]]:
+        """Return ``{dag_id: [tag_name, ...]}`` for the given dag_ids.
+
+        Fetches all tags for the requested DAGs in a single query to avoid an
+        N+1 pattern when serializing a page of DAGs.
+        """
+        from collections import defaultdict
+
+        from airflow.models import DagTag
+
+        tags_by_dag: Dict[str, List[str]] = defaultdict(list)
+        if not dag_ids:
+            return tags_by_dag
+        for dag_id, tag_name in self.session.query(DagTag.dag_id, DagTag.name).filter(DagTag.dag_id.in_(dag_ids)):
+            tags_by_dag[dag_id].append(tag_name)
+        return tags_by_dag
+
+    def _fetch_dag_run_counts(self, dag_ids: list) -> Dict[str, int]:
+        """Return ``{dag_id: run_count}`` for the given dag_ids.
+
+        Missing dag_ids (no DAG runs) are included with a count of 0. Fetches
+        all counts in a single ``GROUP BY`` query to avoid an N+1 pattern.
+        """
+        from airflow.models import DagRun
+        from sqlalchemy import distinct
+        from sqlalchemy.sql.functions import count
+
+        counts_by_dag: Dict[str, int] = dict.fromkeys(dag_ids, 0)
+        if not dag_ids:
+            return counts_by_dag
+        for dag_id, run_count in (
+            self.session.query(DagRun.dag_id, count(distinct(DagRun.run_id)))
+            .filter(DagRun.dag_id.in_(dag_ids))
+            .group_by(DagRun.dag_id)
+        ):
+            counts_by_dag[dag_id] = run_count
+        return counts_by_dag
+
+    def _search_dag_query(self, query, search, search_field):
+        """Apply the DAG search filter to a DagModel-based query.
+
+        ``search`` is a case-insensitive substring matched against
+        ``dag_id``, ``owners``, or any tag. ``search_field`` narrows the
+        match to one of ``"dag_id"``, ``"owner"``, or ``"tag"``; unset (or
+        any other value) matches against all three. A falsy ``search``
+        returns ``query`` unchanged.
+        """
+        from airflow.models import DagModel, DagTag
+        from sqlalchemy import or_
+
+        if not search:
+            return query
+        pattern = f"%{search}%"
+        # session.query subquery form is portable across SQLAlchemy 1.3/1.4/2.x;
+        # the newer `select(col)` short form is 1.4+ only.
+        tag_subq = self.session.query(DagTag.dag_id).filter(DagTag.name.ilike(pattern)).distinct()
+        field_filters = {
+            "dag_id": DagModel.dag_id.ilike(pattern),
+            "owner": DagModel.owners.ilike(pattern),
+            "tag": DagModel.dag_id.in_(tag_subq),
+        }
+        clause = field_filters[search_field] if search_field in field_filters else or_(*field_filters.values())
+        return query.filter(clause)
 
     @classmethod
     def pool_attrs(cls) -> "Dict[str, AttrDesc]":

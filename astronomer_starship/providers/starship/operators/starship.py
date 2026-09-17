@@ -327,6 +327,9 @@ def starship_dag_history_migration(
             source_conn = source_http_conn_id or STARSHIP_SOURCE_CONN_ID
             assert_source_conn_exists(source_conn)
             _dags = SourceHook(http_conn_id=source_conn).get_dags()
+            # `get_dags` returns {"dags": [...], "total_dag_count": N}; older releases returned a bare list.
+            if isinstance(_dags, dict):
+                _dags = _dags.get("dags", [])
             _dags = (
                 [k["dag_id"] for k in _dags if k["dag_id"] in dag_ids and k["dag_id"] != "StarshipAirflowMigrationDAG"]
                 if dag_ids is not None
