@@ -20,7 +20,9 @@ jobs:
           cache: 'pip'
 
       - name: Install dependencies
-        run: pip install -c constraints.txt '.[dev]'
+        run: |
+          pip install -c constraints.txt --upgrade setuptools
+          pip install -c constraints.txt '.[dev]'
 
       - name: Run pip-audit
         uses: pypa/gh-action-pip-audit@v1.1.0
@@ -32,7 +34,7 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: astronomer_starship/package-lock.json
 
