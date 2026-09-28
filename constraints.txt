@@ -1,2 +1,5 @@
 # A breaking change was introduced in version 3.13 of flask-limiter
 flask_limiter<3.13
+
+# PYSEC-2026-3447: MANIFEST.in exclusion bypass on macOS APFS/HFS+
+setuptools>=83.0.0
