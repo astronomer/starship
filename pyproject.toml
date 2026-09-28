@@ -71,6 +71,7 @@ dev = [
     "twine",
     "build",
     "commitizen",
+    "setuptools>=83.0.0", # PYSEC-2026-3447
 
     # test
     "apache-airflow<3.4", # Starship supports Airflow versions up to 3.3
