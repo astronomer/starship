@@ -39,7 +39,7 @@ export default defineConfig(({ mode }) => ({
     // Generate source maps for debugging when profiling
     sourcemap: enableProfiling,
     // Minification - disable in profiling mode for better stack traces
-    minify: enableProfiling ? false : 'esbuild',
+    minify: !enableProfiling,
     // CSS code splitting for smaller initial load
     cssCodeSplit: true,
     // Write all the files without a hash, which prevents cache-busting,
@@ -50,19 +50,15 @@ export default defineConfig(({ mode }) => ({
         chunkFileNames: 'assets/[name].js',
         assetFileNames: 'assets/[name].[ext]',
         // Granular manual chunks for better caching and tree-shaking
-        manualChunks: {
-          // Core React - smallest, most stable
-          'react-core': ['react', 'react-dom'],
-          // Router - separate chunk
-          router: ['react-router-dom', 'react-router'],
-          // Chakra UI and its dependencies - large, infrequently updated
-          chakra: ['@chakra-ui/react', '@chakra-ui/icons', '@emotion/react', '@emotion/styled', 'framer-motion'],
-          // Data table - only needed on data pages
-          table: ['@tanstack/react-table'],
-          // HTTP client
-          http: ['axios'],
-          // Icons - can be large
-          icons: ['react-icons'],
+        manualChunks: (id) => {
+          if (/node_modules\/(react|react-dom)\//.test(id)) return 'react-core';
+          if (/node_modules\/(react-router-dom|react-router)\//.test(id)) return 'router';
+          if (/node_modules\/(@chakra-ui\/react|@chakra-ui\/icons|@emotion\/react|@emotion\/styled|framer-motion)\//.test(id))
+            return 'chakra';
+          if (/node_modules\/@tanstack\/react-table\//.test(id)) return 'table';
+          if (/node_modules\/axios\//.test(id)) return 'http';
+          if (/node_modules\/react-icons\//.test(id)) return 'icons';
+          return undefined;
         },
       },
     },

@@ -71,6 +71,7 @@ dev = [
     "twine",
     "build",
     "commitizen",
+    "setuptools>=83.0.0; python_version >= '3.10'", # PYSEC-2026-3447 (setuptools 83 requires py3.10+)
 
     # test
     "apache-airflow<3.4", # Starship supports Airflow versions up to 3.3

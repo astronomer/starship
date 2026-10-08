@@ -12,7 +12,7 @@ help:
 
 # install frontend requirements
 install-frontend:
-    cd astronomer_starship && npm install
+    cd astronomer_starship && npm ci
 
 # install backend requirements
 install-backend EDITABLE="":
