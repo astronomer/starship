@@ -157,3 +157,12 @@ def test_dag_id_in_query_and_body_must_match(client_as):
     edit_a = VIEWER | {(permissions.ACTION_CAN_EDIT, permissions.resource_name_for_dag("a"))}
     res = client_as(edit_a).patch("/dags?dag_id=a", json={"dag_id": "b"})
     assert res.status_code == 403
+
+
+def test_env_vars_needs_connection_and_variable_read(client_as):
+    """Environment variables can hold connections and variables, so `/env_vars` needs read access to both"""
+    assert client_as(OP).get("/env_vars").status_code == 200
+    no_variables = OP - {(permissions.ACTION_CAN_READ, permissions.RESOURCE_VARIABLE)}
+    assert client_as(no_variables).get("/env_vars").status_code == 403
+    no_connections = OP - {(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONNECTION)}
+    assert client_as(no_connections).get("/env_vars").status_code == 403

@@ -169,7 +169,8 @@ class StarshipApi(BaseView):
         starship_compat = StarshipCompatabilityLayer()
         return starship_route(get=starship_compat.get_info)
 
-    @requires_access(GET=[(READ, permissions.RESOURCE_CONNECTION)])
+    # Environment variables can hold connections (`AIRFLOW_CONN_*`) and variables (`AIRFLOW_VAR_*`).
+    @requires_access(GET=[(READ, permissions.RESOURCE_CONNECTION), (READ, permissions.RESOURCE_VARIABLE)])
     @expose("/env_vars", methods=["GET"])
     @csrf.exempt
     def env_vars(self):

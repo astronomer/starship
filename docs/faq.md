@@ -23,6 +23,14 @@ gcloud config set project <PROJECT_NAME>
 gcloud composer environments run <ENVIRONMENT_NAME> --location <LOCATION> users add-role -- -e <USER_EMAIL> -r Admin
 ```
 
+## Permissions
+
+**Which permissions does a user need to use Starship?**
+
+_The `Admin` role has everything Starship needs. Custom roles need read access to the Airflow configuration for every Starship request. On top of that, each page needs the permission matching what it reads or writes: for example, migrating connections needs read, create and delete on Connections, and the Env Vars page needs read on both Connections and Variables._
+
+_DAG history migrations need write access to DAG runs, task instances and XComs. On Airflow 3, this includes create on XComs, matching Airflow's own XCom API. On Airflow 2, FAB has no XCom create permission, so Starship checks create on Task Instances instead._
+
 ## Airflow 3 support
 
 **Is Airflow 3 supported?**
