@@ -1,10 +1,19 @@
+import inspect
 import json
 from dataclasses import dataclass
 from functools import partial
 from typing import TYPE_CHECKING, Annotated
 
+from airflow.api_fastapi.auth.managers.models.resource_details import DagAccessEntity
 from airflow.api_fastapi.common.router import AirflowRouter
-from airflow.api_fastapi.core_api.security import requires_access_configuration
+from airflow.api_fastapi.core_api.security import (
+    GetUserDep,
+    requires_access_configuration,
+    requires_access_connection,
+    requires_access_dag,
+    requires_access_pool,
+    requires_access_variable,
+)
 from airflow.plugins_manager import AirflowPlugin
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -128,9 +137,30 @@ async def starship_compat() -> StarshipAirflow:
     return StarshipCompatabilityLayer()
 
 
+def requires_access_by_method(**checks):
+    """Run the Airflow access check for the request method, for example
+    `requires_access_by_method(GET=requires_access_pool("GET"), POST=requires_access_pool("POST"))`.
+    """
+
+    async def inner(request: Request, user: GetUserDep) -> None:
+        result = checks[request.method](request, user)
+        if inspect.isawaitable(result):
+            await result
+
+    return inner
+
+
+def _access_by_method(check, *methods, **check_kwargs):
+    """`requires_access_by_method` where the Airflow resource method is the request method, for example
+    `_access_by_method(requires_access_dag, "GET", "POST", access_entity=DagAccessEntity.RUN)`.
+    """
+    return requires_access_by_method(**{method: check(method, **check_kwargs) for method in methods})
+
+
 router = AirflowRouter(
     tags=["Starship"],
-    # restrict access to users with access to the Airflow configuration, which is more or less equivalent to admin access.
+    # Baseline for every route: users with access to the Airflow configuration.
+    # Routes that read or write Airflow resources add the matching resource check.
     dependencies=[Depends(requires_access_configuration("GET"))],
 )
 
@@ -171,7 +201,10 @@ class StarshipApi(FastAPI):
     ):
         return starship_route(get=starship_compat.get_info)
 
-    @router.get("/env_vars")
+    @router.get(
+        "/env_vars",
+        dependencies=[Depends(requires_access_connection("GET"))],
+    )
     @staticmethod
     def env_vars(
         starship_route: Annotated[StarshipRoute, Depends(starship_route)],
@@ -179,7 +212,11 @@ class StarshipApi(FastAPI):
     ):
         return starship_route(get=starship_compat.get_env_vars)
 
-    @router.api_route("/pools", methods=["GET", "POST", "DELETE"])
+    @router.api_route(
+        "/pools",
+        methods=["GET", "POST", "DELETE"],
+        dependencies=[Depends(_access_by_method(requires_access_pool, "GET", "POST", "DELETE"))],
+    )
     @staticmethod
     def pools(
         starship_route: Annotated[StarshipRoute, Depends(starship_route)],
@@ -192,7 +229,11 @@ class StarshipApi(FastAPI):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.pool_attrs()),
         )
 
-    @router.api_route("/variables", methods=["GET", "POST", "DELETE"])
+    @router.api_route(
+        "/variables",
+        methods=["GET", "POST", "DELETE"],
+        dependencies=[Depends(_access_by_method(requires_access_variable, "GET", "POST", "DELETE"))],
+    )
     @staticmethod
     def variables(
         starship_route: Annotated[StarshipRoute, Depends(starship_route)],
@@ -205,7 +246,11 @@ class StarshipApi(FastAPI):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.variable_attrs()),
         )
 
-    @router.api_route("/connections", methods=["GET", "POST", "DELETE"])
+    @router.api_route(
+        "/connections",
+        methods=["GET", "POST", "DELETE"],
+        dependencies=[Depends(_access_by_method(requires_access_connection, "GET", "POST", "DELETE"))],
+    )
     @staticmethod
     def connections(
         starship_route: Annotated[StarshipRoute, Depends(starship_route)],
@@ -218,7 +263,13 @@ class StarshipApi(FastAPI):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.connection_attrs()),
         )
 
-    @router.api_route("/dags", methods=["GET", "PATCH"])
+    @router.api_route(
+        "/dags",
+        methods=["GET", "PATCH"],
+        dependencies=[
+            Depends(requires_access_by_method(GET=requires_access_dag("GET"), PATCH=requires_access_dag("PUT")))
+        ],
+    )
     @staticmethod
     def dags(
         starship_route: Annotated[StarshipRoute, Depends(starship_route)],
@@ -230,7 +281,13 @@ class StarshipApi(FastAPI):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.dag_attrs()),
         )
 
-    @router.api_route("/dag_runs", methods=["GET", "POST", "DELETE"])
+    @router.api_route(
+        "/dag_runs",
+        methods=["GET", "POST", "DELETE"],
+        dependencies=[
+            Depends(_access_by_method(requires_access_dag, "GET", "POST", "DELETE", access_entity=DagAccessEntity.RUN))
+        ],
+    )
     @staticmethod
     def dag_runs(
         starship_route: Annotated[StarshipRoute, Depends(starship_route)],
@@ -243,7 +300,13 @@ class StarshipApi(FastAPI):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.dag_runs_attrs()),
         )
 
-    @router.api_route("/task_instances", methods=["GET", "POST"])
+    @router.api_route(
+        "/task_instances",
+        methods=["GET", "POST"],
+        dependencies=[
+            Depends(_access_by_method(requires_access_dag, "GET", "POST", access_entity=DagAccessEntity.TASK_INSTANCE))
+        ],
+    )
     @staticmethod
     def task_instances(
         starship_route: Annotated[StarshipRoute, Depends(starship_route)],
@@ -255,7 +318,13 @@ class StarshipApi(FastAPI):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.task_instances_attrs()),
         )
 
-    @router.api_route("/task_instance_history", methods=["GET", "POST"])
+    @router.api_route(
+        "/task_instance_history",
+        methods=["GET", "POST"],
+        dependencies=[
+            Depends(_access_by_method(requires_access_dag, "GET", "POST", access_entity=DagAccessEntity.TASK_INSTANCE))
+        ],
+    )
     @staticmethod
     def task_instance_history(
         starship_route: Annotated[StarshipRoute, Depends(starship_route)],
@@ -267,7 +336,19 @@ class StarshipApi(FastAPI):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.task_instance_history_attrs()),
         )
 
-    @router.api_route("/task_log", methods=["GET", "POST", "DELETE"])
+    @router.api_route(
+        "/task_log",
+        methods=["GET", "POST", "DELETE"],
+        dependencies=[
+            Depends(
+                requires_access_by_method(
+                    GET=requires_access_dag("GET", DagAccessEntity.TASK_LOGS),
+                    POST=requires_access_dag("POST", DagAccessEntity.TASK_INSTANCE),
+                    DELETE=requires_access_dag("DELETE", DagAccessEntity.TASK_INSTANCE),
+                )
+            )
+        ],
+    )
     @staticmethod
     def task_logs(
         starship_route: Annotated[StarshipRoute, Depends(starship_route)],
@@ -280,7 +361,13 @@ class StarshipApi(FastAPI):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.task_log_attrs()),
         )
 
-    @router.api_route("/xcom", methods=["GET", "POST", "DELETE"])
+    @router.api_route(
+        "/xcom",
+        methods=["GET", "POST", "DELETE"],
+        dependencies=[
+            Depends(_access_by_method(requires_access_dag, "GET", "POST", "DELETE", access_entity=DagAccessEntity.XCOM))
+        ],
+    )
     @staticmethod
     def xcom(
         starship_route: Annotated[StarshipRoute, Depends(starship_route)],
