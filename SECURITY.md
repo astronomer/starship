@@ -1,6 +1,6 @@
 This document contains information on how to report security vulnerabilities in Astronomer Starship and how security issues reported to the Astronomer security team are handled. If you would like to learn more, please refer to [https\://www\.astronomer.io/security/](https://www.astronomer.io/security/).
 
-At Astronomer, we recognize the critical nature of security and view it as a transparent and collaborative effort. If you have any concern around the security of any Astronomer public repository or believe you have uncovered a vulnerability, please email [oss\_security@astronomer.io](mailto:oss_security@astronomer.io) .
+At Astronomer, we recognize the critical nature of security and view it as a transparent and collaborative effort. If you have any concern around the security of any Astronomer public repository or believe you have uncovered a vulnerability, please email [gsd\_security@astronomer.io](mailto:gsd_security@astronomer.io) .
 
 Note: Due to the nature of some security vulnerabilities, we ask that you not create a GitHub issue.
 
