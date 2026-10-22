@@ -14,6 +14,8 @@ from astronomer_starship.common import HttpError, validate_proxy_url
         "http://localhost:8080/api/v1/health",
         "http://[::1]/",
         "http://0.0.0.0/",
+        "http://168.63.129.16/machine?comp=goalstate",
+        "http://[fec0::1]/",
     ],
 )
 def test_validate_proxy_url_blocks_internal_hosts(url):

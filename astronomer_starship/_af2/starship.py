@@ -59,7 +59,7 @@ class Starship(BaseView):
         try:
             validate_proxy_url(url)
         except HttpError as e:
-            return Response(e.msg, status=e.status_code)
+            return Response(e.msg, status=e.status_code, mimetype="text/plain")
 
         response = requests.request(
             request_method,

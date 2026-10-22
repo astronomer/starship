@@ -53,13 +53,13 @@ class ConflictError(HttpError):
         super().__init__(msg, 409)
 
 
-# Cloud metadata endpoints outside the link-local range (AWS IMDS over IPv6, Alibaba Cloud)
-_BLOCKED_PROXY_ADDRESSES = {"fd00:ec2::254", "100.100.100.200"}
+# Cloud metadata endpoints outside the link-local range (AWS IMDS over IPv6, Alibaba Cloud, Azure WireServer)
+_BLOCKED_PROXY_ADDRESSES = {"fd00:ec2::254", "100.100.100.200", "168.63.129.16"}
 
 
 def validate_proxy_url(url: str) -> None:
     """Reject proxy targets that aren't http(s), or that resolve to loopback, link-local
-    (cloud metadata), multicast, unspecified, or reserved addresses.
+    (cloud metadata), IPv6 site-local, multicast, unspecified, or reserved addresses.
 
     Private ranges pass because a target on a private network is a supported setup.
     """
@@ -91,6 +91,7 @@ def validate_proxy_url(url: str) -> None:
             or ip.is_multicast
             or ip.is_unspecified
             or ip.is_reserved
+            or (ip.version == 6 and ip.is_site_local)
             or str(ip) in _BLOCKED_PROXY_ADDRESSES
         ):
             raise HttpError(f"Proxy URL host is not allowed: {parts.hostname}", 403)
