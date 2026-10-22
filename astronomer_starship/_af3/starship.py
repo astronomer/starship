@@ -9,6 +9,8 @@ from airflow.plugins_manager import AirflowPlugin
 from fastapi import Depends, FastAPI, Request, Response
 from fastapi.responses import FileResponse
 
+from astronomer_starship.common import HttpError, validate_proxy_url
+
 PLUGIN_DIR = Path(__file__).parent.parent
 STATIC_DIR = PLUGIN_DIR / "static"
 ASSETS_DIR = STATIC_DIR / "assets"
@@ -79,6 +81,11 @@ async def proxy(request: Request):
 
     if "/api/v1/health" in url:
         url = url.replace("/api/v1/health", "/api/v2/monitor/health")
+
+    try:
+        validate_proxy_url(url)
+    except HttpError as e:
+        return Response(content=e.msg, status_code=e.status_code)
 
     body = await request.body()
     proxy_headers = {"Authorization": f"Bearer {token}"}
