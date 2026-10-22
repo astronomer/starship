@@ -1,4 +1,4 @@
-RUNTIME_VERSION := "3.1-15"
+RUNTIME_VERSION := env("RUNTIME_VERSION", "3.1-15")
 
 default:
     @just --list
