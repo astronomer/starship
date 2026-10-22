@@ -4,8 +4,9 @@ from pathlib import Path
 from typing import Optional
 
 import httpx
+from airflow.api_fastapi.core_api.security import requires_access_configuration
 from airflow.plugins_manager import AirflowPlugin
-from fastapi import FastAPI, Request, Response
+from fastapi import Depends, FastAPI, Request, Response
 from fastapi.responses import FileResponse
 
 PLUGIN_DIR = Path(__file__).parent.parent
@@ -61,7 +62,12 @@ def _get_proxy_token(request: Request) -> Optional[str]:
     )
 
 
-@starship_app.api_route("/proxy", methods=ALLOWED_PROXY_METHODS)
+# Airflow mounts plugin FastAPI apps without auth, so the proxy declares the Starship API permission itself.
+@starship_app.api_route(
+    "/proxy",
+    methods=ALLOWED_PROXY_METHODS,
+    dependencies=[Depends(requires_access_configuration("GET"))],
+)
 async def proxy(request: Request):
     if request.method == "OPTIONS":
         return Response(
