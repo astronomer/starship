@@ -13,7 +13,7 @@ PLUGIN_DIR = Path(__file__).parent.parent
 STATIC_DIR = PLUGIN_DIR / "static"
 ASSETS_DIR = STATIC_DIR / "assets"
 
-ALLOWED_PROXY_METHODS = ["GET", "POST", "PATCH", "DELETE", "OPTIONS"]
+ALLOWED_PROXY_METHODS = ["GET", "POST", "PATCH", "DELETE"]
 
 starship_app = FastAPI(title="Starship", version="1.0.0")
 
@@ -69,25 +69,9 @@ def _get_proxy_token(request: Request) -> Optional[str]:
     dependencies=[Depends(requires_access_configuration("GET"))],
 )
 async def proxy(request: Request):
-    if request.method == "OPTIONS":
-        return Response(
-            content="",
-            status_code=200,
-            headers={
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
-                "Access-Control-Allow-Headers": "*, Starship-Proxy-Token, Content-Type, Authorization",
-                "Access-Control-Max-Age": "600",
-            },
-        )
-
     token = _get_proxy_token(request)
     if not token:
-        return Response(
-            content="No Token Provided",
-            status_code=400,
-            headers={"Access-Control-Allow-Origin": "*"},
-        )
+        return Response(content="No Token Provided", status_code=400)
 
     url = request.query_params.get("url")
     if not url:
@@ -102,7 +86,7 @@ async def proxy(request: Request):
         proxy_headers["Content-Type"] = "application/json"
 
     try:
-        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:  # noqa: S501  # nosec B501
+        async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.request(
                 method=request.method,
                 url=url,
@@ -124,8 +108,6 @@ async def proxy(request: Request):
 
         response_content = response.content
         response_headers = {
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Credentials": "true",
             "Starship-Proxy-Status": "OK",
             "Content-Type": response.headers.get("content-type", "application/json"),
         }
