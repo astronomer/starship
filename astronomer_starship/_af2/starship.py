@@ -13,6 +13,8 @@ from airflow.www.app import csrf
 from flask import Blueprint, Response, request
 from flask_appbuilder import BaseView, expose
 
+from astronomer_starship.common import HttpError, validate_proxy_url
+
 ALLOWED_PROXY_METHODS = ["GET", "POST", "PATCH", "DELETE"]
 
 
@@ -54,12 +56,20 @@ class Starship(BaseView):
         if not url:
             return Response("No URL Provided", status=400)
 
+        try:
+            validate_proxy_url(url)
+        except HttpError as e:
+            return Response(e.msg, status=e.status_code, mimetype="text/plain")
+
         response = requests.request(
             request_method,
             url,
             headers=request_headers,
             params=request.args if request.args else None,
             **({"data": request.data} if request.data else {}),
+            # a redirect could point at a host that validate_proxy_url would reject
+            allow_redirects=False,
+            timeout=30,
         )
         response_headers = dict(response.headers)
         if not response.ok:
