@@ -118,6 +118,12 @@ docstring-code-format = true
 docstring-code-line-length = 100
 
 [tool.ruff.lint]
+ignore = [
+    "FA100",  # `from __future__ import annotations` requires Python 3.7+
+    "FA102",  # `from __future__ import annotations` requires Python 3.7+
+    "RUF012", # Airflow plugin class attributes are plain lists by convention
+    "BLE001", # Broad excepts are intentional in API handlers
+]
 extend-select = [
     "A",   # flake8-builtins
     "B",   # flake8-bugbear

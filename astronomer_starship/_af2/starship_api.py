@@ -1,7 +1,7 @@
 import json
 from functools import partial
 from http import HTTPStatus
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import flask
 from airflow.plugins_manager import AirflowPlugin
@@ -30,7 +30,7 @@ def starship_route(  # noqa: C901
     put=None,
     delete=None,
     patch=None,
-    kwargs_fn: "Callable[[dict, dict], dict]" = None,
+    kwargs_fn: "Optional[Callable[[dict, dict], dict]]" = None,
 ):
     try:
         request_method = request.method

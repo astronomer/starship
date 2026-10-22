@@ -10,7 +10,7 @@ except ImportError as e:
 
 import logging
 from datetime import datetime
-from typing import Any, List, Union
+from typing import Any, List, Optional, Union
 
 import airflow
 from airflow.exceptions import AirflowNotFoundException, AirflowSkipException
@@ -28,6 +28,8 @@ try:
 except ImportError:
     # AF 2.x, and AF 3.0 (whose SDK didn't yet export BaseHook).
     from airflow.hooks.base import BaseHook
+
+logger = logging.getLogger(__name__)
 
 if AIRFLOW_V_3:
     from airflow.sdk import DAG, BaseOperator, TaskGroup, task
@@ -103,19 +105,19 @@ class StarshipVariableMigrationOperator(StarshipMigrationOperator):
         self.variable_key = variable_key
 
     def execute(self, context) -> Any:
-        logging.info("Getting Variable %s", self.variable_key)
+        logger.info("Getting Variable %s", self.variable_key)
         variables = self.source_hook.get_variables()
         variable: Union[dict, None] = ([v for v in variables if v["key"] == self.variable_key] or [None])[0]
         if variable is not None:
-            logging.info("Migrating Variable %s", self.variable_key)
+            logger.info("Migrating Variable %s", self.variable_key)
             self.target_hook.set_variable(**variable)
         else:
             raise RuntimeError("Variable not found! " + self.variable_key)
 
 
 def starship_variables_migration(
-    variables: List[str] = None,
-    source_http_conn_id: str = None,
+    variables: Optional[List[str]] = None,
+    source_http_conn_id: Optional[str] = None,
     **kwargs,
 ):
     """TaskGroup to fetch and migrate Variables from one Airflow instance to another."""
@@ -163,20 +165,20 @@ class StarshipPoolMigrationOperator(StarshipMigrationOperator):
         self.pool_name = pool_name
 
     def execute(self, context) -> Any:
-        logging.info("Getting Pool %s", self.pool_name)
+        logger.info("Getting Pool %s", self.pool_name)
         pool: Union[dict, None] = ([v for v in self.source_hook.get_pools() if v["name"] == self.pool_name] or [None])[
             0
         ]
         if pool is not None:
-            logging.info("Migrating Pool %s", self.pool_name)
+            logger.info("Migrating Pool %s", self.pool_name)
             self.target_hook.set_pool(**pool)
         else:
             raise RuntimeError("Pool not found!")
 
 
 def starship_pools_migration(
-    pools: List[str] = None,
-    source_http_conn_id: str = None,
+    pools: Optional[List[str]] = None,
+    source_http_conn_id: Optional[str] = None,
     **kwargs,
 ):
     """TaskGroup to fetch and migrate Pools from one Airflow instance to another."""
@@ -221,20 +223,20 @@ class StarshipConnectionMigrationOperator(StarshipMigrationOperator):
         self.connection_id = connection_id
 
     def execute(self, context) -> Any:
-        logging.info("Getting Connection %s", self.connection_id)
+        logger.info("Getting Connection %s", self.connection_id)
         connection: Union[dict, None] = (
             [v for v in self.source_hook.get_connections() if v["conn_id"] == self.connection_id] or [None]
         )[0]
         if connection is not None:
-            logging.info("Migrating Connection %s", self.connection_id)
+            logger.info("Migrating Connection %s", self.connection_id)
             self.target_hook.set_connection(**connection)
         else:
             raise RuntimeError("Connection not found!")
 
 
 def starship_connections_migration(
-    connections: List[str] = None,
-    source_http_conn_id: str = None,
+    connections: Optional[List[str]] = None,
+    source_http_conn_id: Optional[str] = None,
     **kwargs,
 ):
     """TaskGroup to fetch and migrate Connections from one Airflow instance to another."""
@@ -289,34 +291,34 @@ class StarshipDagHistoryMigrationOperator(StarshipMigrationOperator):
         self.dag_run_limit = dag_run_limit
 
     def execute(self, context):
-        logging.info("Pausing local DAG for %s", self.target_dag_id)
+        logger.info("Pausing local DAG for %s", self.target_dag_id)
         self.source_hook.set_dag_is_paused(dag_id=self.target_dag_id, is_paused=True)
         # TODO - Poll until all tasks are done
 
-        logging.info("Getting local DAG Runs for %s", self.target_dag_id)
+        logger.info("Getting local DAG Runs for %s", self.target_dag_id)
         dag_runs = self.source_hook.get_dag_runs(dag_id=self.target_dag_id, limit=self.dag_run_limit)
         if len(dag_runs["dag_runs"]) == 0:
             raise AirflowSkipException("No DAG Runs found for " + self.target_dag_id)
 
-        logging.info("Getting local Task Instances for %s", self.target_dag_id)
+        logger.info("Getting local Task Instances for %s", self.target_dag_id)
         task_instances = self.source_hook.get_task_instances(dag_id=self.target_dag_id, limit=self.dag_run_limit)
         if len(task_instances["task_instances"]) == 0:
             raise AirflowSkipException("No Task Instances found for " + self.target_dag_id)
 
-        logging.info("Setting target DAG Runs for %s", self.target_dag_id)
+        logger.info("Setting target DAG Runs for %s", self.target_dag_id)
         self.target_hook.set_dag_runs(dag_runs=dag_runs["dag_runs"])
 
-        logging.info("Setting target Task Instances for %s", self.target_dag_id)
+        logger.info("Setting target Task Instances for %s", self.target_dag_id)
         self.target_hook.set_task_instances(task_instances=task_instances["task_instances"])
 
         if self.unpause_dag_in_target:
-            logging.info("Unpausing target DAG for %s", self.target_dag_id)
+            logger.info("Unpausing target DAG for %s", self.target_dag_id)
             self.target_hook.set_dag_is_paused(dag_id=self.target_dag_id, is_paused=False)
 
 
 def starship_dag_history_migration(
-    dag_ids: List[str] = None,
-    source_http_conn_id: str = None,
+    dag_ids: Optional[List[str]] = None,
+    source_http_conn_id: Optional[str] = None,
     **kwargs,
 ):
     """TaskGroup to fetch and migrate DAGs with their history from one Airflow instance to another."""
@@ -362,13 +364,13 @@ def starship_dag_history_migration(
 
 # noinspection PyPep8Naming
 def StarshipAirflowMigrationDAG(  # noqa: N802
-    http_conn_id: str = None,
-    variables: List[str] = None,
-    pools: List[str] = None,
-    connections: List[str] = None,
-    dag_ids: List[str] = None,
-    source_http_conn_id: str = None,
-    target_http_conn_id: str = None,
+    http_conn_id: Optional[str] = None,
+    variables: Optional[List[str]] = None,
+    pools: Optional[List[str]] = None,
+    connections: Optional[List[str]] = None,
+    dag_ids: Optional[List[str]] = None,
+    source_http_conn_id: Optional[str] = None,
+    target_http_conn_id: Optional[str] = None,
     **kwargs,
 ):
     """
@@ -434,7 +436,7 @@ def StarshipAirflowMigrationDAG(  # noqa: N802
             dag_ids=None,  # None to migrate all, or ["dag1", "dag2"] to migrate specific items, or empty list to skip all
         )
         ```
-        """,  # noqa: E501
+        """,
     )
     with dag:
         starship_variables_migration(
