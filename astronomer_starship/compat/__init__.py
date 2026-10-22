@@ -38,7 +38,7 @@ else:
     raise AirflowVersionError()
 
 __all__ = [
-    "StarshipApi",
     "StarshipAPIPlugin",
+    "StarshipApi",
     "StarshipPlugin",
 ]

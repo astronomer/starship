@@ -1,5 +1,5 @@
 import gzip
-import os
+import logging
 from pathlib import Path
 from typing import Optional
 
@@ -7,6 +7,8 @@ import httpx
 from airflow.plugins_manager import AirflowPlugin
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import FileResponse
+
+logger = logging.getLogger(__name__)
 
 PLUGIN_DIR = Path(__file__).parent.parent
 STATIC_DIR = PLUGIN_DIR / "static"
@@ -96,7 +98,7 @@ async def proxy(request: Request):
         proxy_headers["Content-Type"] = "application/json"
 
     try:
-        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:  # noqa: S501  # nosec B501
+        async with httpx.AsyncClient(verify=False, timeout=30.0) as client:  # nosec B501
             response = await client.request(
                 method=request.method,
                 url=url,
@@ -105,16 +107,14 @@ async def proxy(request: Request):
                 content=body if body else None,
             )
 
-        if os.getenv("DEBUG", False):
-            print(
-                f"url={url}\n"
-                f"request_method={request.method}\n"
-                f"proxy_headers={proxy_headers}\n"
-                f"body={body}\n"
-                "===========\n"
-                f"response.status_code={response.status_code}\n"
-                f"response.content={response.content}\n"
-            )
+        logger.debug(
+            "url=%s request_method=%s body=%s response.status_code=%s response.content=%s",
+            url,
+            request.method,
+            body,
+            response.status_code,
+            response.content,
+        )
 
         response_content = response.content
         response_headers = {
@@ -143,7 +143,7 @@ async def proxy(request: Request):
 
     except httpx.RequestError as e:
         return Response(
-            content=f"Proxy request failed: {str(e)}",
+            content=f"Proxy request failed: {e!s}",
             status_code=502,
         )
 

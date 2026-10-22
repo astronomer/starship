@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Union
 from sqlalchemy.orm import Session
 
 if TYPE_CHECKING:
-    from typing import Any, Dict, List, Tuple, TypedDict, Union
+    from typing import Tuple, TypedDict
 
     class AttrDesc(TypedDict):
         attr: str
@@ -55,14 +55,13 @@ class ConflictError(HttpError):
 
 def get_json_or_clean_str(o: str) -> Union[List[Any], Dict[Any, Any], Any]:
     """For Aeroscope - Either load JSON (if we can) or strip and split the string, while logging the error"""
-    import logging
     from json import JSONDecodeError
 
     try:
         return json.loads(o)
     except (JSONDecodeError, TypeError) as e:
-        logging.debug(e)
-        logging.debug(o)
+        logger.debug(e)
+        logger.debug(o)
         return o.strip()
 
 
@@ -257,9 +256,9 @@ def generic_set_one(session: Session, qualname: str, attrs: dict, **kwargs):
         session.add(thing)
         session.commit()
         return results_to_list_via_attrs([thing], attrs)[0]
-    except Exception as e:
+    except Exception:
         session.rollback()
-        raise e
+        raise
 
 
 def generic_delete(session: Session, qualname: str, **kwargs) -> None:
@@ -275,7 +274,7 @@ def generic_delete(session: Session, qualname: str, **kwargs) -> None:
     except Exception as e:
         logger.error("Error deleting row(s) for table %s: %s", qualname, e)
         session.rollback()
-        raise e
+        raise
 
 
 def get_test_data(attrs: dict, method: "Union[str, None]" = None) -> "Dict[str, Any]":

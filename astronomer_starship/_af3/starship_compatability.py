@@ -2,7 +2,7 @@ import datetime
 import json
 import logging
 from datetime import timezone
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from astronomer_starship.common import (
     BaseStarshipAirflow,
@@ -191,9 +191,9 @@ class StarshipAirflow30(StarshipAirflow):
                     default=str,
                 )
             )
-        except Exception as e:
+        except Exception:
             self.session.rollback()
-            raise e
+            raise
 
     def set_dag_is_paused(self, dag_id: str, is_paused: bool):
         from airflow.models import DagModel
@@ -206,9 +206,9 @@ class StarshipAirflow30(StarshipAirflow):
                 "dag_id": dag_id,
                 "is_paused": is_paused,
             }
-        except Exception as e:
+        except Exception:
             self.session.rollback()
-            raise e
+            raise
 
     def _get_tags(self, dag_id: str):
         try:
@@ -218,9 +218,9 @@ class StarshipAirflow30(StarshipAirflow):
         except ImportError:
             # DagTag might not be available
             return []
-        except Exception as e:
+        except Exception:
             self.session.rollback()
-            raise e
+            raise
 
     def _get_dag_run_count(self, dag_id: str):
         from airflow.models import DagRun
@@ -229,9 +229,9 @@ class StarshipAirflow30(StarshipAirflow):
 
         try:
             return self.session.query(count(distinct(DagRun.run_id))).filter(DagRun.dag_id == dag_id).one()[0]
-        except Exception as e:
+        except Exception:
             self.session.rollback()
-            raise e
+            raise
 
     @classmethod
     def dag_runs_attrs(cls) -> "Dict[str, AttrDesc]":
@@ -408,9 +408,9 @@ class StarshipAirflow30(StarshipAirflow):
                     default=str,
                 )
             )
-        except Exception as e:
+        except Exception:
             self.session.rollback()
-            raise e
+            raise
 
     def set_dag_runs(self, dag_runs: list):
         dag_id = dag_runs[0]["dag_id"]
@@ -693,9 +693,9 @@ class StarshipAirflow30(StarshipAirflow):
                     default=str,
                 )
             )
-        except Exception as e:
+        except Exception:
             self.session.rollback()
-            raise e
+            raise
 
     def set_task_instances(self, task_instances: list):
         task_instances = self.insert_directly("task_instance", task_instances)
@@ -965,9 +965,9 @@ class StarshipAirflow30(StarshipAirflow):
                 "task_instances": results_to_list_via_attrs(results, self.task_instance_history_item_attrs()),
                 "dag_run_count": self._get_dag_run_count(dag_id),
             }
-        except Exception as e:
+        except Exception:
             self.session.rollback()
-            raise e
+            raise
 
     def set_task_instance_history(self, task_instances: list):
         task_instances = self.insert_directly("task_instance_history", task_instances)
@@ -1034,9 +1034,9 @@ class StarshipAirflow30(StarshipAirflow):
             return items
         except (InvalidRequestError, KeyError):
             return self.insert_directly(f"airflow.{table_name}", items)
-        except Exception as e:
+        except Exception:
             self.session.rollback()
-            raise e
+            raise
 
     def get_latest_dag_version_id(self, dag_id: str):
         from sqlalchemy import MetaData, desc, select
@@ -1056,11 +1056,11 @@ class StarshipAirflow30(StarshipAirflow):
 
             result = self.session.execute(stmt).first()
             return str(result[0]) if result else None
-        except Exception as e:
+        except Exception:
             self.session.rollback()
-            raise e
+            raise
 
-    def update_dag_version_id(self, dag_id: str, dag_version_id: str = None):
+    def update_dag_version_id(self, dag_id: str, dag_version_id: Optional[str] = None):
         """
         Update dag_version_id(FK) for task instances AND dag runs that have NULL values.
         Update created_dag_version_id on dag_run records so the UI can properly display them.
@@ -1116,9 +1116,9 @@ class StarshipAirflow30(StarshipAirflow):
                 "task_instances_updated": ti_result.rowcount,
                 "task_instance_history_updated": tih_result.rowcount,
             }
-        except Exception as e:
+        except Exception:
             self.session.rollback()
-            raise e
+            raise
 
 
 class StarshipAirflow31(StarshipAirflow30):
