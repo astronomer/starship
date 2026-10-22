@@ -1,7 +1,7 @@
 import json
 from dataclasses import dataclass
 from functools import partial
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, Optional
 
 from airflow.api_fastapi.app import get_auth_manager
 from airflow.api_fastapi.auth.managers.models.resource_details import DagAccessEntity, DagDetails
@@ -40,7 +40,7 @@ class StarshipRoute:
         put=None,
         delete=None,
         patch=None,
-        kwargs_fn: "Callable[[dict, dict], dict]" = None,
+        kwargs_fn: "Optional[Callable[[dict, dict], dict]]" = None,
     ):
         try:
             # noinspection PyArgumentList

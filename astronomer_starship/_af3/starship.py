@@ -1,5 +1,5 @@
 import gzip
-import os
+import logging
 from pathlib import Path
 from typing import Optional
 
@@ -11,6 +11,8 @@ from fastapi.responses import FileResponse
 from starlette.concurrency import run_in_threadpool
 
 from astronomer_starship.common import HttpError, validate_proxy_url
+
+logger = logging.getLogger(__name__)
 
 PLUGIN_DIR = Path(__file__).parent.parent
 STATIC_DIR = PLUGIN_DIR / "static"
@@ -104,16 +106,14 @@ async def proxy(request: Request):
                 content=body if body else None,
             )
 
-        if os.getenv("DEBUG", False):
-            print(
-                f"url={url}\n"
-                f"request_method={request.method}\n"
-                f"proxy_headers={proxy_headers}\n"
-                f"body={body}\n"
-                "===========\n"
-                f"response.status_code={response.status_code}\n"
-                f"response.content={response.content}\n"
-            )
+        logger.debug(
+            "url=%s request_method=%s body=%s response.status_code=%s response.content=%s",
+            url,
+            request.method,
+            body,
+            response.status_code,
+            response.content,
+        )
 
         response_content = response.content
         response_headers = {
@@ -140,7 +140,7 @@ async def proxy(request: Request):
 
     except httpx.RequestError as e:
         return Response(
-            content=f"Proxy request failed: {str(e)}",
+            content=f"Proxy request failed: {e!s}",
             status_code=502,
         )
 

@@ -9,13 +9,13 @@ from astronomer_starship.compat import AIRFLOW_V_2
 if not AIRFLOW_V_2:
     pytest.skip("Airflow 2 only", allow_module_level=True)
 
-from airflow.providers.fab.auth_manager.security_manager.override import (  # noqa: E402
+from airflow.providers.fab.auth_manager.security_manager.override import (
     FabAirflowSecurityManagerOverride,
 )
-from airflow.security import permissions  # noqa: E402
-from flask import Flask  # noqa: E402
+from airflow.security import permissions
+from flask import Flask
 
-from astronomer_starship._af2 import starship_api  # noqa: E402
+from astronomer_starship._af2 import starship_api
 
 SM = FabAirflowSecurityManagerOverride
 CONFIG_READ = (permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)
@@ -46,7 +46,7 @@ class FakeSecurityManager:
 class FakeCompat:
     def __getattr__(self, name):
         if name.endswith("_attrs"):
-            return lambda: {}
+            return dict
         return lambda **kwargs: {}
 
 
