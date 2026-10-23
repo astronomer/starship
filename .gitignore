@@ -1,6 +1,7 @@
 site
 venv
 venv*
+.venv
 /build/
 __pycache__
 /.idea/

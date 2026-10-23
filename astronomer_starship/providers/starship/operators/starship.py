@@ -369,6 +369,8 @@ def StarshipAirflowMigrationDAG(  # noqa: N802
     dag_ids: List[str] = None,
     source_http_conn_id: str = None,
     target_http_conn_id: str = None,
+    dag_run_limit: int = 10,
+    unpause_dag_in_target: bool = False,
     **kwargs,
 ):
     """
@@ -432,6 +434,8 @@ def StarshipAirflowMigrationDAG(  # noqa: N802
             pools=None,  # None to migrate all, or ["pool1", "pool2"] to migrate specific items, or empty list to skip all
             connections=None,  # None to migrate all, or ["conn1", "conn2"] to migrate specific items, or empty list to skip all
             dag_ids=None,  # None to migrate all, or ["dag1", "dag2"] to migrate specific items, or empty list to skip all
+            dag_run_limit=10,  # number of most recent DAG runs to migrate per DAG
+            unpause_dag_in_target=False,  # unpause each DAG in the target after its history is migrated
         )
         ```
         """,  # noqa: E501
@@ -459,6 +463,8 @@ def StarshipAirflowMigrationDAG(  # noqa: N802
             dag_ids=dag_ids,
             http_conn_id=target_http_conn_id,
             source_http_conn_id=source_http_conn_id,
+            dag_run_limit=dag_run_limit,
+            unpause_dag_in_target=unpause_dag_in_target,
             **kwargs,
         )
     return dag
