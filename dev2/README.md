@@ -18,3 +18,12 @@ just restart *ARGS # run `astro dev restart [ARGS]` with image suitable for loca
 just start *ARGS   # run `astro dev start [ARGS]` with image suitable for local development
 just stop          # run `astro dev stop`
 ```
+
+## Overriding the Astro Runtime version
+
+The Astro Runtime version defaults to `13.7.0`. Override it by setting `RUNTIME_VERSION` when calling a recipe:
+
+```bash
+RUNTIME_VERSION=13.12.1 just dev2 start
+RUNTIME_VERSION=13.12.1 just dev2 deploy <deployment-id>
+```
