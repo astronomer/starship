@@ -139,6 +139,13 @@ StarshipAirflowMigrationDAG(
 | `source_http_conn_id` | HTTP conn id for the **source** Airflow (where data is read from) | `"starship_source"` | Airflow 3 only; ignored on Airflow 2 |
 | `http_conn_id` | Legacy alias for `target_http_conn_id` | `None` | Kept for backward compatibility |
 
+### DAG history kwargs
+
+| Kwarg | Purpose | Default |
+|---|---|---|
+| `dag_run_limit` | Number of most recent DAG runs to migrate per DAG | `10` |
+| `unpause_dag_in_target` | Unpause each DAG in the target after its history is migrated | `False` |
+
 You can use this DAG to migrate all items, or specific items by providing a list of names.
 
 You can skip migration by providing an empty list.
