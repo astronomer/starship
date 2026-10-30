@@ -1,5 +1,5 @@
 import json
-from functools import partial
+from functools import partial, wraps
 from http import HTTPStatus
 from typing import TYPE_CHECKING
 
@@ -20,8 +20,36 @@ if TYPE_CHECKING:
     from typing import Callable
 
 
-# restrict access to users with access to the Airflow configuration, which is more or less equivalent to admin access.
-requires_config_read = auth.has_access([(permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)])
+# Baseline for every route: users with access to the Airflow configuration.
+# Routes that read or write Airflow resources add the matching resource permission through `requires_access`.
+CONFIG_READ = (permissions.ACTION_CAN_READ, permissions.RESOURCE_CONFIG)
+requires_config_read = auth.has_access([CONFIG_READ])
+
+READ = permissions.ACTION_CAN_READ
+CREATE = permissions.ACTION_CAN_CREATE
+EDIT = permissions.ACTION_CAN_EDIT
+DELETE = permissions.ACTION_CAN_DELETE
+
+
+def requires_access(**permissions_by_method):
+    """`requires_config_read`, plus the FAB permissions listed for the request method, for example
+    `@requires_access(GET=[(READ, permissions.RESOURCE_POOL)], POST=[(CREATE, permissions.RESOURCE_POOL)])`
+    """
+
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            return auth.has_access([CONFIG_READ, *permissions_by_method[request.method]])(f)(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+def _crud_access(resource, *methods):
+    """`requires_access` with the FAB action matching each request method"""
+    actions = {"GET": READ, "POST": CREATE, "PATCH": EDIT, "DELETE": DELETE}
+    return requires_access(**{method: [(actions[method], resource)] for method in methods})
 
 
 def starship_route(  # noqa: C901
@@ -141,14 +169,15 @@ class StarshipApi(BaseView):
         starship_compat = StarshipCompatabilityLayer()
         return starship_route(get=starship_compat.get_info)
 
-    @requires_config_read
+    # Environment variables can hold connections (`AIRFLOW_CONN_*`) and variables (`AIRFLOW_VAR_*`).
+    @requires_access(GET=[(READ, permissions.RESOURCE_CONNECTION), (READ, permissions.RESOURCE_VARIABLE)])
     @expose("/env_vars", methods=["GET"])
     @csrf.exempt
     def env_vars(self):
         starship_compat = StarshipCompatabilityLayer()
         return starship_route(get=starship_compat.get_env_vars)
 
-    @requires_config_read
+    @_crud_access(permissions.RESOURCE_POOL, "GET", "POST", "DELETE")
     @expose("/pools", methods=["GET", "POST", "DELETE"])
     @csrf.exempt
     def pools(self):
@@ -160,7 +189,7 @@ class StarshipApi(BaseView):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.pool_attrs()),
         )
 
-    @requires_config_read
+    @_crud_access(permissions.RESOURCE_VARIABLE, "GET", "POST", "DELETE")
     @expose("/variables", methods=["GET", "POST", "DELETE"])
     @csrf.exempt
     def variables(self):
@@ -172,7 +201,7 @@ class StarshipApi(BaseView):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.variable_attrs()),
         )
 
-    @requires_config_read
+    @_crud_access(permissions.RESOURCE_CONNECTION, "GET", "POST", "DELETE")
     @expose("/connections", methods=["GET", "POST", "DELETE"])
     @csrf.exempt
     def connections(self):
@@ -184,7 +213,7 @@ class StarshipApi(BaseView):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.connection_attrs()),
         )
 
-    @requires_config_read
+    @_crud_access(permissions.RESOURCE_DAG, "GET", "PATCH")
     @expose("/dags", methods=["GET", "PATCH"])
     @csrf.exempt
     def dags(self):
@@ -195,7 +224,7 @@ class StarshipApi(BaseView):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.dag_attrs()),
         )
 
-    @requires_config_read
+    @_crud_access(permissions.RESOURCE_DAG_RUN, "GET", "POST", "DELETE")
     @expose("/dag_runs", methods=["GET", "POST", "DELETE"])
     @csrf.exempt
     def dag_runs(self):
@@ -207,7 +236,7 @@ class StarshipApi(BaseView):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.dag_runs_attrs()),
         )
 
-    @requires_config_read
+    @_crud_access(permissions.RESOURCE_TASK_INSTANCE, "GET", "POST")
     @expose("/task_instances", methods=["GET", "POST"])
     @csrf.exempt
     def task_instances(self):
@@ -218,7 +247,7 @@ class StarshipApi(BaseView):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.task_instances_attrs()),
         )
 
-    @requires_config_read
+    @_crud_access(permissions.RESOURCE_TASK_INSTANCE, "GET", "POST")
     @expose("/task_instance_history", methods=["GET", "POST"])
     @csrf.exempt
     def task_instance_history(self):
@@ -229,7 +258,13 @@ class StarshipApi(BaseView):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.task_instance_history_attrs()),
         )
 
-    @requires_config_read
+    # FAB has no create or delete permission for task logs, and no create permission for XComs.
+    # These routes use the task instance permissions instead.
+    @requires_access(
+        GET=[(READ, permissions.RESOURCE_TASK_LOG)],
+        POST=[(CREATE, permissions.RESOURCE_TASK_INSTANCE)],
+        DELETE=[(DELETE, permissions.RESOURCE_TASK_INSTANCE)],
+    )
     @expose("/task_log", methods=["GET", "POST", "DELETE"])
     @csrf.exempt
     def task_logs(self):
@@ -241,7 +276,11 @@ class StarshipApi(BaseView):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.task_log_attrs()),
         )
 
-    @requires_config_read
+    @requires_access(
+        GET=[(READ, permissions.RESOURCE_XCOM)],
+        POST=[(CREATE, permissions.RESOURCE_TASK_INSTANCE)],
+        DELETE=[(DELETE, permissions.RESOURCE_XCOM)],
+    )
     @expose("/xcom", methods=["GET", "POST", "DELETE"])
     @csrf.exempt
     def xcom(self):

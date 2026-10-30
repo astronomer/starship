@@ -3,11 +3,20 @@ from dataclasses import dataclass
 from functools import partial
 from typing import TYPE_CHECKING, Annotated
 
+from airflow.api_fastapi.app import get_auth_manager
+from airflow.api_fastapi.auth.managers.models.resource_details import DagAccessEntity, DagDetails
 from airflow.api_fastapi.common.router import AirflowRouter
-from airflow.api_fastapi.core_api.security import requires_access_configuration
+from airflow.api_fastapi.core_api.security import (
+    GetUserDep,
+    requires_access_configuration,
+    requires_access_connection,
+    requires_access_pool,
+    requires_access_variable,
+)
 from airflow.plugins_manager import AirflowPlugin
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 
 from astronomer_starship._af3.starship_compatability import StarshipAirflow, StarshipCompatabilityLayer
 from astronomer_starship.common import HttpError, get_kwargs_fn, telescope
@@ -128,9 +137,67 @@ async def starship_compat() -> StarshipAirflow:
     return StarshipCompatabilityLayer()
 
 
+async def _dag_ids_in_request(request: Request) -> "set[str]":
+    """Every `dag_id` the request names, in the query string, the JSON body, or the records of a bulk JSON body.
+
+    Starship handlers read `dag_id` from the body before the query string (see `get_from_request`),
+    and bulk bodies (e.g. `{"dag_runs": [...]}`) name a DAG per record, so all of them must be authorized.
+    """
+    dag_ids = [request.query_params.get("dag_id")]
+    if await request.body():
+        try:
+            body = await request.json()
+        except ValueError:
+            raise HTTPException(400, "Request body is not valid JSON") from None
+        if isinstance(body, dict):
+            dag_ids.append(body.get("dag_id"))
+            for value in body.values():
+                if isinstance(value, list):
+                    dag_ids.extend(item.get("dag_id") for item in value if isinstance(item, dict))
+    if any(dag_id is not None and not isinstance(dag_id, str) for dag_id in dag_ids):
+        raise HTTPException(400, "'dag_id' must be a string")
+    return {dag_id for dag_id in dag_ids if dag_id and dag_id != "~"}
+
+
+def _is_authorized_dags(method, access_entity, dag_ids, user) -> bool:
+    from airflow.configuration import conf
+    from airflow.models import DagModel
+
+    # Airflow 3.1+ can scope DAGs to teams
+    multi_team = conf.getboolean("core", "multi_team", fallback=False) and hasattr(DagModel, "get_team_name")
+
+    def details(dag_id):
+        if dag_id and multi_team:
+            return DagDetails(id=dag_id, team_name=DagModel.get_team_name(dag_id))
+        return DagDetails(id=dag_id)
+
+    return get_auth_manager().batch_is_authorized_dag(
+        requests=[
+            {"method": method, "access_entity": access_entity, "details": details(dag_id)}
+            for dag_id in sorted(dag_ids) or [None]
+        ],
+        user=user,
+    )
+
+
+def requires_access_dags(method, access_entity=None):
+    """Like Airflow's `requires_access_dag`, but for every DAG the request names, see `_dag_ids_in_request`.
+    Without a `dag_id`, the user needs access to all DAGs.
+    """
+
+    async def inner(request: Request, user: GetUserDep) -> None:
+        dag_ids = await _dag_ids_in_request(request)
+        # The auth manager may query the database, keep it off the event loop
+        if not await run_in_threadpool(_is_authorized_dags, method, access_entity, dag_ids, user):
+            raise HTTPException(403, "Forbidden")
+
+    return inner
+
+
 router = AirflowRouter(
     tags=["Starship"],
-    # restrict access to users with access to the Airflow configuration, which is more or less equivalent to admin access.
+    # Baseline for every route: users with access to the Airflow configuration.
+    # Routes that read or write Airflow resources add the matching resource check.
     dependencies=[Depends(requires_access_configuration("GET"))],
 )
 
@@ -171,7 +238,11 @@ class StarshipApi(FastAPI):
     ):
         return starship_route(get=starship_compat.get_info)
 
-    @router.get("/env_vars")
+    @router.get(
+        "/env_vars",
+        # Environment variables can hold connections (`AIRFLOW_CONN_*`) and variables (`AIRFLOW_VAR_*`).
+        dependencies=[Depends(requires_access_connection("GET")), Depends(requires_access_variable("GET"))],
+    )
     @staticmethod
     def env_vars(
         starship_route: Annotated[StarshipRoute, Depends(starship_route)],
@@ -179,7 +250,9 @@ class StarshipApi(FastAPI):
     ):
         return starship_route(get=starship_compat.get_env_vars)
 
-    @router.api_route("/pools", methods=["GET", "POST", "DELETE"])
+    @router.get("/pools", dependencies=[Depends(requires_access_pool("GET"))])
+    @router.post("/pools", dependencies=[Depends(requires_access_pool("POST"))])
+    @router.delete("/pools", dependencies=[Depends(requires_access_pool("DELETE"))])
     @staticmethod
     def pools(
         starship_route: Annotated[StarshipRoute, Depends(starship_route)],
@@ -192,7 +265,9 @@ class StarshipApi(FastAPI):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.pool_attrs()),
         )
 
-    @router.api_route("/variables", methods=["GET", "POST", "DELETE"])
+    @router.get("/variables", dependencies=[Depends(requires_access_variable("GET"))])
+    @router.post("/variables", dependencies=[Depends(requires_access_variable("POST"))])
+    @router.delete("/variables", dependencies=[Depends(requires_access_variable("DELETE"))])
     @staticmethod
     def variables(
         starship_route: Annotated[StarshipRoute, Depends(starship_route)],
@@ -205,7 +280,9 @@ class StarshipApi(FastAPI):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.variable_attrs()),
         )
 
-    @router.api_route("/connections", methods=["GET", "POST", "DELETE"])
+    @router.get("/connections", dependencies=[Depends(requires_access_connection("GET"))])
+    @router.post("/connections", dependencies=[Depends(requires_access_connection("POST"))])
+    @router.delete("/connections", dependencies=[Depends(requires_access_connection("DELETE"))])
     @staticmethod
     def connections(
         starship_route: Annotated[StarshipRoute, Depends(starship_route)],
@@ -218,7 +295,8 @@ class StarshipApi(FastAPI):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.connection_attrs()),
         )
 
-    @router.api_route("/dags", methods=["GET", "PATCH"])
+    @router.get("/dags", dependencies=[Depends(requires_access_dags("GET"))])
+    @router.patch("/dags", dependencies=[Depends(requires_access_dags("PUT"))])
     @staticmethod
     def dags(
         starship_route: Annotated[StarshipRoute, Depends(starship_route)],
@@ -230,7 +308,9 @@ class StarshipApi(FastAPI):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.dag_attrs()),
         )
 
-    @router.api_route("/dag_runs", methods=["GET", "POST", "DELETE"])
+    @router.get("/dag_runs", dependencies=[Depends(requires_access_dags("GET", DagAccessEntity.RUN))])
+    @router.post("/dag_runs", dependencies=[Depends(requires_access_dags("POST", DagAccessEntity.RUN))])
+    @router.delete("/dag_runs", dependencies=[Depends(requires_access_dags("DELETE", DagAccessEntity.RUN))])
     @staticmethod
     def dag_runs(
         starship_route: Annotated[StarshipRoute, Depends(starship_route)],
@@ -243,7 +323,8 @@ class StarshipApi(FastAPI):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.dag_runs_attrs()),
         )
 
-    @router.api_route("/task_instances", methods=["GET", "POST"])
+    @router.get("/task_instances", dependencies=[Depends(requires_access_dags("GET", DagAccessEntity.TASK_INSTANCE))])
+    @router.post("/task_instances", dependencies=[Depends(requires_access_dags("POST", DagAccessEntity.TASK_INSTANCE))])
     @staticmethod
     def task_instances(
         starship_route: Annotated[StarshipRoute, Depends(starship_route)],
@@ -255,7 +336,12 @@ class StarshipApi(FastAPI):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.task_instances_attrs()),
         )
 
-    @router.api_route("/task_instance_history", methods=["GET", "POST"])
+    @router.get(
+        "/task_instance_history", dependencies=[Depends(requires_access_dags("GET", DagAccessEntity.TASK_INSTANCE))]
+    )
+    @router.post(
+        "/task_instance_history", dependencies=[Depends(requires_access_dags("POST", DagAccessEntity.TASK_INSTANCE))]
+    )
     @staticmethod
     def task_instance_history(
         starship_route: Annotated[StarshipRoute, Depends(starship_route)],
@@ -267,7 +353,9 @@ class StarshipApi(FastAPI):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.task_instance_history_attrs()),
         )
 
-    @router.api_route("/task_log", methods=["GET", "POST", "DELETE"])
+    @router.get("/task_log", dependencies=[Depends(requires_access_dags("GET", DagAccessEntity.TASK_LOGS))])
+    @router.post("/task_log", dependencies=[Depends(requires_access_dags("POST", DagAccessEntity.TASK_INSTANCE))])
+    @router.delete("/task_log", dependencies=[Depends(requires_access_dags("DELETE", DagAccessEntity.TASK_INSTANCE))])
     @staticmethod
     def task_logs(
         starship_route: Annotated[StarshipRoute, Depends(starship_route)],
@@ -280,7 +368,9 @@ class StarshipApi(FastAPI):
             kwargs_fn=partial(get_kwargs_fn, attrs=starship_compat.task_log_attrs()),
         )
 
-    @router.api_route("/xcom", methods=["GET", "POST", "DELETE"])
+    @router.get("/xcom", dependencies=[Depends(requires_access_dags("GET", DagAccessEntity.XCOM))])
+    @router.post("/xcom", dependencies=[Depends(requires_access_dags("POST", DagAccessEntity.XCOM))])
+    @router.delete("/xcom", dependencies=[Depends(requires_access_dags("DELETE", DagAccessEntity.XCOM))])
     @staticmethod
     def xcom(
         starship_route: Annotated[StarshipRoute, Depends(starship_route)],
