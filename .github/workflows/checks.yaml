@@ -10,6 +10,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: astronomer_starship/package-lock.json
+      # prettier hook uses `npx`; install locked deps so it isn't downloaded in parallel
+      - run: npm ci
+        working-directory: astronomer_starship
       - uses: j178/prek-action@v1
 
   test:
