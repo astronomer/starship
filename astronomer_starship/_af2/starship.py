@@ -1,4 +1,4 @@
-import os
+import logging
 
 import requests
 from airflow.plugins_manager import AirflowPlugin
@@ -14,6 +14,8 @@ from flask import Blueprint, Response, request
 from flask_appbuilder import BaseView, expose
 
 from astronomer_starship.common import HttpError, validate_proxy_url
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_PROXY_METHODS = ["GET", "POST", "PATCH", "DELETE"]
 
@@ -73,18 +75,22 @@ class Starship(BaseView):
         )
         response_headers = dict(response.headers)
         if not response.ok:
-            print(response.content)
+            logger.error("Proxied request to %s failed with status %s: %s", url, response.status_code, response.content)
 
-        if os.getenv("DEBUG", False):
-            print(
-                f"url={url}\n"
-                f"request_method={request_method}\n"
-                f"request_headers={request_headers}\n"
-                f"request.data={request.data}\n"
-                "==========="
-                f"response_headers={response_headers}\n"
-                f"response.status_code={response.status_code}\n"
-                f"response.content={response.content}\n"
+        if logger.isEnabledFor(logging.DEBUG):
+            logged_request_headers = {
+                k: "<redacted>" if k.lower() == "authorization" else v for k, v in request_headers.items()
+            }
+            logger.debug(
+                "url=%s request_method=%s request_headers=%s request.data=%s "
+                "response_headers=%s response.status_code=%s response.content=%s",
+                url,
+                request_method,
+                logged_request_headers,
+                request.data,
+                response_headers,
+                response.status_code,
+                response.content,
             )
         response_headers["Starship-Proxy-Status"] = "OK"
         return Response(response.content, status=response.status_code, headers=response_headers)

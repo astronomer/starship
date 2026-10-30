@@ -6,12 +6,12 @@ import pytest
 
 pytest.importorskip("airflow.api_fastapi")
 
-from airflow.api_fastapi.auth.managers.simple.simple_auth_manager import SimpleAuthManager  # noqa: E402
-from airflow.api_fastapi.auth.managers.simple.user import SimpleAuthManagerUser  # noqa: E402
-from airflow.api_fastapi.core_api.security import get_user  # noqa: E402
-from fastapi.testclient import TestClient  # noqa: E402
+from airflow.api_fastapi.auth.managers.simple.simple_auth_manager import SimpleAuthManager
+from airflow.api_fastapi.auth.managers.simple.user import SimpleAuthManagerUser
+from airflow.api_fastapi.core_api.security import get_user
+from fastapi.testclient import TestClient
 
-from astronomer_starship._af3 import starship_api  # noqa: E402
+from astronomer_starship._af3 import starship_api
 
 CONNECTION = {"conn_id": "my_conn", "conn_type": "http"}
 

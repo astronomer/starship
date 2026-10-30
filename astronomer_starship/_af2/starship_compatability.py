@@ -188,9 +188,9 @@ class StarshipAirflow(BaseStarshipAirflow):
                     default=str,
                 )
             )
-        except Exception as e:
+        except Exception:
             self.session.rollback()
-            raise e
+            raise
 
     def set_dag_is_paused(self, dag_id: str, is_paused: bool):
         """Pause or unpause a DAG"""
@@ -204,9 +204,9 @@ class StarshipAirflow(BaseStarshipAirflow):
                 "dag_id": dag_id,
                 "is_paused": is_paused,
             }
-        except Exception as e:
+        except Exception:
             self.session.rollback()
-            raise e
+            raise
 
     def _get_tags(self, dag_id: str):
         try:
@@ -216,9 +216,9 @@ class StarshipAirflow(BaseStarshipAirflow):
             return [tag[0] for tag in self.session.query(DagTag.name).filter(DagTag.dag_id == dag_id).all()]
         except ImportError:
             return []
-        except Exception as e:
+        except Exception:
             self.session.rollback()
-            raise e
+            raise
 
     def _get_dag_run_count(self, dag_id: str):
         from airflow.models import DagRun
@@ -229,9 +229,9 @@ class StarshipAirflow(BaseStarshipAirflow):
             # py36/sqlalchemy1.3 doesn't like label?
             # noinspection PyTypeChecker
             return self.session.query(count(distinct(DagRun.run_id))).filter(DagRun.dag_id == dag_id).one()[0]
-        except Exception as e:
+        except Exception:
             self.session.rollback()
-            raise e
+            raise
 
     @classmethod
     def dag_runs_attrs(cls) -> "Dict[str, AttrDesc]":
@@ -376,9 +376,9 @@ class StarshipAirflow(BaseStarshipAirflow):
                 "dag_runs": results_to_list_via_attrs(results, self.dag_run_attrs()),
                 "dag_run_count": self._get_dag_run_count(dag_id),
             }
-        except Exception as e:
+        except Exception:
             self.session.rollback()
-            raise e
+            raise
 
     def set_dag_runs(self, dag_runs: list):
         dag_id = dag_runs[0]["dag_id"]
@@ -640,9 +640,9 @@ class StarshipAirflow(BaseStarshipAirflow):
                 "task_instances": results_to_list_via_attrs(results, self.task_instance_attrs()),
                 "dag_run_count": self._get_dag_run_count(dag_id),
             }
-        except Exception as e:
+        except Exception:
             self.session.rollback()
-            raise e
+            raise
 
     def set_task_instances(self, task_instances: list):
         """These need to be inserted directly to skip TaskInstance.__init__"""
@@ -737,9 +737,9 @@ class StarshipAirflow(BaseStarshipAirflow):
             return items
         except (InvalidRequestError, KeyError):
             return self.insert_directly(f"airflow.{table_name}", items)
-        except Exception as e:
+        except Exception:
             self.session.rollback()
-            raise e
+            raise
 
 
 class StarshipAirflow22(StarshipAirflow):
@@ -850,9 +850,9 @@ class StarshipAirflow21(StarshipAirflow22):
                 "task_instances": results_to_list_via_attrs(results, self.task_instance_attrs()),
                 "dag_run_count": self._get_dag_run_count(dag_id),
             }
-        except Exception as e:
+        except Exception:
             self.session.rollback()
-            raise e
+            raise
 
 
 class StarshipAirflow20(StarshipAirflow21):
@@ -1219,9 +1219,9 @@ class StarshipAirflow28(StarshipAirflow27):
 
             self.session.add(xcom)
             self.session.commit()
-        except Exception as e:
+        except Exception:
             self.session.rollback()
-            raise e
+            raise
 
     def delete_xcom(self, **kwargs):
         """Delete XCom for a task instance"""
@@ -1324,9 +1324,9 @@ class StarshipAirflow210(StarshipAirflow29):
                 "task_instances": results_to_list_via_attrs(results, self.task_instance_attrs()),
                 "dag_run_count": self._get_dag_run_count(dag_id),
             }
-        except Exception as e:
+        except Exception:
             self.session.rollback()
-            raise e
+            raise
 
     def set_task_instance_history(self, task_instances: list):
         """Set task instance history records."""
@@ -1377,7 +1377,7 @@ class StarshipCompatabilityLayer:
             from airflow import __version__
 
             airflow_version = __version__
-            print("Got Airflow Version: " + airflow_version)
+            logger.info("Got Airflow Version: %s", airflow_version)
         try:
             [major, minor, _] = airflow_version.split(".", maxsplit=2)
         except ValueError as e:
