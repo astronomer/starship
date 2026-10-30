@@ -18,6 +18,7 @@ This project welcomes contributions. All Pull Requests should include proper tes
   - [Run current code](#run-current-code)
     - [Local](#local)
     - [Astro](#astro)
+    - [Astro Runtime version](#astro-runtime-version)
   - [Alternatively](#alternatively)
   - [Issues](#issues)
     - [SSL CERTIFICATE_VERIFY_FAILED](#ssl-certificate_verify_failed)
@@ -205,6 +206,18 @@ just dev2 deploy mydeploymentid
 
 # Airflow 3
 just dev3 deploy mydeploymentid
+```
+
+### Astro Runtime version
+
+Override the default Astro Runtime version of any `dev2`/`dev3` recipe by setting `RUNTIME_VERSION`.
+
+```shell
+# Airflow 2
+RUNTIME_VERSION=13.12.1 just dev2 start
+
+# Airflow 3
+RUNTIME_VERSION=3.3-10 just dev3 start
 ```
 
 ## Alternatively
